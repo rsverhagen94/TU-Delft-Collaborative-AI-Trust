@@ -15,6 +15,8 @@ class Phase(enum.Enum):
     PLAN_PATH_TO_CLOSED_DOOR = 1,
     FOLLOW_PATH_TO_CLOSED_DOOR = 2,
     OPEN_DOOR = 3
+    SEARCH_ROOM = 4
+    MOVING_BLOCK = 5
 
 
 class LazyAgent(BW4TBrain):
@@ -26,9 +28,12 @@ class LazyAgent(BW4TBrain):
 
     def initialize(self):
         super().initialize()
+        self._door = None
         self._state_tracker = StateTracker(agent_id=self.agent_id)
         self._navigator = Navigator(agent_id=self.agent_id,
                                     action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
+        self._objects = set()
+        self._goal_objects = {}
 
     def filter_bw4t_observations(self, state):
         return state
@@ -66,14 +71,43 @@ class LazyAgent(BW4TBrain):
                 self._state_tracker.update(state)
                 # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
-                if action != None:
+                if action is not None:
                     return action, {}
                 self._phase = Phase.OPEN_DOOR
 
             if Phase.OPEN_DOOR == self._phase:
-                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                self._navigator.reset_full()
+
+                contents = state.get_room_objects(self._door['room_name'])
+                waypoints = []
+
+                for c in contents:
+                    if "wall" not in c['name']:
+                        x, y = c["location"][0], c["location"][1]
+                        waypoints.append((x, y))
+
+                self._navigator.add_waypoints(waypoints)
+
                 # Open door
-                return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+                is_open = state.get_room_doors(self._door['room_name'])[0]['is_open']
+                if not is_open:
+                    self._phase = Phase.SEARCH_ROOM
+                    self._sendMessage("Searching through " + self._door['room_name'], agent_name)
+                    return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+
+            if Phase.SEARCH_ROOM == self._phase:
+                self._state_tracker.update(state)
+
+                contents = state.get_room_objects(self._door['room_name'])
+                for c in contents:
+                    if "Block" in c['name']:
+                        self._objects.add(c)
+                        self._sendMessage("Found block of color:" + c['visualization']['colour'] + 'and shape: '+ c['visualization']['shape'], agent_name)
+
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
     def _sendMessage(self, mssg, sender):
         '''
