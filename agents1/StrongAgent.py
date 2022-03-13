@@ -15,20 +15,27 @@ class Phase(enum.Enum):
     PLAN_PATH_TO_CLOSED_DOOR = 1,
     FOLLOW_PATH_TO_CLOSED_DOOR = 2,
     OPEN_DOOR = 3
-
+    SEARCH_BLOCK = 4
+    FOUND_BLOCK = 5
+    PICKUP_BLOCK = 6
+    FOLLOW_PATH_TO_GOAL = 7
+    DROP_BLOCK = 8
 
 class StrongAgent(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
+        settings['max_objects'] = 2
         super().__init__(settings)
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
+        self._objects = []
 
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
         self._navigator = Navigator(agent_id=self.agent_id,
                                     action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
+
 
     def filter_bw4t_observations(self, state):
         return state
@@ -71,10 +78,37 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.OPEN_DOOR
 
             if Phase.OPEN_DOOR == self._phase:
-                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+                self._phase = Phase.SEARCH_BLOCK
                 # Open door
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+            if Phase.SEARCH_BLOCK == self._phase:
+                self._navigator.reset_full()
+                contents = state.get_room_objects(self._door['room_name'])
+                waypoints = []
 
+                for c in contents:
+                    if "wall" not in c['name']:
+                        x, y = c["location"][0], c["location"][1]
+                        waypoints.append((x, y))
+
+                self._navigator.add_waypoints(waypoints)
+                self._phase = Phase.FOUND_BLOCK
+            if Phase.FOUND_BLOCK == self._phase:
+                self._state_tracker.update(state)
+
+                contents = state.get_room_objects(self._door['room_name'])
+                for c in contents:
+                    if "Block" in c['name']:
+                        self._objects.append(c)
+                        self._sendMessage(
+                            "Found block of color:" + c['visualization']['colour'] + 'and shape: ' + str(c['visualization'][
+                                'shape']), agent_name)
+
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
