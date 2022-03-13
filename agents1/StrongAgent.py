@@ -2,6 +2,7 @@ import enum
 import random
 from typing import Dict
 
+from jsonpickle import json
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state import State
@@ -29,6 +30,7 @@ class StrongAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self._objects = []
+        self._goalBlocks = []
 
     def initialize(self):
         super().initialize()
@@ -50,7 +52,7 @@ class StrongAgent(BW4TBrain):
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
-
+        self.updateGoalBlocks(state)
         while True:
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -98,17 +100,21 @@ class StrongAgent(BW4TBrain):
                 self._state_tracker.update(state)
 
                 contents = state.get_room_objects(self._door['room_name'])
+                print(self._goalBlocks)
                 for c in contents:
                     if "Block" in c['name']:
                         self._objects.append(c)
+                        item_info = dict(list(c['visualization'].items())[:3])
                         self._sendMessage(
-                            "Found block of color:" + c['visualization']['colour'] + 'and shape: ' + str(c['visualization'][
-                                'shape']), agent_name)
+                            "Found goal block: " + json.dumps(item_info) +
+                            " at location (" + ', '.join([str(loc) for loc in c['location']]) + ")", agent_name)
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
                     return action, {}
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+            if Phase.PICKUP_BLOCK == self._phase:
+                return {}, {}
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -145,3 +151,8 @@ class StrongAgent(BW4TBrain):
                     trustBeliefs[member] -= 0.1
                     break
         return trustBeliefs
+    def updateGoalBlocks(self, state):
+        if len(self._goalBlocks) == 0:
+            self._goalBlocks = [goal for goal in state.values()
+                        if 'is_goal_block' in goal and goal['is_goal_block']]
+
