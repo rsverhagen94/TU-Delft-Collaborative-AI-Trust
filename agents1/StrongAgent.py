@@ -100,9 +100,8 @@ class StrongAgent(BW4TBrain):
                 self._state_tracker.update(state)
 
                 contents = state.get_room_objects(self._door['room_name'])
-                print(self._goalBlocks)
                 for c in contents:
-                    if "Block" in c['name']:
+                    if "Block" in c['name'] and self.isGoalBlock(c):
                         self._objects.append(c)
                         item_info = dict(list(c['visualization'].items())[:3])
                         self._sendMessage(
@@ -155,4 +154,13 @@ class StrongAgent(BW4TBrain):
         if len(self._goalBlocks) == 0:
             self._goalBlocks = [goal for goal in state.values()
                         if 'is_goal_block' in goal and goal['is_goal_block']]
+    def isGoalBlock(self, block):
+        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
+        blockInfo = getBlockInfo(block)
+        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
+        if (blockInfo in reducedGoalBlocks):
+            return True
+        return False
+
+
 
