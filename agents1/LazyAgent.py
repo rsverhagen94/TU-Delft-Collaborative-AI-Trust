@@ -170,9 +170,10 @@ class LazyAgent(BW4TBrain):
             if Phase.MOVING_BLOCK == self._phase:
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
-                print("moving to block")
+                #print("moving to block")
 
                 if action is not None:
+                    #print("is not none moving block")
                     return action, {}
 
                 # if len(self._goal_objects) == 0:
@@ -183,6 +184,7 @@ class LazyAgent(BW4TBrain):
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
                 if self._goal_objects and self._goal_objects_found:
+                    found = False
                     for o in self._goal_objects_found:
                         if o['visualization']['colour'] == self._goal_objects[0]['visualization']['colour'] and \
                                 o['visualization']['shape'] == self._goal_objects[0]['visualization']['shape']:
@@ -191,6 +193,10 @@ class LazyAgent(BW4TBrain):
                             self._navigator.add_waypoints([o['location']])
                             self._phase = Phase.MOVE_TO_OBJECT
                             self._current_obj = o
+                            print('moving to found one')
+                            found = True
+                    if not found:
+                        self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
             if Phase.STOP == self._phase:
