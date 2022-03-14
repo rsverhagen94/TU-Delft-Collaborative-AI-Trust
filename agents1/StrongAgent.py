@@ -39,7 +39,7 @@ class StrongAgent(BW4TBrain):
         self._currentRoomObjects = []
         self._goalBlocks = []
         self._currentIndex = 0
-        self._foundGoalBlocks = np.empty(3, dtype=dict)
+        self._foundGoalBlocks = None
 
     def initialize(self):
         super().initialize()
@@ -99,7 +99,7 @@ class StrongAgent(BW4TBrain):
                 waypoints = []
 
                 for c in contents:
-                    if 'class_inheritance' in c and 'Wall' not in c['class_inheritance']:
+                    if 'class_inheritance' in c and 'AreaTile' in c['class_inheritance']:
                         x, y = c["location"][0], c["location"][1]
                         waypoints.append((x, y))
 
@@ -111,7 +111,8 @@ class StrongAgent(BW4TBrain):
                 self._state_tracker.update(state)
                 contents = state.get_room_objects(self._door['room_name'])
                 for c in contents:
-                    if ("Block" in c['name']) and (c not in self._currentRoomObjects):
+                    if ("Block" in c['name']) and (c not in self._currentRoomObjects) \
+                            and 'GhostBlock' not in c['class_inheritance']:
                         self._currentRoomObjects.append(c)
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
@@ -119,8 +120,10 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.FOUND_BLOCK
             if Phase.FOUND_BLOCK == self._phase:
                 for c in self._currentRoomObjects:
-                    if self.isGoalBlock(c):
+                    if not self.isGoalBlock(c):
                         self.foundBlockMessage(c, agent_name)
+                    if self.isGoalBlock(c):
+                        self.foundGoalBlockMessage(c, agent_name)
                         goalBlockAction = self.manageBlock(c)
                         if goalBlockAction is not None:
                             return goalBlockAction
@@ -147,7 +150,8 @@ class StrongAgent(BW4TBrain):
                     return action, {}
                 if state[agent_name]['is_carrying']:
                     self._currentIndex += 1
-                    self.droppingBlockMessage(self._foundGoalBlocks[self._currentIndex - 1], agent_name)
+                    self.droppingBlockMessage(self._foundGoalBlocks[self._currentIndex - 1],
+                                              self._goalBlocks[self._currentIndex - 1]['location'], agent_name)
                     return DropObject.__name__, {'object_id': self._foundGoalBlocks[self._currentIndex - 1]['obj_id']}
                 if self._foundGoalBlocks[self._currentIndex] is not None:
                     self._navigator.reset_full()
@@ -179,6 +183,7 @@ class StrongAgent(BW4TBrain):
         if len(self._goalBlocks) == 0:
             self._goalBlocks = [goal for goal in state.values()
                                 if 'is_goal_block' in goal and goal['is_goal_block']]
+            self._foundGoalBlocks = np.empty(len(self._goalBlocks), dtype=dict)
 
     def isGoalBlock(self, block):
         getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
@@ -238,21 +243,25 @@ class StrongAgent(BW4TBrain):
     def searchingThroughMessage(self, agent_name):
         self._sendMessage('Searching through ' + self._door['room_name'], agent_name)
 
-    def foundBlockMessage(self, data, agent_name):
+    def foundGoalBlockMessage(self, data, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
             "Found goal block: " + json.dumps(item_info) +
             " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
-
+    def foundBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Found block: " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
     def pickingUpBlockMessage(self, data, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
             "Picking up goal block: " + json.dumps(item_info) +
             " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
 
-    def droppingBlockMessage(self, data, agent_name):
+    def droppingBlockMessage(self, data, location, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
             "Droppped goal block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+            " at location (" + ', '.join([str(loc) for loc in location]) + ")", agent_name)
     #################################################################################################
