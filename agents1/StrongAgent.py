@@ -2,6 +2,7 @@ import enum
 import random
 from typing import Dict
 
+from jsonpickle import json
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state import State
@@ -15,20 +16,28 @@ class Phase(enum.Enum):
     PLAN_PATH_TO_CLOSED_DOOR = 1,
     FOLLOW_PATH_TO_CLOSED_DOOR = 2,
     OPEN_DOOR = 3
-
+    SEARCH_BLOCK = 4
+    FOUND_BLOCK = 5
+    PICKUP_BLOCK = 6
+    FOLLOW_PATH_TO_GOAL = 7
+    DROP_BLOCK = 8
 
 class StrongAgent(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
+        settings['max_objects'] = 2
         super().__init__(settings)
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
+        self._objects = []
+        self._goalBlocks = []
 
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
         self._navigator = Navigator(agent_id=self.agent_id,
                                     action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
+
 
     def filter_bw4t_observations(self, state):
         return state
@@ -43,7 +52,7 @@ class StrongAgent(BW4TBrain):
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
-
+        self.updateGoalBlocks(state)
         while True:
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -71,10 +80,40 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.OPEN_DOOR
 
             if Phase.OPEN_DOOR == self._phase:
-                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+                self._phase = Phase.SEARCH_BLOCK
                 # Open door
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+            if Phase.SEARCH_BLOCK == self._phase:
+                self._navigator.reset_full()
+                contents = state.get_room_objects(self._door['room_name'])
+                waypoints = []
 
+                for c in contents:
+                    if "wall" not in c['name']:
+                        x, y = c["location"][0], c["location"][1]
+                        waypoints.append((x, y))
+
+                self._navigator.add_waypoints(waypoints)
+                self._phase = Phase.FOUND_BLOCK
+            if Phase.FOUND_BLOCK == self._phase:
+                self._state_tracker.update(state)
+
+                contents = state.get_room_objects(self._door['room_name'])
+                for c in contents:
+                    if "Block" in c['name'] and self.isGoalBlock(c):
+                        self._objects.append(c)
+                        item_info = dict(list(c['visualization'].items())[:3])
+                        self._sendMessage(
+                            "Found goal block: " + json.dumps(item_info) +
+                            " at location (" + ', '.join([str(loc) for loc in c['location']]) + ")", agent_name)
+
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+            if Phase.PICKUP_BLOCK == self._phase:
+                return {}, {}
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -111,3 +150,17 @@ class StrongAgent(BW4TBrain):
                     trustBeliefs[member] -= 0.1
                     break
         return trustBeliefs
+    def updateGoalBlocks(self, state):
+        if len(self._goalBlocks) == 0:
+            self._goalBlocks = [goal for goal in state.values()
+                        if 'is_goal_block' in goal and goal['is_goal_block']]
+    def isGoalBlock(self, block):
+        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
+        blockInfo = getBlockInfo(block)
+        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
+        if (blockInfo in reducedGoalBlocks):
+            return True
+        return False
+
+
+
