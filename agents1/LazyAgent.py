@@ -43,6 +43,7 @@ class LazyAgent(BW4TBrain):
         self._goal_objects = []
         self._goal_object_delivered = []
         self._current_obj = None
+        self._can_be_lazy = True
 
     def filter_bw4t_observations(self, state):
         return state
@@ -59,22 +60,33 @@ class LazyAgent(BW4TBrain):
         self._trustBlief(self._teamMembers, receivedMessages)
 
         while True:
+            if self.__is_lazy() and self._phase != Phase.START and self._can_be_lazy and self._phase in [
+                Phase.SEARCH_ROOM,
+                Phase.MOVING_BLOCK,
+                Phase.MOVE_TO_OBJECT]:
+                self._can_be_lazy = False
+                if state[agent_name]['is_carrying']:
+                    # self._goal_objects_found.remove(self._current_obj)
+                    obj = self._current_obj
+                    obj['location'] = state[agent_name]['location']
+                    self._goal_objects_found.append(obj)
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    return DropObject.__name__, {'object_id': obj['obj_id']}
+            else:
+                self._can_be_lazy = True
+
             if Phase.START == self._phase:
                 # 'Drop_off_0', 'Drop_off_0_1', 'Drop_off_0_2'
                 # {'drop_zone_nr': 0, 'is_drop_zone': True, 'is_goal_block': False, 'is_collectable': False, 'name': 'Drop off 0', 'obj_id': 'Drop_off_0', 'location': (12, 21), 'is_movable': False, 'carried_by': [], 'is_traversable': True,
                 # Collect_Block', 'Collect_Block_1', 'Collect_Block_2'
                 # {'drop_zone_nr': 0, 'is_drop_zone': False, 'is_goal_block': True, 'is_collectable': False, 'name': 'Collect Block', 'obj_id': 'Collect_Block', 'location': (12, 23), 'is_movable': False, 'carried_by': [], 'is_traversable': True
-                # print(state['Drop_off_0'])
-                # c, s = state['Collect_Block']['visualization']['colour'], state['Collect_Block']['visualization']['shape']
-                # c1, s1 = state['Collect_Block1']['visualization']['colour'], state['Collect_Block']['visualization'][
-                #     'shape']
-                # c2, s2 = state['Collect_Block2']['visualization']['colour'], state['Collect_Block']['visualization'][
-                #     'shape']
+
                 self._goal_objects.append(state['Collect_Block'])
                 self._goal_objects.append(state['Collect_Block_1'])
                 self._goal_objects.append(state['Collect_Block_2'])
 
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._current_obj = None
                 self._navigator.reset_full()
@@ -82,18 +94,22 @@ class LazyAgent(BW4TBrain):
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                         'is_open']]
                 if len(closedDoors) == 0:
-                    return None, {}
-                # Randomly pick a closed door
-                self._door = random.choice(closedDoors)
+                    self._door = random.choice([door for door in state.values()
+                                                if 'class_inheritance' in door and 'Door' in door['class_inheritance']])
+                    self._phase = Phase.MOVING_BLOCK
+                else:
+                    # Randomly pick a closed door
+                    self._door = random.choice(closedDoors)
+                    self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
                 doorLoc = self._door['location']
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
                 self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
                 self._navigator.add_waypoints([doorLoc])
-                self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
+
                 self._state_tracker.update(state)
                 # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -102,6 +118,8 @@ class LazyAgent(BW4TBrain):
                 self._phase = Phase.OPEN_DOOR
 
             if Phase.OPEN_DOOR == self._phase:
+
+                # self._can_be_lazy = True
                 self._navigator.reset_full()
                 contents = state.get_room_objects(self._door['room_name'])
                 waypoints = []
@@ -115,13 +133,17 @@ class LazyAgent(BW4TBrain):
                 # Open door
                 is_open = state.get_room_doors(self._door['room_name'])[0]['is_open']
                 if not is_open:
-                    self._phase = Phase.SEARCH_ROOM
+                    self._sendMessage("Opening door of: " + self._door['room_name'], agent_name)
                     self._sendMessage("Searching through " + self._door['room_name'], agent_name)
                     return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
-
+                self._phase = Phase.SEARCH_ROOM
             if Phase.SEARCH_ROOM == self._phase:
-                self._state_tracker.update(state)
+                if self.__is_lazy() and self._can_be_lazy:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                else:
+                    self._can_be_lazy = True
 
+                self._state_tracker.update(state)
                 contents = state.get_room_objects(self._door['room_name'])
                 for c in contents:
                     # if "Block" in c['name']:
@@ -134,6 +156,8 @@ class LazyAgent(BW4TBrain):
                                 not c['is_goal_block'] and not c['is_drop_zone']:
                             if i == 0:
                                 print('found')
+                                self._sendMessage(
+                                    "Found goal block " + str(c['visualization']) + " at location " + str(c['location']), agent_name)
                                 # print(self._door['room_name'])
                                 # print(c)
                                 self._phase = Phase.MOVE_TO_OBJECT
@@ -153,27 +177,32 @@ class LazyAgent(BW4TBrain):
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.MOVE_TO_OBJECT == self._phase:
+
                 print("moving to obj")
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
                     return action, {}
                 self._phase = Phase.GRAB
+                # self._can_be_lazy = True
+                self._sendMessage("Picking up goal block " + str(self._current_obj['visualization']) +  " at location " + str(self._current_obj['location']), agent_name)
                 return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
 
             if Phase.GRAB == self._phase:
                 print("ggrabbing")
+
                 self._navigator.reset_full()
                 self._navigator.add_waypoints([self._goal_objects[0]['location']])
                 self._phase = Phase.MOVING_BLOCK
 
             if Phase.MOVING_BLOCK == self._phase:
+
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
-                #print("moving to block")
+                # print("moving to block")
 
                 if action is not None:
-                    #print("is not none moving block")
+                    # print("is not none moving block")
                     return action, {}
 
                 # if len(self._goal_objects) == 0:
@@ -181,6 +210,9 @@ class LazyAgent(BW4TBrain):
                 if state[agent_name]['is_carrying']:
                     print("dropppgbg")
                     self._goal_objects.remove(self._goal_objects[0])
+                    self._can_be_lazy = True
+                    self._sendMessage("Dropping goal block " + str(self._current_obj['visualization']) + " at drop location " +
+                                      str(self._current_obj['location']), agent_name)
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
                 if self._goal_objects and self._goal_objects_found:
@@ -199,6 +231,7 @@ class LazyAgent(BW4TBrain):
                         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
             if Phase.STOP == self._phase:
                 self._phase = Phase.STOP
 
