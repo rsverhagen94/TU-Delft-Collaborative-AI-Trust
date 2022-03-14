@@ -14,6 +14,7 @@ from matrx.messages.message import Message
 from bw4t.BW4TBrain import BW4TBrain
 import numpy as np
 
+
 class Phase(enum.Enum):
     PLAN_PATH_TO_CLOSED_DOOR = 1,
     FOLLOW_PATH_TO_CLOSED_DOOR = 2,
@@ -24,24 +25,27 @@ class Phase(enum.Enum):
     PICKUP_BLOCK = 7
     FOLLOW_PATH_TO_GOAL = 8
     DROP_BLOCK = 9
+    PREPARE_ROOM = 10
+
 
 class StrongAgent(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
         settings['max_objects'] = 2
         super().__init__(settings)
+        self._door = None
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
-        self._objects = []
+        self._currentRoomObjects = []
         self._goalBlocks = []
         self._currentIndex = 0
-        self._foundGoalBlocks = np.empty(5, dtype=dict)
+        self._foundGoalBlocks = np.empty(3, dtype=dict)
+
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
         self._navigator = Navigator(agent_id=self.agent_id,
                                     action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
-
 
     def filter_bw4t_observations(self, state):
         return state
@@ -71,7 +75,7 @@ class StrongAgent(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                self.moveToMessage(agent_name)
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
@@ -85,10 +89,11 @@ class StrongAgent(BW4TBrain):
 
             if Phase.OPEN_DOOR == self._phase:
                 self._navigator.reset_full()
-                self._phase = Phase.SEARCH_BLOCK
+                self._phase = Phase.PREPARE_ROOM
                 # Open door
+                self.openingDoorMessage(agent_name)
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
-            if Phase.SEARCH_BLOCK == self._phase:
+            if Phase.PREPARE_ROOM == self._phase:
                 self._navigator.reset_full()
                 contents = state.get_room_objects(self._door['room_name'])
                 waypoints = []
@@ -99,20 +104,25 @@ class StrongAgent(BW4TBrain):
                         waypoints.append((x, y))
 
                 self._navigator.add_waypoints(waypoints)
-                self._phase = Phase.FOUND_BLOCK
-            if Phase.FOUND_BLOCK == self._phase:
+                self._currentRoomObjects = []
+                self._phase = Phase.SEARCH_BLOCK
+                self.searchingThroughMessage(agent_name)
+            if Phase.SEARCH_BLOCK == self._phase:
                 self._state_tracker.update(state)
-
                 contents = state.get_room_objects(self._door['room_name'])
                 for c in contents:
-                    if "Block" in c['name'] and self.isGoalBlock(c):
-                        self._objects.append(c)
-                        item_info = dict(list(c['visualization'].items())[:3])
-                        self._sendMessage(
-                            "Found goal block: " + json.dumps(item_info) +
-                            " at location (" + ', '.join([str(loc) for loc in c['location']]) + ")", agent_name)
+                    if ("Block" in c['name']) and (c not in self._currentRoomObjects):
+                        self._currentRoomObjects.append(c)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                self._phase = Phase.FOUND_BLOCK
+            if Phase.FOUND_BLOCK == self._phase:
+                for c in self._currentRoomObjects:
+                    if self.isGoalBlock(c):
+                        self.foundBlockMessage(c, agent_name)
                         goalBlockAction = self.manageBlock(c)
-                        if goalBlockAction != None:
+                        if goalBlockAction is not None:
                             return goalBlockAction
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
@@ -124,6 +134,7 @@ class StrongAgent(BW4TBrain):
                 if action is not None:
                     return action, {}
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
+                self.pickingUpBlockMessage(self._foundGoalBlocks[self._currentIndex], agent_name)
                 return GrabObject.__name__, {'object_id': self._foundGoalBlocks[self._currentIndex]['obj_id']}
             if Phase.FOLLOW_PATH_TO_GOAL == self._phase:
                 self._navigator.reset_full()
@@ -135,8 +146,8 @@ class StrongAgent(BW4TBrain):
                 if action is not None:
                     return action, {}
                 if state[agent_name]['is_carrying']:
-                    print("DROPP")
                     self._currentIndex += 1
+                    self.droppingBlockMessage(self._foundGoalBlocks[self._currentIndex - 1], agent_name)
                     return DropObject.__name__, {'object_id': self._foundGoalBlocks[self._currentIndex - 1]['obj_id']}
                 if self._foundGoalBlocks[self._currentIndex] is not None:
                     self._navigator.reset_full()
@@ -144,6 +155,59 @@ class StrongAgent(BW4TBrain):
                     self._phase = Phase.PICKUP_BLOCK
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+    def _trustBlief(self, member, received):
+        '''
+        Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
+        '''
+        # You can change the default value to your preference
+        default = 0.5
+        trustBeliefs = {}
+        for member in received.keys():
+            trustBeliefs[member] = default
+        for member in received.keys():
+            for message in received[member]:
+                if 'Found' in message and 'colour' not in message:
+                    trustBeliefs[member] -= 0.1
+                    break
+        return trustBeliefs
+
+    #####################
+    # GOAL BLOCKS LOGIC #
+    #####################
+    def updateGoalBlocks(self, state):
+        if len(self._goalBlocks) == 0:
+            self._goalBlocks = [goal for goal in state.values()
+                                if 'is_goal_block' in goal and goal['is_goal_block']]
+
+    def isGoalBlock(self, block):
+        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
+        blockInfo = getBlockInfo(block)
+        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
+        if (blockInfo in reducedGoalBlocks) and not block['is_goal_block'] and not block['is_drop_zone']:
+            return True
+        return False
+
+    def getGoalBlockIndex(self, block):
+        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
+        blockInfo = getBlockInfo(block)
+        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
+        return reducedGoalBlocks.index(blockInfo)
+
+    def manageBlock(self, block):
+        goalBlockIndex = self.getGoalBlockIndex(block)
+        self._foundGoalBlocks[goalBlockIndex] = block
+        if goalBlockIndex == self._currentIndex:
+            self._phase = Phase.PICKUP_BLOCK
+            self._navigator.reset_full()
+            self._navigator.add_waypoints([block['location']])
+            action = self._navigator.get_move_action(self._state_tracker)
+            return action, {}
+        return None
+
+    #########################
+    # MESSAGE SENDING LOGIC #
+    #########################
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -165,46 +229,30 @@ class StrongAgent(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
 
-    def _trustBlief(self, member, received):
-        '''
-        Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
-        '''
-        # You can change the default value to your preference
-        default = 0.5
-        trustBeliefs = {}
-        for member in received.keys():
-            trustBeliefs[member] = default
-        for member in received.keys():
-            for message in received[member]:
-                if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
-                    break
-        return trustBeliefs
-    def updateGoalBlocks(self, state):
-        if len(self._goalBlocks) == 0:
-            self._goalBlocks = [goal for goal in state.values()
-                        if 'is_goal_block' in goal and goal['is_goal_block']]
-    def isGoalBlock(self, block):
-        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
-        blockInfo = getBlockInfo(block)
-        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
-        if (blockInfo in reducedGoalBlocks) and not block['is_goal_block'] and not block['is_drop_zone']:
-            return True
-        return False
-    def getGoalBlockIndex(self, block):
-        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
-        blockInfo = getBlockInfo(block)
-        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
-        return reducedGoalBlocks.index(blockInfo)
+    def moveToMessage(self, agent_name):
+        self._sendMessage('Moving to ' + self._door['room_name'], agent_name)
 
-    def manageBlock(self, block):
-        goalBlockIndex = self.getGoalBlockIndex(block)
-        self._foundGoalBlocks[goalBlockIndex] = block
-        if goalBlockIndex == self._currentIndex:
-            print("found block at index ", goalBlockIndex )
-            self._phase = Phase.PICKUP_BLOCK
-            self._navigator.reset_full()
-            self._navigator.add_waypoints([block['location']])
-            action = self._navigator.get_move_action(self._state_tracker)
-            return action, {}
-        return None
+    def openingDoorMessage(self, agent_name):
+        self._sendMessage('Opening door of ' + self._door['room_name'], agent_name)
+
+    def searchingThroughMessage(self, agent_name):
+        self._sendMessage('Searching through ' + self._door['room_name'], agent_name)
+
+    def foundBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Found goal block: " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+
+    def pickingUpBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Picking up goal block: " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+
+    def droppingBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Droppped goal block: " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+    #################################################################################################
