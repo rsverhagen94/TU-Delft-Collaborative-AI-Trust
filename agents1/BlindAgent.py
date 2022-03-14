@@ -85,7 +85,6 @@ class BlindAgent(BW4TBrain):
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
-                print("Follow path to closed door")
                 self._state_tracker.update(state)
                 # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -139,6 +138,7 @@ class BlindAgent(BW4TBrain):
 
                 self._phase = Phase.CHECK_GOAL_TO_FOLLOW
 
+            # Check if another agent has found a goal block
             if Phase.CHECK_GOAL_TO_FOLLOW == self._phase:
                 follow = None
                 for loc in self._goal_blocks_locations:
@@ -147,7 +147,7 @@ class BlindAgent(BW4TBrain):
                         self._goal_blocks_locations_followed.append(loc)
                         break
 
-                # There is a goal block
+                # If there is a goal block, go pick it up
                 if follow is not None:
                     self._phase = Phase.FOLLOW_PATH_TO_GOAL_BLOCK
                     self._navigator.reset_full()
@@ -155,12 +155,11 @@ class BlindAgent(BW4TBrain):
                     action = self._navigator.get_move_action(self._state_tracker)
                     return action, {}
 
-                # There is no goal block
+                # If there is no goal block, plan path to closed door
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_GOAL_BLOCK == self._phase:
-                print("Follow path to goal block")
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
 
@@ -172,19 +171,26 @@ class BlindAgent(BW4TBrain):
                 # Get objects in area of location
                 objs_in_area = state.get_objects_in_area(location_goal, 1, 1)
                 # Get block at followed location
-                self._current_obj = objs_in_area.filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal)
+                self._current_obj = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal, objs_in_area))[0]
+
+                message = "Picking up block {\"size\": " + str(self._current_obj['visualization']['size']) + ", \"shape\": " + \
+                          str(self._current_obj['visualization']['shape']) + "} at location " + str(self._current_obj['location'])
+                self._sendMessage(message, agent_name)
 
                 self._phase = Phase.GRAB
                 return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
 
             if Phase.GRAB == self._phase:
-                print("Grabing object")
                 self._navigator.reset_full()
-                self._navigator.add_waypoints([self._goal_blocks[0]['location']])  # Drop block at drop location 0 ?
+
+                # Get location between door and drop zone
+                loc = self._goal_blocks[2]['location']
+                above_drop_location = (loc[0], loc[1] - 1)
+                self._navigator.add_waypoints([above_drop_location])
+
                 self._phase = Phase.MOVING_BLOCK
 
             if Phase.MOVING_BLOCK == self._phase:
-                print("Moving block to drop zone")
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
 
@@ -192,9 +198,12 @@ class BlindAgent(BW4TBrain):
                     return action, {}
 
                 if state[agent_name]['is_carrying']:
-                    print("Droping object")
+                    message = "Dropped block {\"size\": " + str(self._current_obj['visualization']['size']) + ", \"shape\": " + \
+                              str(self._current_obj['visualization']['shape']) + "} at location " + str(self._current_obj['location'])
+                    self._sendMessage(message, agent_name)
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
+                # After droping block, check if there is another goal to follow
                 self._phase = Phase.CHECK_GOAL_TO_FOLLOW
 
 
