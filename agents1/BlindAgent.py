@@ -7,12 +7,8 @@ from matrx.actions.door_actions import OpenDoorAction
 from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state import State
 from matrx.agents.agent_utils.state_tracker import StateTracker
-from matrx.goals import WorldGoalV2
 from matrx.messages.message import Message
 from matrx.actions.object_actions import GrabObject, DropObject
-
-from matrx.grid_world import GridWorld
-
 from bw4t.BW4TBrain import BW4TBrain
 
 
@@ -26,8 +22,9 @@ class Phase(enum.Enum):
     MOVING_BLOCK = 6,
     DROP_BLOCK = 7,
 
-    FOLLOW_PATH_TO_GOAL_BLOCK = 8,
-
+    CHECK_GOAL_TO_FOLLOW = 8,
+    FOLLOW_PATH_TO_GOAL_BLOCK = 9,
+    GRAB = 10,
 
 
 class BlindAgent(BW4TBrain):
@@ -44,13 +41,14 @@ class BlindAgent(BW4TBrain):
         self._navigator = Navigator(agent_id=self.agent_id,
                                     action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
         self._objects = []
-        self._goal_blocks = []
-        self._goal_blocks_locations = []
-        self._goal_blocks_locations_followed = []
+        self._goal_blocks = []                      # Universally known goal blocks
+        self._goal_blocks_locations = []            # Goal block locations as said by other agents
+        self._goal_blocks_locations_followed = []   # Goal block locations already followed
         self._trustBeliefs = []
 
+        self._current_obj = None
+
     def filter_bw4t_observations(self, state):
-        # TODO: Filter out property "color" from each "visualization"
         return state
 
     def decide_on_bw4t_action(self, state: State):
@@ -82,8 +80,7 @@ class BlindAgent(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
-                print('Moving to door of ' + str(self._door['room_name']))
+                self._sendMessage('Moving to ' + self._door['room_name'], agent_name)
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
@@ -111,11 +108,16 @@ class BlindAgent(BW4TBrain):
 
                 # Open door
                 is_open = state.get_room_doors(self._door['room_name'])[0]['is_open']
+
                 if not is_open:
+                    self._sendMessage("Opening door of " + self._door['room_name'], agent_name)
                     self._phase = Phase.SEARCH_ROOM
                     self._sendMessage("Searching through " + self._door['room_name'], agent_name)
-                    print("Searching through " + str(self._door['room_name']))
                     return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+                else:
+                    self._sendMessage("Searching through " + self._door['room_name'], agent_name)
+                    self._phase = Phase.SEARCH_ROOM
+
 
             if Phase.SEARCH_ROOM == self._phase:
                 self._state_tracker.update(state)
@@ -135,7 +137,9 @@ class BlindAgent(BW4TBrain):
                 if action is not None:
                     return action, {}
 
-                # After searching room, either follow path to goal block or plan path to closed door
+                self._phase = Phase.CHECK_GOAL_TO_FOLLOW
+
+            if Phase.CHECK_GOAL_TO_FOLLOW == self._phase:
                 follow = None
                 for loc in self._goal_blocks_locations:
                     if loc not in self._goal_blocks_locations_followed:
@@ -145,24 +149,54 @@ class BlindAgent(BW4TBrain):
 
                 # There is a goal block
                 if follow is not None:
-                    self._navigator.add_waypoint(follow)
                     self._phase = Phase.FOLLOW_PATH_TO_GOAL_BLOCK
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([follow])
+                    action = self._navigator.get_move_action(self._state_tracker)
+                    return action, {}
 
                 # There is no goal block
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_GOAL_BLOCK == self._phase:
+                print("Follow path to goal block")
                 self._state_tracker.update(state)
-
                 action = self._navigator.get_move_action(self._state_tracker)
 
                 if action is not None:
                     return action, {}
 
-                # Here pick up goal block and move it (close) to drop location
-                # For now, plan path to closed door
-                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                # Get followed location
+                location_goal = self._goal_blocks_locations_followed[-1]['location']
+                # Get objects in area of location
+                objs_in_area = state.get_objects_in_area(location_goal, 1, 1)
+                # Get block at followed location
+                self._current_obj = objs_in_area.filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal)
+
+                self._phase = Phase.GRAB
+                return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
+
+            if Phase.GRAB == self._phase:
+                print("Grabing object")
+                self._navigator.reset_full()
+                self._navigator.add_waypoints([self._goal_blocks[0]['location']])  # Drop block at drop location 0 ?
+                self._phase = Phase.MOVING_BLOCK
+
+            if Phase.MOVING_BLOCK == self._phase:
+                print("Moving block to drop zone")
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+
+                if action is not None:
+                    return action, {}
+
+                if state[agent_name]['is_carrying']:
+                    print("Droping object")
+                    return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
+
+                self._phase = Phase.CHECK_GOAL_TO_FOLLOW
+
 
     def _sendMessage(self, mssg, sender):
         '''
