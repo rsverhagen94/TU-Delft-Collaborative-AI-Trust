@@ -18,7 +18,11 @@ class Phase(enum.Enum):
     OPEN_DOOR = 3,
     PLAN_PATH_TO_UNSEARCHED_DOOR = 4,
     SEARCH_ROOM = 5,
-    FIND_BLOCK = 6
+    FIND_BLOCK = 6,
+    GRAB = 7,
+    MOVE_TO_OBJECT = 8,
+    MOVING_BLOCK = 9
+
 
 
 class LiarAgent(BW4TBrain):
@@ -28,7 +32,10 @@ class LiarAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_UNSEARCHED_DOOR
         self._teamMembers = []
         self._objects = []
+        self._goal_objects_found = []
         self._goal_objects = None
+        self._goal_object_delivered = []
+        self._current_obj = None
 
     def initialize(self):
         super().initialize()
@@ -123,7 +130,25 @@ class LiarAgent(BW4TBrain):
 
                 contents = state.get_room_objects(self._door['room_name'])
                 for c in contents:
-                    if "Block" in c['name']:
+                    goal = False
+                    for i in range(len(self._goal_objects)):
+                        if c['visualization']['colour'] == self._goal_objects[i]['visualization']['colour'] and \
+                                c['visualization']['shape'] == self._goal_objects[i]['visualization']['shape'] and \
+                                c['visualization']['size'] == self._goal_objects[i]['visualization']['size'] and \
+                                not c['is_goal_block'] and not c['is_drop_zone']:
+                            if i == 0:
+                                goal = True
+                                print('found')
+                                # print(self._door['room_name'])
+                                # print(c)
+                                self._phase = Phase.MOVE_TO_OBJECT
+                                self._current_obj = c
+                                self._navigator.reset_full()
+                                self._navigator.add_waypoints([c['location']])
+                                action = self._navigator.get_move_action(self._state_tracker)
+                                return action, {}
+
+                    if "Block" in c['name'] and goal is False:
                         self._objects.append(c)
                         # Send message with a probability of 0.8 to lie
                         lie = random.uniform(0, 1)
@@ -140,6 +165,51 @@ class LiarAgent(BW4TBrain):
                 if action is not None:
                     return action, {}
                 self._phase = Phase.PLAN_PATH_TO_UNSEARCHED_DOOR
+
+            if Phase.MOVE_TO_OBJECT == self._phase:
+                print("moving to obj")
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                self._phase = Phase.GRAB
+                # state.get_world_info()
+                return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
+
+
+            if Phase.GRAB == self._phase:
+                # print("ggrabbing")
+                self._navigator.reset_full()
+                self._navigator.add_waypoints([self._goal_objects[0]['location']])
+                self._phase = Phase.MOVING_BLOCK
+
+            if Phase.MOVING_BLOCK == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                print("moving to block")
+
+                if action is not None:
+                    return action, {}
+
+                # if len(self._goal_objects) == 0:
+                #     self._phase = Phase.STOP
+                if state[agent_name]['is_carrying']:
+                    # print("dropppgbg")
+                    self._goal_objects.remove(self._goal_objects[0])
+                    return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
+
+                if self._goal_objects and self._goal_objects_found:
+                    for object in self._goal_objects_found:
+                        if object['visualization']['colour'] == self._goal_objects[0]['visualization']['colour'] and \
+                                object['visualization']['shape'] == self._goal_objects[0]['visualization']['shape']:
+                            self._navigator.reset_full()
+                            self._goal_objects_found.remove(object)
+                            self._navigator.add_waypoints([object['location']])
+                            self._phase = Phase.MOVE_TO_OBJECT
+                            self._current_obj = object
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_UNSEARCHED_DOOR
+
 
     def _sendMessage(self, mssg, sender):
         '''
