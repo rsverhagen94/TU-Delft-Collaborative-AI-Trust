@@ -4,13 +4,15 @@ from typing import Dict
 
 from jsonpickle import json
 from matrx.actions.door_actions import OpenDoorAction
+from matrx.actions.object_actions import DropObject
+from matrx.actions.object_actions import GrabObject
 from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state import State
 from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.messages.message import Message
 
 from bw4t.BW4TBrain import BW4TBrain
-
+import numpy as np
 
 class Phase(enum.Enum):
     PLAN_PATH_TO_CLOSED_DOOR = 1,
@@ -18,9 +20,10 @@ class Phase(enum.Enum):
     OPEN_DOOR = 3
     SEARCH_BLOCK = 4
     FOUND_BLOCK = 5
-    PICKUP_BLOCK = 6
-    FOLLOW_PATH_TO_GOAL = 7
-    DROP_BLOCK = 8
+    FOLLOW_PATH_TO_BLOCK = 6
+    PICKUP_BLOCK = 7
+    FOLLOW_PATH_TO_GOAL = 8
+    DROP_BLOCK = 9
 
 class StrongAgent(BW4TBrain):
 
@@ -31,7 +34,8 @@ class StrongAgent(BW4TBrain):
         self._teamMembers = []
         self._objects = []
         self._goalBlocks = []
-
+        self._currentIndex = 0
+        self._foundGoalBlocks = np.empty(5, dtype=dict)
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
@@ -80,7 +84,7 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.OPEN_DOOR
 
             if Phase.OPEN_DOOR == self._phase:
-
+                self._navigator.reset_full()
                 self._phase = Phase.SEARCH_BLOCK
                 # Open door
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
@@ -90,7 +94,7 @@ class StrongAgent(BW4TBrain):
                 waypoints = []
 
                 for c in contents:
-                    if "wall" not in c['name']:
+                    if 'class_inheritance' in c and 'Wall' not in c['class_inheritance']:
                         x, y = c["location"][0], c["location"][1]
                         waypoints.append((x, y))
 
@@ -107,13 +111,39 @@ class StrongAgent(BW4TBrain):
                         self._sendMessage(
                             "Found goal block: " + json.dumps(item_info) +
                             " at location (" + ', '.join([str(loc) for loc in c['location']]) + ")", agent_name)
-
+                        goalBlockAction = self.manageBlock(c)
+                        if goalBlockAction != None:
+                            return goalBlockAction
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
                     return action, {}
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
             if Phase.PICKUP_BLOCK == self._phase:
-                return {}, {}
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                self._phase = Phase.FOLLOW_PATH_TO_GOAL
+                return GrabObject.__name__, {'object_id': self._foundGoalBlocks[self._currentIndex]['obj_id']}
+            if Phase.FOLLOW_PATH_TO_GOAL == self._phase:
+                self._navigator.reset_full()
+                self._navigator.add_waypoints([self._goalBlocks[self._currentIndex]['location']])
+                self._phase = Phase.DROP_BLOCK
+            if Phase.DROP_BLOCK == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+                if state[agent_name]['is_carrying']:
+                    print("DROPP")
+                    self._currentIndex += 1
+                    return DropObject.__name__, {'object_id': self._foundGoalBlocks[self._currentIndex - 1]['obj_id']}
+                if self._foundGoalBlocks[self._currentIndex] is not None:
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([self._foundGoalBlocks[self._currentIndex]['location']])
+                    self._phase = Phase.PICKUP_BLOCK
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -158,9 +188,23 @@ class StrongAgent(BW4TBrain):
         getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
         blockInfo = getBlockInfo(block)
         reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
-        if (blockInfo in reducedGoalBlocks):
+        if (blockInfo in reducedGoalBlocks) and not block['is_goal_block'] and not block['is_drop_zone']:
             return True
         return False
+    def getGoalBlockIndex(self, block):
+        getBlockInfo = lambda x: dict(list(x['visualization'].items())[:3])
+        blockInfo = getBlockInfo(block)
+        reducedGoalBlocks = [getBlockInfo(x) for x in self._goalBlocks]
+        return reducedGoalBlocks.index(blockInfo)
 
-
-
+    def manageBlock(self, block):
+        goalBlockIndex = self.getGoalBlockIndex(block)
+        self._foundGoalBlocks[goalBlockIndex] = block
+        if goalBlockIndex == self._currentIndex:
+            print("found block at index ", goalBlockIndex )
+            self._phase = Phase.PICKUP_BLOCK
+            self._navigator.reset_full()
+            self._navigator.add_waypoints([block['location']])
+            action = self._navigator.get_move_action(self._state_tracker)
+            return action, {}
+        return None
