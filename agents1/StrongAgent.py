@@ -40,7 +40,7 @@ class StrongAgent(BW4TBrain):
         self._goalBlocks = []
         self._currentIndex = 0
         self._foundGoalBlocks = None
-
+        self._holdingBlocks = []
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
@@ -124,9 +124,8 @@ class StrongAgent(BW4TBrain):
                         self.foundBlockMessage(c, agent_name)
                     if self.isGoalBlock(c):
                         self.foundGoalBlockMessage(c, agent_name)
-                        goalBlockAction = self.manageBlock(c)
-                        if goalBlockAction is not None:
-                            return goalBlockAction
+                        # most of the block picking logic
+                        self.manageBlock(c)
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
                     return action, {}
@@ -136,6 +135,7 @@ class StrongAgent(BW4TBrain):
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
                     return action, {}
+                #needs more logic !!!
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
                 self.pickingUpBlockMessage(self._foundGoalBlocks[self._currentIndex], agent_name)
                 return GrabObject.__name__, {'object_id': self._foundGoalBlocks[self._currentIndex]['obj_id']}
@@ -206,10 +206,42 @@ class StrongAgent(BW4TBrain):
             self._phase = Phase.PICKUP_BLOCK
             self._navigator.reset_full()
             self._navigator.add_waypoints([block['location']])
-            action = self._navigator.get_move_action(self._state_tracker)
-            return action, {}
-        return None
-
+    def manageBlock2(self, block):
+        goalBlockIndex = self.getGoalBlockIndex(block)
+        self._foundGoalBlocks[goalBlockIndex] = block
+        if goalBlockIndex == self._currentIndex:
+            if len(self._holdingBlocks) == 0:
+                return
+            if len(self._holdingBlocks) == 1:
+                self._holdingBlocks.append(block)
+                self._phase = Phase.PICKUP_BLOCK
+                self._navigator.reset_full()
+                self._navigator.add_waypoints([block['location']])
+        else:
+            if len(self._holdingBlocks) == 0:
+                self._holdingBlocks.append(block)
+                self._phase = Phase.PICKUP_BLOCK
+                self._navigator.reset_full()
+                self._navigator.add_waypoints([block['location']])
+            if len(self._holdingBlocks) == 1:
+                return
+    def pickupLogic(self, agent_name):
+        block = self._holdingBlocks[-1]
+        goalBlockIndex = self.getGoalBlockIndex(block)
+        if goalBlockIndex == self._currentIndex:
+            self._phase = Phase.FOLLOW_PATH_TO_GOAL
+            self.pickingUpBlockMessage(block, agent_name)
+            return GrabObject.__name__, {'object_id': block['obj_id']}
+        else:
+            if len(self._holdingBlocks) == 1:
+                if self._foundGoalBlocks[self._currentIndex] is not None:
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([self._foundGoalBlocks[self._currentIndex]['location']])
+                    self._phase = Phase.PICKUP_BLOCK
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+            self.pickingUpBlockMessage(block, agent_name)
+            return GrabObject.__name__, {'object_id': block['obj_id']}
     #########################
     # MESSAGE SENDING LOGIC #
     #########################
