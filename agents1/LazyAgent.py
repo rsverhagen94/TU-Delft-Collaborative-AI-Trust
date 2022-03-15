@@ -9,6 +9,8 @@ from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state import State
 from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.messages.message import Message
+import re
+import json
 
 from bw4t.BW4TBrain import BW4TBrain
 
@@ -56,10 +58,27 @@ class LazyAgent(BW4TBrain):
                 self._teamMembers.append(member)
                 # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers)
+        for member in self._teamMembers:
+            for msg in receivedMessages[member]:
+                if "Found goal block " in msg:
+                    #print(msg)
+                    pattern = re.compile("{(.* ?)}")
+                    vis = re.search(pattern, msg).group(0)
+                    #vis = vis.replace("\'", "\"")
+                    pattern2 = re.compile("\[(.* ?)\]")
+                    loc = re.search(pattern2, msg).group(0)
+                    print(vis, loc)
+
+                    loc = json.loads(loc)
+                    vis = json.loads(vis)
+
+                    print(vis, loc)
+
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
 
         while True:
+
             if self.__is_lazy() and self._phase != Phase.START and self._can_be_lazy and self._phase in [
                 Phase.SEARCH_ROOM,
                 Phase.MOVING_BLOCK,
@@ -96,7 +115,10 @@ class LazyAgent(BW4TBrain):
                 if len(closedDoors) == 0:
                     self._door = random.choice([door for door in state.values()
                                                 if 'class_inheritance' in door and 'Door' in door['class_inheritance']])
-                    self._phase = Phase.MOVING_BLOCK
+                    if self._goal_objects_found:
+                        self._phase = Phase.MOVING_BLOCK
+                    else:
+                        self._phase = Phase.SEARCH_ROOM
                 else:
                     # Randomly pick a closed door
                     self._door = random.choice(closedDoors)
@@ -157,7 +179,8 @@ class LazyAgent(BW4TBrain):
                             if i == 0:
                                 print('found')
                                 self._sendMessage(
-                                    "Found goal block " + str(c['visualization']) + " at location " + str(c['location']), agent_name)
+                                    "Found goal block " + json.dumps(c['visualization']) + " at location " + json.dumps(
+                                        c['location']), agent_name)
                                 # print(self._door['room_name'])
                                 # print(c)
                                 self._phase = Phase.MOVE_TO_OBJECT
@@ -185,7 +208,9 @@ class LazyAgent(BW4TBrain):
                     return action, {}
                 self._phase = Phase.GRAB
                 # self._can_be_lazy = True
-                self._sendMessage("Picking up goal block " + str(self._current_obj['visualization']) +  " at location " + str(self._current_obj['location']), agent_name)
+                self._sendMessage(
+                    "Picking up goal block " + str(self._current_obj['visualization']) + " at location " + str(
+                        self._current_obj['location']), agent_name)
                 return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
 
             if Phase.GRAB == self._phase:
@@ -211,8 +236,9 @@ class LazyAgent(BW4TBrain):
                     print("dropppgbg")
                     self._goal_objects.remove(self._goal_objects[0])
                     self._can_be_lazy = True
-                    self._sendMessage("Dropping goal block " + str(self._current_obj['visualization']) + " at drop location " +
-                                      str(self._current_obj['location']), agent_name)
+                    self._sendMessage(
+                        "Dropping goal block " + str(self._current_obj['visualization']) + " at drop location " +
+                        str(self._current_obj['location']), agent_name)
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
                 if self._goal_objects and self._goal_objects_found:
