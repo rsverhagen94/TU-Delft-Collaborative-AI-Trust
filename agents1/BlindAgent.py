@@ -99,7 +99,7 @@ class BlindAgent(BW4TBrain):
                 waypoints = []
 
                 for c in contents:
-                    if "wall" not in c['name']:
+                    if 'class_inheritance' in c and 'AreaTile' in c['class_inheritance']:
                         x, y = c["location"][0], c["location"][1]
                         waypoints.append((x, y))
 
@@ -157,6 +157,7 @@ class BlindAgent(BW4TBrain):
 
                 # If there is no goal block, plan path to closed door
                 else:
+                    self._navigator.reset_full()
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_GOAL_BLOCK == self._phase:
@@ -171,14 +172,21 @@ class BlindAgent(BW4TBrain):
                 # Get objects in area of location
                 objs_in_area = state.get_objects_in_area(location_goal, 1, 1)
                 # Get block at followed location
-                self._current_obj = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal, objs_in_area))[0]
+                l = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal, objs_in_area))
+                # If object is still there
+                if len(l) > 0:
+                    self._current_obj = l[0]
 
-                message = "Picking up block {\"size\": " + str(self._current_obj['visualization']['size']) + ", \"shape\": " + \
-                          str(self._current_obj['visualization']['shape']) + "} at location " + str(self._current_obj['location'])
-                self._sendMessage(message, agent_name)
+                    message = "Picking up block {\"size\": " + str(self._current_obj['visualization']['size']) + ", \"shape\": " + \
+                                  str(self._current_obj['visualization']['shape']) + "} at location " + str(self._current_obj['location'])
+                    self._sendMessage(message, agent_name)
 
-                self._phase = Phase.GRAB
-                return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
+                    self._phase = Phase.GRAB
+                    return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
+                # Else (if another agent has picked up the block)
+                else:
+                    self._phase = Phase.CHECK_GOAL_TO_FOLLOW
+
 
             if Phase.GRAB == self._phase:
                 self._navigator.reset_full()
@@ -227,6 +235,18 @@ class BlindAgent(BW4TBrain):
                 if mssg.from_id == member:
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
+
+    def checkMessagePickingUpBlock(self, receivedMessages, teamMembers, location):
+        for member in teamMembers:
+            messages = receivedMessages[member]
+            for mess in messages:
+                if mess[0:21] == "Picking up goal block":
+                    loc_str = mess[mess.find("location") + 9:len(mess)]
+                    location_goal = (int(loc_str[1:loc_str.find(",")]), int(loc_str[loc_str.find(",") + 2:len(loc_str) - 1]))
+                    if location == location_goal:
+                        return True
+        return False
+
 
     def _findGoalBlocksInMessages(self, receivedMessages, teamMembers):
         # If another agent found goal block, check other attributes that we know and go pick it up
