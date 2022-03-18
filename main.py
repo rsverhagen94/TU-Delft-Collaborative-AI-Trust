@@ -1,3 +1,4 @@
+from agents1.Team36AgentLiarr import Liar
 from bw4t.BW4TWorld import BW4TWorld
 from bw4t.statistics import Statistics
 from agents1.BW4TBaselineAgent import BaseLineAgent
@@ -11,9 +12,13 @@ press the start button in god mode to start the session.
 
 if __name__ == "__main__":
     agents = [
-        {'name':'agent1', 'botclass':BaseLineAgent, 'settings':{'slowdown':10}},
-        {'name':'agent2', 'botclass':BaseLineAgent, 'settings':{}},
-        {'name':'human', 'botclass':Human, 'settings':{}}
+        # {'name':'agent1', 'botclass':BaseLineAgent, 'settings':{'slowdown':10}},
+        # {'name':'agent2', 'botclass':BaseLineAgent, 'settings':{}},
+        {'name':'liar', 'botclass':Liar, 'settings':{}},
+        {'name':'liar2', 'botclass':Liar, 'settings':{}},
+        {'name':'liar3', 'botclass':Liar, 'settings':{}},
+        {'name':'liar4', 'botclass':Liar, 'settings':{}},
+        # {'name':'human', 'botclass':Human, 'settings':{}}
         ]
 
     print("Started world...")
