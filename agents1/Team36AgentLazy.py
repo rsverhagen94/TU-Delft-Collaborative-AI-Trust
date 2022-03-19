@@ -57,20 +57,11 @@ class Lazy(BW4TBrain):
 
     def decide_on_bw4t_action(self, state: State):
         agent_name = state[self.agent_id]['obj_id']
-        # print([x for x in state.values()])
         # Add team members
         for member in state['World']['team_members']:
             if member != agent_name and member not in self._teamMembers:
                 self._teamMembers.append(member)
         if not self._missing:
-            # self._missing = copy.deepcopy([tile['visualization'] for tile in state.values()
-            #                                if 'class_inheritance' in tile
-            #                                and 'GhostBlock' in tile['class_inheritance']
-            #                                ])
-            # for i in range(len(self._missing)):
-            #     location = (self._getTargetFromVisualization(state, self._missing[i])['location'])
-            #     self._missing_locations.append(location)
-
             blocks = copy.deepcopy([tile['visualization'] for tile in state.values()
                                            if 'class_inheritance' in tile
                                            and 'GhostBlock' in tile['class_inheritance']
@@ -78,8 +69,6 @@ class Lazy(BW4TBrain):
             for i in range(len(blocks)):
                 location = (self._getTargetFromVisualization(state, blocks[i])['location'])
                 self._missing[str(i)] = {'block': blocks[i], 'location': location}
-
-            #print(self._missing)
 
         # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers)
@@ -169,8 +158,6 @@ class Lazy(BW4TBrain):
                 # stops = self._navigator.get_all_waypoints()
                 self._navigator.reset_full()
                 targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
-                print(self._getTarget(state, state.get_self()['is_carrying'][0])['location'])
-                # print(targetLoc)
                 self._navigator.add_waypoint(targetLoc)
                 # self._navigator.add_waypoints(stops)
                 self._set_lazy(len(self._navigator.get_all_waypoints()))
@@ -188,9 +175,7 @@ class Lazy(BW4TBrain):
                     target['location']), agent_name, state)
 
                 if self._target_missing_and_at_target_location(target['visualization'], target['location']):
-                    key = self._get_missing_dict_key(target['visualization'])
-                    print(key)
-                    del self._missing[key]
+                    del self._missing[self._get_missing_dict_key(target['visualization'])]
                     self._current_target_block = str(int(self._current_target_block) + 1)
 
                 # if target['visualization'] in self._missing and target['location'] == self._missing_locations[0]:
@@ -305,8 +290,6 @@ class Lazy(BW4TBrain):
         blockCopy.pop('opacity')
         blockCopy.pop('depth')
         blockCopy.pop('visualize_from_center')
-        # print(blockCopy)
-        # print(target_blocks)
 
         for tile in target_blocks:
             if tile['visualization'] == blockCopy:
@@ -328,6 +311,5 @@ class Lazy(BW4TBrain):
 
         for tile in target_blocks:
             if tile['visualization'] == block:
-                # print('huh')
                 return tile
 
