@@ -44,6 +44,7 @@ class Liar(BW4TBrain):
         self._teamMembers = []
         self._found = {}
         self._missing = None
+        self._rooms_being_visited = {}
 
     def initialize(self):
         super().initialize()
@@ -70,7 +71,7 @@ class Liar(BW4TBrain):
                 self._missing[i].pop('visualize_from_center')
                 self._missing[i].pop('depth')
         # Process messages from team members
-        receivedMessages = self._processMessages(self._teamMembers)
+        receivedMessages = self._processMessages(self._teamMembers, state)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
         while True:
@@ -82,6 +83,7 @@ class Liar(BW4TBrain):
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
+                self._state_tracker.update(state)
                 self._navigator.reset_full()
                 closedDoors = [door for door in state.values()
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
@@ -95,9 +97,11 @@ class Liar(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name, state)
-                self._navigator.add_waypoints([doorLoc])
-                self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
+                if self._door['room_name'] not in self._rooms_being_visited or \
+                        self._rooms_being_visited[self._door['room_name']] + 10 < state.get_world_info()['nr_ticks']:
+                    self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name, state)
+                    self._navigator.add_waypoints([doorLoc])
+                    self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 self._state_tracker.update(state)
@@ -113,6 +117,7 @@ class Liar(BW4TBrain):
                 self._phase = Phase.SEARCH_ROOM
                 # Open door
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+
             if Phase.SEARCH_ROOM == self._phase:
                 self._room_tiles = [tile for tile in state.values()
                                     if 'class_inheritance' in tile
@@ -123,6 +128,7 @@ class Liar(BW4TBrain):
                 self._sendMessage('Searching through ' + self._door['room_name'], agent_name, state)
 
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
+
             if Phase.PLAN_MOVE_IN_ROOM == self._phase:
                 self._state_tracker.update(state)
                 self._navigator.reset_full()
@@ -132,6 +138,7 @@ class Liar(BW4TBrain):
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
                     self._phase = Phase.PLAN_NEXT_ACTION
+
             if Phase.MOVE_IN_ROOM == self._phase:
                 self._state_tracker.update(state)
                 matching = self._getTargetBlocks(state)
@@ -154,6 +161,7 @@ class Liar(BW4TBrain):
                 if action != None:
                     return action, {}
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
+
             if Phase.PLAN_BRING_TO_TARGET == self._phase:
                 if len(state.get_self()['is_carrying']) == 0:
                     self._phase = Phase.MOVE_IN_ROOM
@@ -162,6 +170,7 @@ class Liar(BW4TBrain):
                     self._navigator.reset_full()
                     self._navigator.add_waypoint(targetLoc)
                     self._phase = Phase.BRING_TO_TARGET
+
             if Phase.BRING_TO_TARGET == self._phase:
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -174,6 +183,7 @@ class Liar(BW4TBrain):
                 if target['visualization'] in self._missing:
                     self._missing.remove(target['visualization'])
                 return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
+
             if Phase.WALK_TO_BLOCK == self._phase:
                 self._state_tracker.update(state)
                 # Follow path to door
@@ -205,7 +215,7 @@ class Liar(BW4TBrain):
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
-    def _processMessages(self, teamMembers):
+    def _processMessages(self, teamMembers, state):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
         '''
@@ -243,6 +253,12 @@ class Liar(BW4TBrain):
             #     self._missing.remove(jsonblock)
             if repr(jsonblock) in self._found:
                 self._found.pop(repr(jsonblock))
+
+        visiting_messages = [msg.content for msg in self.received_messages
+                          if Messages.MOVING_TO_ROOM.value[0] in msg.content]
+        for msg in visiting_messages:
+            name = msg.split('to ')[1]
+            self._rooms_being_visited['name'] = state.get_world_info()['nr_ticks']
 
         receivedMessages = {}
         for member in teamMembers:
