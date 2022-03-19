@@ -12,6 +12,7 @@ from matrx.messages.message import Message
 
 
 class Phase(enum.Enum):
+    PLAN_NEXT_ACTION = 0,
     PLAN_PATH_TO_CLOSED_DOOR = 1,
     FOLLOW_PATH_TO_CLOSED_DOOR = 2,
     OPEN_DOOR = 3,
@@ -19,7 +20,8 @@ class Phase(enum.Enum):
     PLAN_MOVE_IN_ROOM = 5,
     MOVE_IN_ROOM = 6,
     BRING_TO_TARGET = 7,
-    PLAN_BRING_TO_TARGET = 8
+    PLAN_BRING_TO_TARGET = 8,
+    WALK_TO_BLOCK = 9
 
 
 class Messages(enum.Enum):
@@ -40,6 +42,7 @@ class Liar(BW4TBrain):
         super().__init__(settings)
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
+        self._found = {}
         self._missing = None
 
     def initialize(self):
@@ -54,8 +57,6 @@ class Liar(BW4TBrain):
 
     def decide_on_bw4t_action(self, state: State):
         agent_name = state[self.agent_id]['obj_id']
-        # print([x for x in state.values()])
-        # Add team members
         for member in state['World']['team_members']:
             if member != agent_name and member not in self._teamMembers:
                 self._teamMembers.append(member)
@@ -72,8 +73,14 @@ class Liar(BW4TBrain):
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
-
         while True:
+            if Phase.PLAN_NEXT_ACTION == self._phase:
+                if len(self._found.keys()) > 0 and list(self._found.keys())[0] == repr(self._missing[0]):
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoint(list(self._found.values())[0])
+                    self._phase = Phase.WALK_TO_BLOCK
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
                 closedDoors = [door for door in state.values()
@@ -113,7 +120,6 @@ class Liar(BW4TBrain):
                                     and 'room_name' in tile
                                     and tile['room_name'] == self._door['room_name']
                                     ]
-                # print(self._room_tiles)
                 self._sendMessage('Searching through ' + self._door['room_name'], agent_name, state)
 
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
@@ -125,7 +131,7 @@ class Liar(BW4TBrain):
                     self._navigator.add_waypoints([tileLoc])
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = Phase.PLAN_NEXT_ACTION
             if Phase.MOVE_IN_ROOM == self._phase:
                 self._state_tracker.update(state)
                 matching = self._getTargetBlocks(state)
@@ -133,12 +139,15 @@ class Liar(BW4TBrain):
                     self._sendMessage(
                         'Found goal block ' + str(block['visualization']) + ' at location ' + str(block['location']),
                         agent_name, state)
-                if len(matching) > 0:
+                tar = [match for match in matching
+                       if match['visualization'] == self._missing[0]]
+
+                if len(tar) > 0:
                     self._sendMessage(
-                        'Picking up goal block ' + str(matching[0]['visualization']) + ' at location ' + str(
-                            matching[0]['location']), agent_name, state)
+                        'Picking up goal block ' + str(tar[0]['visualization']) + ' at location ' + str(
+                            tar[0]['location']), agent_name, state)
                     self._phase = Phase.PLAN_BRING_TO_TARGET
-                    return GrabObject.__name__, {'object_id': matching[0]['obj_id']}
+                    return GrabObject.__name__, {'object_id': tar[0]['obj_id']}
                 self._state_tracker.update(state)
                 # Follow path to tile
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -146,26 +155,42 @@ class Liar(BW4TBrain):
                     return action, {}
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
             if Phase.PLAN_BRING_TO_TARGET == self._phase:
-                # stops = self._navigator.get_all_waypoints()
-                self._navigator.reset_full()
-                targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
-                # print(targetLoc)
-                self._navigator.add_waypoint(targetLoc)
-                # self._navigator.add_waypoints(stops)
-                self._phase = Phase.BRING_TO_TARGET
+                if len(state.get_self()['is_carrying']) == 0:
+                    self._phase = Phase.MOVE_IN_ROOM
+                else:
+                    targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoint(targetLoc)
+                    self._phase = Phase.BRING_TO_TARGET
             if Phase.BRING_TO_TARGET == self._phase:
                 self._state_tracker.update(state)
-                # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
-                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                self._phase = Phase.PLAN_NEXT_ACTION
                 target = self._getTarget(state, state.get_self()['is_carrying'][0])
                 self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
                     target['location']), agent_name, state)
                 if target['visualization'] in self._missing:
                     self._missing.remove(target['visualization'])
                 return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
+            if Phase.WALK_TO_BLOCK == self._phase:
+                self._state_tracker.update(state)
+                # Follow path to door
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action != None:
+                    return action, {}
+                self._state_tracker.update(state)
+                matching = self._getTargetBlocks(state)
+                tar = [match for match in matching
+                       if match['visualization'] == self._missing[0]]
+                if len(tar) > 0:
+                    self._sendMessage(
+                        'Picking up goal block ' + str(tar[0]['visualization']) + ' at location ' + str(
+                            tar[0]['location']), agent_name, state)
+                    self._phase = Phase.PLAN_BRING_TO_TARGET
+                    return GrabObject.__name__, {'object_id': tar[0]['obj_id']}
+                self._phase = Phase.PLAN_NEXT_ACTION
 
     def _sendMessage(self, mssg, sender, state):
         '''
@@ -184,6 +209,7 @@ class Liar(BW4TBrain):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
         '''
+        # Check if block has been dropped at target
         dropped_messages = [msg.content for msg in self.received_messages
                             if Messages.DROPPED_GOAL_BLOCK1.value[0] in msg.content]
         for msg in dropped_messages:
@@ -192,6 +218,31 @@ class Liar(BW4TBrain):
             jsonblock = json.loads(block)
             if jsonblock in self._missing:
                 self._missing.remove(jsonblock)
+            if repr(jsonblock) in self._found:
+                self._found.pop(repr(jsonblock))
+
+        # Check if someone found block
+        found_messages = [msg.content for msg in self.received_messages
+                          if Messages.FOUND_GOAL_BLOCK1.value[0] in msg.content]
+        for msg in found_messages:
+            first = msg.split('block ')[1]
+            block = first.split(' at')[0].replace("\'", '\"')
+            location = eval(first.split('location ')[1])
+            jsonblock = json.loads(block)
+            if repr(jsonblock) not in self._found and jsonblock in self._missing:
+                self._found[repr(jsonblock)] = location
+
+        # Check if someone picked up block
+        picked_up_messages = [msg.content for msg in self.received_messages
+                              if Messages.PICKING_UP_GOAL_BLOCK1.value[0] in msg.content]
+        for msg in picked_up_messages:
+            first = msg.split('block ')[1]
+            block = first.split(' at')[0].replace("\'", '\"')
+            jsonblock = json.loads(block)
+            # if jsonblock in self._missing:
+            #     self._missing.remove(jsonblock)
+            if repr(jsonblock) in self._found:
+                self._found.pop(repr(jsonblock))
 
         receivedMessages = {}
         for member in teamMembers:
@@ -230,7 +281,7 @@ class Liar(BW4TBrain):
             visualisations[i]['visualization'].pop('depth')
             visualisations[i]['visualization'].pop('visualize_from_center')
         matching = [x for x in visualisations
-                    if x['visualization'] == self._missing[0]
+                    if x['visualization'] in self._missing
                     ]
         return matching
 
