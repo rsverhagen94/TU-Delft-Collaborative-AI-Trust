@@ -50,9 +50,26 @@ class ColorBlindAgent(BW4TBrain):
             action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
 
     def filter_bw4t_observations(self, state):
+        # Remove color value from all observed items
+        for key in state.keys():
+            try:
+                state[key]['visualization'].pop('colour')
+            except KeyError:
+                continue
+        try:
+            state.get_self()['is_carrying'][0]['visualization'].pop('colour')
+        except IndexError:
+            pass
+
+        for teammate in self._teamMembers:
+            if teammate != 'human':
+                for item in state[teammate]['is_carrying']:
+                    item['visualization'].pop('colour')
+
         return state
 
     def decide_on_bw4t_action(self, state: State):
+        state = self.filter_bw4t_observations(state)
         agent_name = state[self.agent_id]['obj_id']
         for member in state['World']['team_members']:
             if member != agent_name and member not in self._teamMembers:
@@ -66,7 +83,6 @@ class ColorBlindAgent(BW4TBrain):
                 self._missing[i].pop('opacity')
                 self._missing[i].pop('visualize_from_center')
                 self._missing[i].pop('depth')
-                self._missing[i].pop('colour')
         # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers, state)
         # Update trust beliefs for team members
@@ -140,8 +156,6 @@ class ColorBlindAgent(BW4TBrain):
                 self._state_tracker.update(state)
                 matching = self._getTargetBlocks(state)
                 for block in matching:
-                    # TODO: is dit het juiste om te communiceren naar anderen, kunnen ook kiezen om deze het niet te laten zoeken?
-                    block['visualization']['colour'] = "#d3d3d3" # er vanuit gaand dat alle kleuren als lichtgrijs worden gezien door colorblind
                     self._sendMessage(
                         'Found goal block ' + str(block['visualization']) + ' at location ' + str(block['location']),
                         agent_name, state)
@@ -162,7 +176,7 @@ class ColorBlindAgent(BW4TBrain):
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
 
             if Phase.PLAN_BRING_TO_TARGET == self._phase:
-                # TODO: Ander gedrag overwegen van wanneer hij een block pakt en naar target plek brengt bij bepaald bericht?
+                # TODO: Ander gedrag overwegen van wanneer hij een block pakt en naar target plek brengt bij bepaald bericht? -> 1 v.d. latere goalblocks pakken en ernaast klaarleggen eerst exploren?
                 if len(state.get_self()['is_carrying']) == 0:
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
@@ -178,9 +192,7 @@ class ColorBlindAgent(BW4TBrain):
                     return action, {}
                 self._phase = Phase.PLAN_NEXT_ACTION
                 target = self._getTarget(state, state.get_self()['is_carrying'][0])
-                tarvis = copy.deepcopy(target['visualization'])
-                tarvis['colour'] = '#d3d3d3'
-                self._sendMessage('Dropped goal block ' + str(tarvis) + ' at location ' + str(
+                self._sendMessage('Dropped goal block ' + str(target) + ' at location ' + str(
                     target['location']), agent_name, state)
                 if target['visualization'] in self._missing:
                     self._missing.remove(target['visualization'])
@@ -197,7 +209,6 @@ class ColorBlindAgent(BW4TBrain):
                 tar = [match for match in matching
                        if match['visualization'] == self._missing[0]]
                 if len(tar) > 0:
-                    tar[0]['visualization']['colour'] = '#d3d3d3'
                     self._sendMessage(
                         'Picking up goal block ' + str(tar[0]['visualization']) + ' at location ' + str(
                             tar[0]['location']), agent_name, state)
@@ -299,7 +310,6 @@ class ColorBlindAgent(BW4TBrain):
             visualisations[i]['visualization'].pop('opacity')
             visualisations[i]['visualization'].pop('depth')
             visualisations[i]['visualization'].pop('visualize_from_center')
-            visualisations[i]['visualization'].pop('colour')
         matching = [x for x in visualisations
                     if x['visualization'] in self._missing
                     ]
