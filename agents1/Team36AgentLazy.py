@@ -38,12 +38,18 @@ class Lazy(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
+        self._dropped_blocks = []
+        self._found_blocks = []
         self._current_target_block = '0'
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self._missing = {}
         self._be_lazy = False
         self._be_lazy_after_moves = 0
+        self._team_member_moving_to = []
+        self._opened_doors = []
+        self._searched_rooms = []
+        self._picked_up = []
 
     def initialize(self):
         super().initialize()
@@ -71,7 +77,7 @@ class Lazy(BW4TBrain):
                 self._missing[str(i)] = {'block': blocks[i], 'location': location}
 
         # Process messages from team members
-        receivedMessages = self._processMessages(self._teamMembers)
+        receivedMessages = self._processMessages(self._teamMembers, self._state)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
 
@@ -112,6 +118,7 @@ class Lazy(BW4TBrain):
                 self._phase = Phase.SEARCH_ROOM
                 # Open door
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+
             if Phase.SEARCH_ROOM == self._phase:
                 self._room_tiles = [tile for tile in state.values()
                                     if 'class_inheritance' in tile
@@ -121,8 +128,8 @@ class Lazy(BW4TBrain):
                                     ]
                 self._sendMessage('Searching through ' + self._door['room_name'], agent_name, state)
                 self._set_lazy(len(self._room_tiles))
-
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
+
             if Phase.PLAN_MOVE_IN_ROOM == self._phase:
                 self._state_tracker.update(state)
                 self._navigator.reset_full()
@@ -132,6 +139,7 @@ class Lazy(BW4TBrain):
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
             if Phase.MOVE_IN_ROOM == self._phase:
                 if self._check_if_lazy():
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
@@ -154,6 +162,7 @@ class Lazy(BW4TBrain):
                 if action != None:
                     return action, {}
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
+
             if Phase.PLAN_BRING_TO_TARGET == self._phase:
                 # stops = self._navigator.get_all_waypoints()
                 self._navigator.reset_full()
@@ -162,6 +171,7 @@ class Lazy(BW4TBrain):
                 # self._navigator.add_waypoints(stops)
                 self._set_lazy(len(self._navigator.get_all_waypoints()))
                 self._phase = Phase.BRING_TO_TARGET
+
             if Phase.BRING_TO_TARGET == self._phase:
                 if not self._check_if_lazy():
                     self._state_tracker.update(state)
@@ -220,20 +230,59 @@ class Lazy(BW4TBrain):
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
-    def _processMessages(self, teamMembers):
+    def _processMessages(self, teamMembers, state):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
         '''
+
+        # moving to [room name]
+        moving_to_messages = [msg.content for msg in self.received_messages
+                            if Messages.MOVING_TO_ROOM.value[0] in msg.content]
+        for msg in moving_to_messages:
+            for member in teamMembers:
+                if msg.from_id == member:
+                    room_name = msg.split('to ')
+                    self._team_member_moving_to[member] = room_name
+
+        # opening door of [room name]
+        opening_messages = [msg.content for msg in self.received_messages
+                            if Messages.OPENING_DOOR.value[0] in msg.content]
+        for msg in opening_messages:
+            room_name = msg.split('of ')
+            self._opened_doors.append(room_name)
+
+        # searching through [room name]
+        searching_messages = [msg.content for msg in self.received_messages
+                             if Messages.SEARCHING_THROUGH.value[0] in msg.content]
+        for msg in searching_messages:
+            room_name = msg.split('through ')
+            self._searched_rooms.append(room_name)
+
+        # found goal block [block_vis] at location [location]
+        found_messages = [msg.content for msg in self.received_messages
+                          if Messages.FOUND_GOAL_BLOCK1.value[0] in msg.content]
+        for msg in found_messages:
+            first = msg.split('block ')[1]
+            block = first.split(' at')[0].replace("\'", '\"')
+            location = eval(first.split('location ')[1])
+            self._found_blocks[block] = location
+
+        # picking up goal block [block_vis] at location [location]
+        picked_up_messages = [msg.content for msg in self.received_messages
+                              if Messages.PICKING_UP_GOAL_BLOCK1.value[0] in msg.content]
+        for msg in picked_up_messages:
+            first = msg.split('block ')[1]
+            block = first.split(' at')[0].replace("\'", '\"')
+            self._picked_up.append(block)
+        
+        # dropped goal block [block_vis] at location [location]
         dropped_messages = [msg.content for msg in self.received_messages
                             if Messages.DROPPED_GOAL_BLOCK1.value[0] in msg.content]
         for msg in dropped_messages:
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
             location = msg.split('location ')[1]
-            jsonblock = json.loads(block)
-            if self._target_missing_and_at_target_location(jsonblock, location):
-                self._missing.pop(self._get_missing_dict_key(jsonblock))
-                self._current_target_block = str(int(self._current_target_block) + 1)
+            self._dropped_blocks[block] = location
 
         receivedMessages = {}
         for member in teamMembers:
