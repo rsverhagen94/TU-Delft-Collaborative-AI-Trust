@@ -33,7 +33,7 @@ class Messages(enum.Enum):
     PICKING_UP_GOAL_BLOCK1 = "Picking up goal block ",
     PICKING_UP_GOAL_BLOCK2 = " at location ",
     DROPPED_GOAL_BLOCK1 = "Dropped goal block ",
-    DROPPED_GOAL_BLOCK2 = " at drop location "
+    DROPPED_GOAL_BLOCK2 = " at drop location ",
 
 
 class Liar(BW4TBrain):
@@ -207,11 +207,38 @@ class Liar(BW4TBrain):
         Enable sending messages in one line of code
         '''
         msg = Message(content=mssg, from_id=sender)
-        # doors = [door['room_name'] for door in state.values() if
-        #          'class_inheritance' in door and 'Door' in door['class_inheritance']]
-        # if random.random() > 0.2:
-        #
-        #     msg = Message(content='LIE: Moving to door of ' + random.choice(doors) + ' TRUTH: ' + mssg, from_id=sender)
+        doors = [door['room_name'] for door in state.values()
+                 if 'class_inheritance' in door
+                 and 'Door' in door['class_inheritance']]
+        blocks = self._getTargets(state)
+        randommessage = random.choice([Messages.MOVING_TO_ROOM,
+                                       Messages.OPENING_DOOR,
+                                       Messages.SEARCHING_THROUGH,
+                                       Messages.FOUND_GOAL_BLOCK1,
+                                       Messages.PICKING_UP_GOAL_BLOCK2,
+                                       Messages.DROPPED_GOAL_BLOCK1])
+        message = ''
+        if Messages.MOVING_TO_ROOM == randommessage:
+            message = Messages.MOVING_TO_ROOM.value[0] + random.choice(doors)
+        elif Messages.OPENING_DOOR == randommessage:
+            message = Messages.OPENING_DOOR.value[0] + random.choice(doors)
+        elif Messages.SEARCHING_THROUGH == randommessage:
+            message = Messages.SEARCHING_THROUGH.value[0] + random.choice(doors)
+        elif Messages.FOUND_GOAL_BLOCK1 == randommessage:
+            block = random.choice(blocks)
+            message = Messages.FOUND_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
+                      Messages.FOUND_GOAL_BLOCK2.value[0] + repr(block['location'])
+        elif Messages.PICKING_UP_GOAL_BLOCK1 == randommessage:
+            block = random.choice(blocks)
+            message = Messages.PICKING_UP_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
+                      Messages.PICKING_UP_GOAL_BLOCK2.value[0] + repr(block['location'])
+        elif Messages.DROPPED_GOAL_BLOCK1 == randommessage:
+            block = random.choice(blocks)
+            message = Messages.DROPPED_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
+                      Messages.DROPPED_GOAL_BLOCK2.value[0] + repr(block['location'])
+
+        if random.random() > 0.2:
+            msg = Message(content=message, from_id=sender)
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
@@ -255,7 +282,7 @@ class Liar(BW4TBrain):
                 self._found.pop(repr(jsonblock))
 
         visiting_messages = [msg.content for msg in self.received_messages
-                          if Messages.MOVING_TO_ROOM.value[0] in msg.content]
+                             if Messages.MOVING_TO_ROOM.value[0] in msg.content]
         for msg in visiting_messages:
             name = msg.split('to ')[1]
             self._rooms_being_visited['name'] = state.get_world_info()['nr_ticks']
@@ -301,7 +328,7 @@ class Liar(BW4TBrain):
                     ]
         return matching
 
-    def _getTarget(self, state, block):
+    def _getTargets(self, state):
         target_blocks = copy.deepcopy([tile for tile in state.values()
                                        if 'class_inheritance' in tile
                                        and 'GhostBlock' in tile['class_inheritance']
@@ -311,15 +338,16 @@ class Liar(BW4TBrain):
             target_blocks[i]['visualization'].pop('visualize_from_center')
             target_blocks[i]['visualization'].pop('depth')
 
-        blockCopy = copy.deepcopy(block)['visualization']
+        return target_blocks
 
+    def _getTarget(self, state, block):
+        target_blocks = self._getTargets(state)
+
+        blockCopy = copy.deepcopy(block)['visualization']
         blockCopy.pop('opacity')
         blockCopy.pop('depth')
         blockCopy.pop('visualize_from_center')
-        # print(blockCopy)
-        # print(target_blocks)
 
         for tile in target_blocks:
             if tile['visualization'] == blockCopy:
-                # print('huh')
                 return tile
