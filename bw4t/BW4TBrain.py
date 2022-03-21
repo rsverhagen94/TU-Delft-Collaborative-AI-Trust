@@ -37,7 +37,10 @@ class BW4TBrain(BW4TAgentBrain, ABC):
         act,params = self.decide_on_bw4t_action(state)  
         params['grab_range']=1
         # Max objects should be changed for the strong agent
-        params['max_objects']=1
+        if 'StrongAgent' in self.agent_properties['class_inheritance']:
+            params['max_objects'] = 2
+        else:
+            params['max_objects']=1
         params['action_duration'] = self.__settings['slowdown']  
         if self.__settings['grab_range']>1:
             raise ValueError("Parameter use not allowed ", self.__settings['grab_range'])
