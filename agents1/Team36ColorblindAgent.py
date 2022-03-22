@@ -10,7 +10,6 @@ from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
 
-
 class Phase(enum.Enum):
     PLAN_NEXT_ACTION = 0,
     PLAN_PATH_TO_CLOSED_DOOR = 1,
@@ -23,7 +22,6 @@ class Phase(enum.Enum):
     PLAN_BRING_TO_TARGET = 8,
     WALK_TO_BLOCK = 9
 
-
 class Messages(enum.Enum):
     MOVING_TO_ROOM = "Moving to ",
     OPENING_DOOR = "Opening door of ",
@@ -33,12 +31,11 @@ class Messages(enum.Enum):
     PICKING_UP_GOAL_BLOCK1 = "Picking up goal block ",
     PICKING_UP_GOAL_BLOCK2 = " at location ",
     DROPPED_GOAL_BLOCK1 = "Dropped goal block ",
-    DROPPED_GOAL_BLOCK2 = " at drop location ",
+    DROPPED_GOAL_BLOCK2 = " at drop location "
 
+class ColorBlindAgent(BW4TBrain):
 
-class Liar(BW4TBrain):
-
-    def __init__(self, settings: Dict[str, object]):
+    def __init__(self, settings:Dict[str,object]):
         super().__init__(settings)
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
@@ -49,14 +46,30 @@ class Liar(BW4TBrain):
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
-        self._navigator = Navigator(agent_id=self.agent_id,
-                                    action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
+        self._navigator = Navigator(agent_id=self.agent_id, 
+            action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
 
     def filter_bw4t_observations(self, state):
+        # Remove color value from all observed items
+        for key in state.keys():
+            try:
+                state[key]['visualization'].pop('colour')
+            except KeyError:
+                continue
+        try:
+            state.get_self()['is_carrying'][0]['visualization'].pop('colour')
+        except IndexError:
+            pass
+
+        for teammate in self._teamMembers:
+            if teammate != 'human':
+                for item in state[teammate]['is_carrying']:
+                    item['visualization'].pop('colour')
 
         return state
 
     def decide_on_bw4t_action(self, state: State):
+        state = self.filter_bw4t_observations(state)
         agent_name = state[self.agent_id]['obj_id']
         for member in state['World']['team_members']:
             if member != agent_name and member not in self._teamMembers:
@@ -163,6 +176,7 @@ class Liar(BW4TBrain):
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
 
             if Phase.PLAN_BRING_TO_TARGET == self._phase:
+                # TODO: Ander gedrag overwegen van wanneer hij een block pakt en naar target plek brengt bij bepaald bericht? -> 1 v.d. latere goalblocks pakken en ernaast klaarleggen eerst exploren?
                 if len(state.get_self()['is_carrying']) == 0:
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
@@ -178,7 +192,7 @@ class Liar(BW4TBrain):
                     return action, {}
                 self._phase = Phase.PLAN_NEXT_ACTION
                 target = self._getTarget(state, state.get_self()['is_carrying'][0])
-                self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
+                self._sendMessage('Dropped goal block ' + str(target) + ' at location ' + str(
                     target['location']), agent_name, state)
                 if target['visualization'] in self._missing:
                     self._missing.remove(target['visualization'])
@@ -207,38 +221,11 @@ class Liar(BW4TBrain):
         Enable sending messages in one line of code
         '''
         msg = Message(content=mssg, from_id=sender)
-        doors = [door['room_name'] for door in state.values()
-                 if 'class_inheritance' in door
-                 and 'Door' in door['class_inheritance']]
-        blocks = self._getTargets(state)
-        randommessage = random.choice([Messages.MOVING_TO_ROOM,
-                                       Messages.OPENING_DOOR,
-                                       Messages.SEARCHING_THROUGH,
-                                       Messages.FOUND_GOAL_BLOCK1,
-                                       Messages.PICKING_UP_GOAL_BLOCK2,
-                                       Messages.DROPPED_GOAL_BLOCK1])
-        message = ''
-        if Messages.MOVING_TO_ROOM == randommessage:
-            message = Messages.MOVING_TO_ROOM.value[0] + random.choice(doors)
-        elif Messages.OPENING_DOOR == randommessage:
-            message = Messages.OPENING_DOOR.value[0] + random.choice(doors)
-        elif Messages.SEARCHING_THROUGH == randommessage:
-            message = Messages.SEARCHING_THROUGH.value[0] + random.choice(doors)
-        elif Messages.FOUND_GOAL_BLOCK1 == randommessage:
-            block = random.choice(blocks)
-            message = Messages.FOUND_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
-                      Messages.FOUND_GOAL_BLOCK2.value[0] + repr(block['location'])
-        elif Messages.PICKING_UP_GOAL_BLOCK1 == randommessage:
-            block = random.choice(blocks)
-            message = Messages.PICKING_UP_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
-                      Messages.PICKING_UP_GOAL_BLOCK2.value[0] + repr(block['location'])
-        elif Messages.DROPPED_GOAL_BLOCK1 == randommessage:
-            block = random.choice(blocks)
-            message = Messages.DROPPED_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
-                      Messages.DROPPED_GOAL_BLOCK2.value[0] + repr(block['location'])
-
-        if random.random() > 0.2:
-            msg = Message(content=message, from_id=sender)
+        # doors = [door['room_name'] for door in state.values() if
+        #          'class_inheritance' in door and 'Door' in door['class_inheritance']]
+        # if random.random() > 0.2:
+        #
+        #     msg = Message(content='LIE: Moving to door of ' + random.choice(doors) + ' TRUTH: ' + mssg, from_id=sender)
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
@@ -282,7 +269,7 @@ class Liar(BW4TBrain):
                 self._found.pop(repr(jsonblock))
 
         visiting_messages = [msg.content for msg in self.received_messages
-                             if Messages.MOVING_TO_ROOM.value[0] in msg.content]
+                          if Messages.MOVING_TO_ROOM.value[0] in msg.content]
         for msg in visiting_messages:
             name = msg.split('to ')[1]
             self._rooms_being_visited['name'] = state.get_world_info()['nr_ticks']
@@ -308,7 +295,7 @@ class Liar(BW4TBrain):
         for member in received.keys():
             for message in received[member]:
                 if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
+                    trustBeliefs[member]-=0.1
                     break
         return trustBeliefs
 
@@ -328,7 +315,7 @@ class Liar(BW4TBrain):
                     ]
         return matching
 
-    def _getTargets(self, state):
+    def _getTarget(self, state, block):
         target_blocks = copy.deepcopy([tile for tile in state.values()
                                        if 'class_inheritance' in tile
                                        and 'GhostBlock' in tile['class_inheritance']
@@ -338,16 +325,15 @@ class Liar(BW4TBrain):
             target_blocks[i]['visualization'].pop('visualize_from_center')
             target_blocks[i]['visualization'].pop('depth')
 
-        return target_blocks
-
-    def _getTarget(self, state, block):
-        target_blocks = self._getTargets(state)
-
         blockCopy = copy.deepcopy(block)['visualization']
+
         blockCopy.pop('opacity')
         blockCopy.pop('depth')
         blockCopy.pop('visualize_from_center')
+        # print(blockCopy)
+        # print(target_blocks)
 
         for tile in target_blocks:
             if tile['visualization'] == blockCopy:
+                # print('huh')
                 return tile

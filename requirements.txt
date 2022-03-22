@@ -14,7 +14,8 @@ greenlet       == 1.0.0
 jsonpickle     == 1.5.1
 markupsafe     == 2.0.1
 numpy          == 1.20.0
-Werkzeug       == 1.0.1
+Werkzeug       == 2.0.0
+pandas         == 1.2.4
 
 
 # Other libraries requested by students and added to make sure
