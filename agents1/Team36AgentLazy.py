@@ -38,15 +38,15 @@ class Lazy(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
-        self._dropped_blocks = []
-        self._found_blocks = []
+        self._dropped_blocks = {}
+        self._found_blocks = {}
         self._current_target_block = '0'
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self._missing = {}
         self._be_lazy = False
         self._be_lazy_after_moves = 0
-        self._team_member_moving_to = []
+        self._team_member_moving_to = {}
         self._opened_doors = []
         self._searched_rooms = []
         self._picked_up = []
@@ -164,13 +164,14 @@ class Lazy(BW4TBrain):
                 self._phase = Phase.PLAN_MOVE_IN_ROOM
 
             if Phase.PLAN_BRING_TO_TARGET == self._phase:
-                # stops = self._navigator.get_all_waypoints()
-                self._navigator.reset_full()
-                targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
-                self._navigator.add_waypoint(targetLoc)
-                # self._navigator.add_waypoints(stops)
-                self._set_lazy(len(self._navigator.get_all_waypoints()))
-                self._phase = Phase.BRING_TO_TARGET
+                if len(state.get_self()['is_carrying']) == 0:
+                    self._phase = Phase.MOVE_IN_ROOM
+                else:
+                    targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoint(targetLoc)
+                    self._set_lazy(len(self._navigator.get_all_waypoints()))
+                    self._phase = Phase.BRING_TO_TARGET
 
             if Phase.BRING_TO_TARGET == self._phase:
                 if not self._check_if_lazy():
@@ -182,14 +183,12 @@ class Lazy(BW4TBrain):
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
                 target = self._getTarget(state, state.get_self()['is_carrying'][0])
                 self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
-                    target['location']), agent_name, state)
+                    state.get_self()['location']), agent_name, state)
 
-                if self._target_missing_and_at_target_location(target['visualization'], target['location']):
+                if self._target_missing_and_at_target_location(target['visualization'], state.get_self()['location']):
                     del self._missing[self._get_missing_dict_key(target['visualization'])]
                     self._current_target_block = str(int(self._current_target_block) + 1)
 
-                # if target['visualization'] in self._missing and target['location'] == self._missing_locations[0]:
-                #     self._missing.remove(target['visualization'])
                 return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
 
     def _check_if_lazy(self):
@@ -236,12 +235,12 @@ class Lazy(BW4TBrain):
         '''
 
         # moving to [room name]
-        moving_to_messages = [msg.content for msg in self.received_messages
+        moving_to_messages = [msg for msg in self.received_messages
                             if Messages.MOVING_TO_ROOM.value[0] in msg.content]
         for msg in moving_to_messages:
             for member in teamMembers:
                 if msg.from_id == member:
-                    room_name = msg.split('to ')
+                    room_name = msg.content.split('to ')
                     self._team_member_moving_to[member] = room_name
 
         # opening door of [room name]
@@ -274,7 +273,7 @@ class Lazy(BW4TBrain):
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
             self._picked_up.append(block)
-        
+
         # dropped goal block [block_vis] at location [location]
         dropped_messages = [msg.content for msg in self.received_messages
                             if Messages.DROPPED_GOAL_BLOCK1.value[0] in msg.content]
@@ -282,7 +281,11 @@ class Lazy(BW4TBrain):
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
             location = msg.split('location ')[1]
-            self._dropped_blocks[block] = location
+            if self._target_missing_and_at_target_location(block, location):
+                del self._missing[self._get_missing_dict_key(block)]
+                self._current_target_block = str(int(self._current_target_block) + 1)
+            else:
+                self._dropped_blocks[block] = location
 
         receivedMessages = {}
         for member in teamMembers:
