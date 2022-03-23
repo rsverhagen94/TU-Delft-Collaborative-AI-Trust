@@ -47,13 +47,11 @@ class ColorblindAgent(BW4TBrain):
         self._trustBlief(self._teamMembers, receivedMessages)
 
         self.desired_objects = list(map(
-                    lambda x: x["visualization"],[wall for wall in state.values() if 'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
+                    lambda x: x["visualization"], [wall for wall in state.values() if 'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
         #print(self.desired_objects)
 
         while True:
             if Phase.ENTER_ROOM == self._phase:
-                #
-                # print("PICK-----------------------------------------")
                 room = self._door['room_name']
 
                 area = list(map(
@@ -62,15 +60,8 @@ class ColorblindAgent(BW4TBrain):
                      if 'class_inheritance' in wall and 'AreaTile' in wall['class_inheritance'] and
                      "is_drop_zone" not in wall]))
 
-                # wall_locations = list(map(
-                #     lambda x: x["location"],
-                #     [wall for wall in state.get_room_objects(room)
-                #                   if 'class_inheritance' in wall and 'Wall' in wall['class_inheritance']]))
 
                 sorted_by_xy = sorted(sorted(area, key=lambda x: x[1]))
-                # AreaTile
-
-                #self._traverseRoom(min_xy, max_xy)
 
                 self._navigator.reset_full()
                 self._navigator.add_waypoints(sorted_by_xy)
@@ -82,15 +73,22 @@ class ColorblindAgent(BW4TBrain):
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
-                    print(
-                    list(map(
-                        lambda x: x["visualization"], [wall for wall in state.get_closest_with_property("is_collectable")])))
+                    object_prop = list(map(
+                        lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if wall["is_collectable"] is True]))
 
+                    found_obj = []
+                    for obj in object_prop:
+                        found_obj.append((obj["visualization"], obj["obj_id"]))
+
+                    for obj in found_obj:
+                        for des in self.desired_objects:
+                            if obj[0]["shape"] == des["shape"] and obj[0]["colour"] == des["colour"]:
+                                print("FOUND OBJECT")
+                                return GrabObject.__name__, {'object_id': obj[1]}
 
                     return action, {}
 
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
-                print("AAA")
 
                 #return GrabObject.__name__, {'object_id': self._door['obj_id']}
 
@@ -171,7 +169,7 @@ class ColorblindAgent(BW4TBrain):
         for x in range(min_xy[0]+1, max_xy[0]):
             for y in range(min_xy[1]+1, max_xy[1]-1):
                 list_coordinates.append((x, y))
-                print(x, y)
+                # print(x, y)
 
         self._navigator.add_waypoints(list_coordinates)
 
