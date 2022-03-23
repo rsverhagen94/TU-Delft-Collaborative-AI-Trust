@@ -8,6 +8,7 @@ from matrx.agents.agent_utils.state import State
 from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
+import json
 
 from bw4t.BW4TBrain import BW4TBrain
 
@@ -22,7 +23,6 @@ class Phase(enum.Enum):
     GRAB = 7,
     MOVE_TO_OBJECT = 8,
     MOVING_BLOCK = 9
-
 
 
 class LiarAgent(BW4TBrain):
@@ -80,11 +80,9 @@ class LiarAgent(BW4TBrain):
                 # Send message with a probability of 0.8 to lie
                 lie = random.uniform(0, 1)
                 if lie <= 0.2:
-                    self._sendMessage('Moving to room of ' + self._door['room_name'], agent_name)
+                    self.moveToMessage(agent_name)
                 else:
-                    room_names = [room['room_name'] for room in doors]
-                    room_names.remove(self._door['room_name'])
-                    self._sendMessage('Moving to room of ' + random.choice(room_names), agent_name)
+                    self.moveToMessageLie(agent_name, doors)
                 self._navigator.add_waypoints([door_location])
                 self._phase = Phase.FOLLOW_PATH_TO_DOOR
 
@@ -94,6 +92,7 @@ class LiarAgent(BW4TBrain):
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
+
                 if not self._door['is_open']:
                     self._phase = Phase.OPEN_DOOR
                 else:
@@ -103,13 +102,9 @@ class LiarAgent(BW4TBrain):
                 # Send message with a probability of 0.8 to lie
                 lie = random.uniform(0, 1)
                 if lie <= 0.2:
-                    self._sendMessage("Opened door " + self._door['room_name'], agent_name)
+                    self.openingDoorMessage(agent_name)
                 else:
-                    door_names = [room['room_name'] for room in [door for door in state.values()
-                                                                 if 'class_inheritance' in door and 'Door' in door[
-                                                                     'class_inheritance']]]
-                    door_names.remove(self._door['room_name'])
-                    self._sendMessage("Opened door " + random.choice(door_names), agent_name)
+                    self.openingDoorMessageLie(agent_name, state)
 
                 self._phase = Phase.SEARCH_ROOM
                 # Open door
@@ -121,6 +116,12 @@ class LiarAgent(BW4TBrain):
                 for area in state.get_room_objects(self._door['room_name']):
                     if "wall" not in area['name']:
                         room_area.append((area["location"][0], area["location"][1]))
+
+                lie = random.uniform(0, 1)
+                if lie <= 0.2:
+                    self.searchingThroughMessage(agent_name)
+                else:
+                    self.searchingThroughMessageLie(agent_name, state)
 
                 self._navigator.add_waypoints(room_area)
                 self._phase = Phase.FIND_BLOCK
@@ -137,29 +138,29 @@ class LiarAgent(BW4TBrain):
                                 c['visualization']['size'] == self._goal_objects[i]['visualization']['size'] and \
                                 not c['is_goal_block'] and not c['is_drop_zone']:
                             if i == 0:
-                                goal = True
-                                print('found')
-                                # print(self._door['room_name'])
-                                # print(c)
+                                # goal = True
+                                lie = random.uniform(0, 1)
+                                if lie <= 0.2:
+                                    self.foundGoalBlockMessage(c, agent_name)
+                                else:
+                                    self.foundBlockMessage(c, agent_name)
                                 self._phase = Phase.MOVE_TO_OBJECT
                                 self._current_obj = c
                                 self._navigator.reset_full()
                                 self._navigator.add_waypoints([c['location']])
                                 action = self._navigator.get_move_action(self._state_tracker)
                                 return action, {}
+                            else:
+                                self._goal_objects_found.append(c)
 
                     if "Block" in c['name'] and goal is False:
                         self._objects.append(c)
                         # Send message with a probability of 0.8 to lie
                         lie = random.uniform(0, 1)
-                        message = "Found block {\"size\": " + str(c['visualization']['size']) + ", \"shape\": " + \
-                                  str(c['visualization']['shape']) + "} at location " + str(c['location'])
-                        # if lie <= 0.8:
-                        #     size =
-                        #     message = "Found block {\"size\": " + str(c['visualization']['size']) +
-                        #     ", \"shape\": " + \
-                        #         str(c['visualization']['shape']) + "} at location " + str(c['location'])
-                        self._sendMessage(message, agent_name)
+                        if lie <= 0.2:
+                            self.foundBlockMessage(c, agent_name)
+                        else:
+                            self.foundBlockMessageLie(agent_name)
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
@@ -176,12 +177,15 @@ class LiarAgent(BW4TBrain):
                 # state.get_world_info()
                 return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
 
-
             if Phase.GRAB == self._phase:
-                # print("ggrabbing")
                 self._navigator.reset_full()
                 self._navigator.add_waypoints([self._goal_objects[0]['location']])
                 self._phase = Phase.MOVING_BLOCK
+                lie = random.uniform(0, 1)
+                if lie <= 0.2:
+                    self.pickingUpBlockMessage(self._current_obj, agent_name)
+                else:
+                    self.pickingUpBlockMessageLie(agent_name)
 
             if Phase.MOVING_BLOCK == self._phase:
                 self._state_tracker.update(state)
@@ -191,10 +195,12 @@ class LiarAgent(BW4TBrain):
                 if action is not None:
                     return action, {}
 
-                # if len(self._goal_objects) == 0:
-                #     self._phase = Phase.STOP
                 if state[agent_name]['is_carrying']:
-                    # print("dropppgbg")
+                    lie = random.uniform(0, 1)
+                    if lie <= 0.2:
+                        self.droppingBlockMessage(self._current_obj, state[agent_name]['location'], agent_name)
+                    else:
+                        self.droppingBlockMessageLie(agent_name)
                     self._goal_objects.remove(self._goal_objects[0])
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
@@ -209,7 +215,6 @@ class LiarAgent(BW4TBrain):
                             self._current_obj = object
                 else:
                     self._phase = Phase.PLAN_PATH_TO_UNSEARCHED_DOOR
-
 
     def _sendMessage(self, mssg, sender):
         '''
@@ -247,3 +252,76 @@ class LiarAgent(BW4TBrain):
                     trustBeliefs[member] -= 0.1
                     break
         return trustBeliefs
+
+    def moveToMessage(self, agent_name):
+        self._sendMessage('Moving to ' + self._door['room_name'], agent_name)
+
+    def openingDoorMessage(self, agent_name):
+        self._sendMessage('Opening door of ' + self._door['room_name'], agent_name)
+
+    def searchingThroughMessage(self, agent_name):
+        self._sendMessage('Searching through ' + self._door['room_name'], agent_name)
+
+    def foundGoalBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Found goal block {" + json.dumps(item_info) +
+            "} at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+
+    def foundBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Found block {" + json.dumps(item_info) +
+            "} at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+
+    def pickingUpBlockMessage(self, data, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Picking up goal block {" + json.dumps(item_info) +
+            "} at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+
+    def droppingBlockMessage(self, data, location, agent_name):
+        item_info = dict(list(data['visualization'].items())[:3])
+        self._sendMessage(
+            "Droppped goal block {" + json.dumps(item_info) +
+            "} at location (" + ', '.join([str(loc) for loc in location]) + ")", agent_name)
+
+    def openingDoorMessageLie(self, agent_name, state):
+        door_names = [room['room_name'] for room in [door for door in state.values()
+                                                     if 'class_inheritance' in door and 'Door' in door[
+                                                         'class_inheritance']]]
+        door_names.remove(self._door['room_name'])
+        self._sendMessage('Opening door of ' + random.choice(door_names), agent_name)
+
+    def moveToMessageLie(self, agent_name, doors):
+        room_names = [room['room_name'] for room in doors]
+        room_names.remove(self._door['room_name'])
+        self._sendMessage('Moving to ' + random.choice(room_names), agent_name)
+
+    def searchingThroughMessageLie(self, agent_name, state):
+        rooms = [room for room in state.values()
+                 if 'class_inheritance' in room and 'Door' in room['class_inheritance']]
+        room_names = [room['room_name'] for room in rooms]
+        room_names.remove(self._door['room_name'])
+        self._sendMessage('Moving to ' + random.choice(room_names), agent_name)
+
+    def foundBlockMessageLie(self, agent_name):
+        color = "%06x" % random.randint(0, 0xFFFFFF)
+        message = "Found block {\"size\": 0.5, \"shape\": " + \
+                  str(random.randint(0, 2)) + ", \"color\": #" + color + \
+                  "} at location (" + str(random.randint(0, 12)) + ", " + str(random.randint(0, 23)) + ")"
+        self._sendMessage(message, agent_name)
+
+    def pickingUpBlockMessageLie(self, agent_name):
+        color = "%06x" % random.randint(0, 0xFFFFFF)
+        message = "Picking up goal block {\"size\": 0.5, \"shape\": " + \
+                  str(random.randint(0, 2)) + ", \"color\": #" + color + \
+                  "} at location (" + str(random.randint(0, 12)) + ", " + str(random.randint(0, 23)) + ")"
+        self._sendMessage(message, agent_name)
+
+    def droppingBlockMessageLie(self, agent_name):
+        color = "%06x" % random.randint(0, 0xFFFFFF)
+        message = "Droppped goal block {\"size\": 0.5, \"shape\": " + \
+                  str(random.randint(0, 2)) + ", \"color\": #" + color + \
+                  "} at location (" + str(random.randint(0, 12)) + ", " + str(random.randint(0, 23)) + ")"
+        self._sendMessage(message, agent_name)
