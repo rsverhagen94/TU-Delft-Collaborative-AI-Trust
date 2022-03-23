@@ -33,6 +33,7 @@ class StrongAgent(BW4TBrain):
         self.drop_off_locations = []
         self.object_to_be_dropped = None
         self.initialization_flag = True
+        self.memory = None
 
     def initialize(self):
         super().initialize()
@@ -56,13 +57,14 @@ class StrongAgent(BW4TBrain):
 
         if self.initialization_flag:
             desired_objects = list(map(
-                    lambda x: x, [wall for wall in state.values() if 'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
+                lambda x: x, [wall for wall in state.values() if
+                              'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
             found_obj = []
             self.initialization_flag = False
 
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
-            self.desired_objects = found_obj
+            self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
         while True:
             if Phase.ENTER_ROOM == self._phase:
@@ -74,7 +76,7 @@ class StrongAgent(BW4TBrain):
                      if 'class_inheritance' in wall and 'AreaTile' in wall['class_inheritance'] and
                      ("is_drop_zone" not in wall or wall['is_drop_zone'] is False)]))
 
-                print("Area of closest room ", area)
+                # print("Area of closest room ", area)
 
                 sorted_by_xy = sorted(sorted(area, key=lambda x: x[1]))
 
@@ -89,23 +91,31 @@ class StrongAgent(BW4TBrain):
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     object_prop = list(map(
-                        lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if wall["is_collectable"] is True and not 'GhostBlock'in wall['class_inheritance']]))
+                        lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if
+                                      wall["is_collectable"] is True and not 'GhostBlock' in wall[
+                                          'class_inheritance']]))
 
                     found_obj = []
                     for obj in object_prop:
                         found_obj.append((obj["visualization"], obj["obj_id"]))
 
+                    print("AAAAAAA", found_obj)
                     for obj in found_obj:
                         for des, loc in self.desired_objects:
+
                             if obj[0]["shape"] == des["shape"] and obj[0]["colour"] == des["colour"]:
-                                print("FOUND OBJECT")
-                                # TODO send a message that an object was found
-                                if self.capacity < 2:
-                                    self.capacity += 1
-                                    self.drop_off_locations.append((obj[1], loc))
-                                    self.desired_objects.remove((des, loc))
-                                    # TODO send a message that an object is grabbed
-                                    return GrabObject.__name__, {'object_id': obj[1]}
+                                if ((des, loc)) not in self.desired_objects[0:(2-self.capacity)]:
+                                    print("FOUND OBJECT FOR MEMORY")
+                                    self.memory = state[self._state_tracker.agent_id]['location']
+                                else:
+                                    # TODO send a message that an object was found
+                                    print("FOUND OBJECT PICK UP")
+                                    if self.capacity < 2:
+                                        self.capacity += 1
+                                        self.drop_off_locations.append((obj[1], loc))
+                                        self.desired_objects.remove((des, loc))
+                                        # TODO send a message that an object is grabbed
+                                        return GrabObject.__name__, {'object_id': obj[1]}
 
                     if self.capacity > 1:
                         self._phase = Phase.DELIVER_ITEM
@@ -116,24 +126,23 @@ class StrongAgent(BW4TBrain):
 
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
-                #return GrabObject.__name__, {'object_id': self._door['obj_id']}
+                # return GrabObject.__name__, {'object_id': self._door['obj_id']}
 
             if Phase.DELIVER_ITEM == self._phase:
                 locations = []
                 for _, loc in self.drop_off_locations:
                     locations.append(loc)
-
+                locations.sort(reverse=True)
                 self._navigator.reset_full()
                 self._navigator.add_waypoints(locations)
 
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
-            
+
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
-                print("follow path to drop off")
+                # print("follow path to drop off")
                 flag = False
                 for obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
-                        print("next phase: drop obj", obj_id, loc)
                         flag = True
                         self.object_to_be_dropped = obj_id
                         self._phase = Phase.DROP_OBJECT
@@ -147,7 +156,12 @@ class StrongAgent(BW4TBrain):
                     if action != None:
                         return action, {}
                     else:
-                        self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                        if self.memory is not None:
+                            self._navigator.reset_full()
+                            self._navigator.add_waypoints([self.memory])
+                            self._phase = Phase.TRAVERSE_ROOM
+                        else:
+                            self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
                 print("! DONE !")
 
@@ -160,7 +174,7 @@ class StrongAgent(BW4TBrain):
                 print("dropped object")
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                return DropObject.__name__, { 'object_id': self.object_to_be_dropped }
+                return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -235,10 +249,9 @@ class StrongAgent(BW4TBrain):
         self._navigator.reset_full()
 
         list_coordinates = []
-        for x in range(min_xy[0]+1, max_xy[0]):
-            for y in range(min_xy[1]+1, max_xy[1]-1):
+        for x in range(min_xy[0] + 1, max_xy[0]):
+            for y in range(min_xy[1] + 1, max_xy[1] - 1):
                 list_coordinates.append((x, y))
                 # print(x, y)
 
         self._navigator.add_waypoints(list_coordinates)
-
