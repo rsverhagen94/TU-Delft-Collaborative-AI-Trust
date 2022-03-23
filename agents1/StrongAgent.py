@@ -14,17 +14,24 @@ class Phase(enum.Enum):
     FOLLOW_PATH_TO_CLOSED_DOOR = 2,
     OPEN_DOOR = 3,
     ENTER_ROOM = 4,
-    TRAVERSE_ROOM =5,
-    DELIVER_ITEM =6
+    TRAVERSE_ROOM = 5,
+    DELIVER_ITEM = 6,
+    FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7,
+    DROP_OBJECT = 8
 
 
-class ColorblindAgent(BW4TBrain):
+class StrongAgent(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self.desired_objects = []
+        # only the strong agents can pick 2 blocks
+        # for other agents this is 0 or 1
+        self.capacity = 0
+        self.drop_off_locations = []
+        self.object_to_be_dropped = None
 
     def initialize(self):
         super().initialize()
@@ -46,9 +53,15 @@ class ColorblindAgent(BW4TBrain):
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
 
-        self.desired_objects = list(map(
-                    lambda x: x["visualization"], [wall for wall in state.values() if 'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
+        desired_objects = list(map(
+                    lambda x: x, [wall for wall in state.values() if 'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
         #print(self.desired_objects)
+
+        found_obj = []
+        for obj in desired_objects:
+            found_obj.append((obj["visualization"], obj["location"]))
+
+        self.desired_objects = found_obj
 
         while True:
             if Phase.ENTER_ROOM == self._phase:
@@ -58,8 +71,9 @@ class ColorblindAgent(BW4TBrain):
                     lambda x: x["location"],
                     [wall for wall in state.get_room_objects(room)
                      if 'class_inheritance' in wall and 'AreaTile' in wall['class_inheritance'] and
-                     "is_drop_zone" not in wall]))
+                     ("is_drop_zone" not in wall or wall['is_drop_zone'] is False)]))
 
+                print("Area of closest room ", area)
 
                 sorted_by_xy = sorted(sorted(area, key=lambda x: x[1]))
 
@@ -74,24 +88,74 @@ class ColorblindAgent(BW4TBrain):
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     object_prop = list(map(
-                        lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if wall["is_collectable"] is True]))
+                        lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if wall["is_collectable"] is True and not 'GhostBlock'in wall['class_inheritance']]))
 
                     found_obj = []
                     for obj in object_prop:
                         found_obj.append((obj["visualization"], obj["obj_id"]))
 
                     for obj in found_obj:
-                        for des in self.desired_objects:
+                        for des, loc in self.desired_objects:
                             if obj[0]["shape"] == des["shape"] and obj[0]["colour"] == des["colour"]:
                                 print("FOUND OBJECT")
-                                return GrabObject.__name__, {'object_id': obj[1]}
+                                # TODO send a message that an object was found
+                                if self.capacity < 2:
+                                    self.capacity += 1
+                                    self.drop_off_locations.append((obj[1], loc))
+                                    # TODO send a message that an object is grabbed
+                                    return GrabObject.__name__, {'object_id': obj[1]}
 
+                    if self.capacity > 1:
+                        self._phase = Phase.DELIVER_ITEM
                     return action, {}
 
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
                 #return GrabObject.__name__, {'object_id': self._door['obj_id']}
 
+            if Phase.DELIVER_ITEM == self._phase:
+                locations = []
+                for _, loc in self.drop_off_locations:
+                    locations.append(loc)
+
+                self._navigator.reset_full()
+                self._navigator.add_waypoints(locations)
+
+                self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+            
+            if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
+                print("follow path to drop off")
+                flag = False
+                for obj_id, loc in self.drop_off_locations:
+                    if state[self._state_tracker.agent_id]['location'] == loc:
+                        print("next phase: drop obj", obj_id, loc)
+                        flag = True
+                        self.object_to_be_dropped = obj_id
+                        self._phase = Phase.DROP_OBJECT
+                        self.drop_off_locations.remove((obj_id, loc))
+
+                if not flag:
+                    self._state_tracker.update(state)
+
+                    action = self._navigator.get_move_action(self._state_tracker)
+
+                    if action != None:
+                        return action, {}
+                    else:
+                        self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+                print("! DONE !")
+
+            if Phase.DROP_OBJECT == self._phase:
+                if self.object_to_be_dropped is None:
+                    print("CODE BROKEN VERY BAD")
+                    exit(-1)
+                self.capacity -= 1
+                # self.drop_off_locations.remove(self.object_to_be_dropped)
+                print("dropped object")
+                self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+
+                return DropObject.__name__, { 'object_id': self.object_to_be_dropped }
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
