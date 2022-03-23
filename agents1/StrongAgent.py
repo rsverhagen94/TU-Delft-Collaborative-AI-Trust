@@ -32,6 +32,7 @@ class StrongAgent(BW4TBrain):
         self.capacity = 0
         self.drop_off_locations = []
         self.object_to_be_dropped = None
+        self.initialization_flag = True
 
     def initialize(self):
         super().initialize()
@@ -53,15 +54,15 @@ class StrongAgent(BW4TBrain):
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
 
-        desired_objects = list(map(
+        if self.initialization_flag:
+            desired_objects = list(map(
                     lambda x: x, [wall for wall in state.values() if 'class_inheritance' in wall and 'GhostBlock' in wall['class_inheritance']]))
-        #print(self.desired_objects)
+            found_obj = []
+            self.initialization_flag = False
 
-        found_obj = []
-        for obj in desired_objects:
-            found_obj.append((obj["visualization"], obj["location"]))
-
-        self.desired_objects = found_obj
+            for obj in desired_objects:
+                found_obj.append((obj["visualization"], obj["location"]))
+            self.desired_objects = found_obj
 
         while True:
             if Phase.ENTER_ROOM == self._phase:
@@ -102,11 +103,15 @@ class StrongAgent(BW4TBrain):
                                 if self.capacity < 2:
                                     self.capacity += 1
                                     self.drop_off_locations.append((obj[1], loc))
+                                    self.desired_objects.remove((des, loc))
                                     # TODO send a message that an object is grabbed
                                     return GrabObject.__name__, {'object_id': obj[1]}
 
                     if self.capacity > 1:
                         self._phase = Phase.DELIVER_ITEM
+                    elif len(self.desired_objects) < 2 and self.capacity > 0:
+                        self._phase = Phase.DELIVER_ITEM
+
                     return action, {}
 
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
