@@ -1,4 +1,3 @@
-import abc
 import json
 import re
 
@@ -62,29 +61,13 @@ class Util():
             rep[member] = trust[member]['rep']
         return "Reputation:" + json.dumps(rep)
 
-    @abc.abstractmethod
-    def foundGoalBlockUpdate(self):
-        pass
-
-    @abc.abstractmethod
-    def foundBlockUpdate(self):
-        pass
-
-    @abc.abstractmethod
-    def pickUpBlockUpdate(self):
-        pass
-
-    @abc.abstractmethod
-    def dropBlockUpdate(self):
-        pass
-
-    @abc.abstractmethod
-    def dropGoalBlockUpdate(self):
-        pass
+    # TODO: implement methods: foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate
+    # in agent class and pass to this method
 
     @staticmethod
-    def update_info_general(self, receivedMessages):
-        for member in self._teamMembers:
+    def update_info_general(arrayWorld, receivedMessages, teamMembers,
+                            foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate):
+        for member in teamMembers:
             for msg in receivedMessages[member]:
                 block = {
                     'is_drop_zone': False,
@@ -112,11 +95,12 @@ class Util():
                     block['location'] = (loc[0], loc[1])
                     block['visualization'] = vis
 
-                    self.foundGoalBlockUpdate()
+                    foundGoalBlockUpdate()
 
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                    if arrayWorld[block['location'][0], block['location'][1]] is None:
+                        arrayWorld[block['location'][0], block['location'][1]] = []
+                    arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
-                        "trustInMember": self._trustBeliefs[member],
                         "block": block['visualization'],
                         "action": "found",
                     })
@@ -134,11 +118,12 @@ class Util():
                     block['location'] = (loc[0], loc[1])
                     block['visualization'] = vis
 
-                    self.foundBlockUpdate()
+                    foundBlockUpdate()
 
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                    if arrayWorld[block['location'][0], block['location'][1]] is None:
+                        arrayWorld[block['location'][0], block['location'][1]] = []
+                    arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
-                        "trustInMember": self._trustBeliefs[member],
                         "block": block['visualization'],
                         "action": "found",
                     })
@@ -157,13 +142,14 @@ class Util():
                     block['location'] = (loc[0], loc[1])
                     block['visualization'] = vis
 
-                    self.pickUpBlockUpdate()
+                    pickUpBlockUpdate()
 
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                    if arrayWorld[block['location'][0], block['location'][1]] is None:
+                        arrayWorld[block['location'][0], block['location'][1]] = []
+                    arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
-                        "trustInMember": self._trustBeliefs[member],
                         "block": block['visualization'],
-                        "action": "pick-up"
+                        "action": "found",
                     })
 
                 elif "Dropped goal block " in msg:
@@ -179,13 +165,14 @@ class Util():
                     block['visualization'] = vis
                     block['location'] = loc
 
-                    self.dropGoalBlockUpdate()
+                    dropGoalBlockUpdate()
 
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                    if arrayWorld[block['location'][0], block['location'][1]] is None:
+                        arrayWorld[block['location'][0], block['location'][1]] = []
+                    arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
-                        "trustInMember": self._trustBeliefs[member],
                         "block": block['visualization'],
-                        "action": "drop-off"
+                        "action": "found",
                     })
 
                 elif "Dropped block " in msg:
@@ -201,11 +188,12 @@ class Util():
                     block['visualization'] = vis
                     block['location'] = loc
 
-                    self.dropBlockUpdate()
+                    dropBlockUpdate()
 
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                    if arrayWorld[block['location'][0], block['location'][1]] is None:
+                        arrayWorld[block['location'][0], block['location'][1]] = []
+                    arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
-                        "trustInMember": self._trustBeliefs[member],
                         "block": block['visualization'],
-                        "action": "drop-off"
+                        "action": "found",
                     })
