@@ -265,26 +265,26 @@ class LiarAgent(BW4TBrain):
     def foundGoalBlockMessage(self, data, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
-            "Found goal block {" + json.dumps(item_info) +
-            "} at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+            "Found goal block " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
 
     def foundBlockMessage(self, data, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
-            "Found block {" + json.dumps(item_info) +
-            "} at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+            "Found block " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
 
     def pickingUpBlockMessage(self, data, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
-            "Picking up goal block {" + json.dumps(item_info) +
-            "} at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
+            "Picking up goal block " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
 
     def droppingBlockMessage(self, data, location, agent_name):
         item_info = dict(list(data['visualization'].items())[:3])
         self._sendMessage(
-            "Droppped goal block {" + json.dumps(item_info) +
-            "} at location (" + ', '.join([str(loc) for loc in location]) + ")", agent_name)
+            "Droppped goal block " + json.dumps(item_info) +
+            " at location (" + ', '.join([str(loc) for loc in location]) + ")", agent_name)
 
     def openingDoorMessageLie(self, agent_name, state):
         door_names = [room['room_name'] for room in [door for door in state.values()
