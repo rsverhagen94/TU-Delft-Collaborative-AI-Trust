@@ -19,7 +19,6 @@ class Phase(enum.Enum):
     FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7,
     DROP_OBJECT = 8
 
-
 class StrongAgent(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
@@ -27,6 +26,7 @@ class StrongAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self.desired_objects = []
+        self.agent_name = None;
         # only the strong agents can pick 2 blocks
         # for other agents this is 0 or 1
         self.capacity = 0
@@ -47,6 +47,7 @@ class StrongAgent(BW4TBrain):
 
     def decide_on_bw4t_action(self, state: State):
         agent_name = state[self.agent_id]['obj_id']
+        self.agent_name = agent_name
         # Add team members
         for member in state['World']['team_members']:
             if member != agent_name and member not in self._teamMembers:
@@ -54,7 +55,7 @@ class StrongAgent(BW4TBrain):
                 # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
-        self._trustBlief(self._teamMembers, receivedMessages)
+        self._trustBelief(self._teamMembers, receivedMessages)
 
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
@@ -80,10 +81,9 @@ class StrongAgent(BW4TBrain):
 
             # Phase entering room
             if Phase.ENTER_ROOM == self._phase:
-
                 # Get the room name for the latest chosen room from the phase PLAN_PATH_TO_CLOSED_DOOR
                 room = self._door['room_name']
-
+                self._messageMoveRoom(room)
                 # Find all area tiles locations of the room to traverse
                 area = list(map(
                     lambda x: x["location"],
@@ -103,6 +103,8 @@ class StrongAgent(BW4TBrain):
 
             if Phase.TRAVERSE_ROOM == self._phase:
                 # Every time update the state for the new location of the agent
+                room = self._door['room_name']
+                self._messageSearchThrough(room)
                 self._state_tracker.update(state)
 
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -126,27 +128,24 @@ class StrongAgent(BW4TBrain):
                                 # In case they are desired objects for the strong agent we are interested only in the
                                 # first two items from bottom to up, if they are we pick them
                                 # in case they are not we save them in the memory for later use
+                                self._messageFoundGoalBlock(str(obj[0]), str(loc))
+
                                 if ((des, loc)) not in self.desired_objects[0:(2 - self.capacity)] \
                                         and ((des, loc)) in self.desired_objects[(2 - self.capacity):(4 - self.capacity)]:
-                                    print("FOUND OBJECT FOR MEMORY")
                                     # Note a small bug was found. It does not find and pick object
                                     # when the memory is pointing to the middle room (room 5).
                                     # In all other cases it work properly
                                     self.memory = state[self._state_tracker.agent_id]['location']
                                 else:
-                                    # TODO send a message that an object was found
-                                    print("FOUND OBJECT PICK UP")
-                                    self._sendMessage("Found " + obj[0]["colour"] + " " + str(obj[0]["shape"]), self.agent_id)
                                     # Grab object if there is a capacity
                                     if self.capacity < 2:
                                         self.capacity += 1
-                                        self.drop_off_locations.append((obj[1], loc))
+                                        self.drop_off_locations.append((obj[0], obj[1], loc))
                                         self.desired_objects.remove((des, loc))
-                                        # TODO send a message that an object is grabbed
-                                        self._sendMessage("Picked " + obj[0]["colour"] + " " + str(obj[0]["shape"]), self.agent_id)
+                                        self._messagePickUpGoalBlock(str(obj[0]), str(loc))
                                         return GrabObject.__name__, {'object_id': obj[1]}
 
-                    # In case we are filled, deliver items, next pahse
+                    # In case we are filled, deliver items, next phase
                     if self.capacity > 1:
                         self._phase = Phase.DELIVER_ITEM
                     # In case there is only one object left needed and is found deliver it, next phase
@@ -163,7 +162,7 @@ class StrongAgent(BW4TBrain):
             if Phase.DELIVER_ITEM == self._phase:
                 locations = []
                 # sort the location of the picked items so that the first dropped will be at the bottom
-                for _, loc in self.drop_off_locations:
+                for _, _, loc in self.drop_off_locations:
                     locations.append(loc)
                 locations.sort(reverse=True)
                 self._navigator.reset_full()
@@ -177,15 +176,16 @@ class StrongAgent(BW4TBrain):
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
                 # Check if the current location of the agent is the correct drop off location
-                for obj_id, loc in self.drop_off_locations:
+                for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
                         self.object_to_be_dropped = obj_id
                         # if it is the correct location drop the object
                         self._phase = Phase.DROP_OBJECT
-                        self.drop_off_locations.remove((obj_id, loc))
+                        self.drop_off_locations.remove((obj_viz, obj_id, loc))
+                        self._messageDroppedGoalBlock(str(obj_viz), str(loc))
 
-                # if not already dropped the object  move to the next location
+                # if not already dropped the object move to the next location
                 if not flag:
                     self._state_tracker.update(state)
 
@@ -206,7 +206,7 @@ class StrongAgent(BW4TBrain):
                             # If memory is empty continue traversing rooms
                             self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
-                print("! DONE !")
+                # print("! DONE !")
 
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
@@ -276,6 +276,7 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.ENTER_ROOM
                 # Open door
                 # If already opened, no change
+                self._messageOpenDoor(self._door['room_name'])
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
     def _sendMessage(self, mssg, sender):
@@ -285,6 +286,25 @@ class StrongAgent(BW4TBrain):
         msg = Message(content=mssg, from_id=sender)
         if msg.content not in self.received_messages:
             self.send_message(msg)
+
+    def _messageMoveRoom(self, room):
+        self._sendMessage("Moving to " + room, self.agent_name)
+
+    def _messageOpenDoor(self, room):
+        self._sendMessage("Opening door of " + room, self.agent_name)
+
+    def _messageSearchThrough(self, room):
+        self._sendMessage("Searching through " + room, self.agent_name)
+
+    def _messageFoundGoalBlock(self, block_visualization, location):
+        self._sendMessage("Found goal block " + block_visualization + " at location " + location, self.agent_name)
+
+    def _messagePickUpGoalBlock(self, block_visualization, location):
+        self._sendMessage("Picking up goal block " + block_visualization + " at location " + location, self.agent_name)
+
+    def _messageDroppedGoalBlock(self, block_visualization, location):
+        self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
+
 
     def _processMessages(self, teamMembers):
         '''
@@ -299,7 +319,7 @@ class StrongAgent(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
 
-    def _trustBlief(self, member, received):
+    def _trustBelief(self, member, received):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
