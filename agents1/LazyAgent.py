@@ -9,6 +9,8 @@ from matrx.actions.object_actions import GrabObject
 from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state import State
 from matrx.agents.agent_utils.state_tracker import StateTracker
+from agents1.Util import Util
+
 from matrx.messages.message import Message
 import re
 import json
@@ -211,8 +213,10 @@ class LazyAgent(BW4TBrain):
                                 c['visualization']['size'] == self._goal_objects[i]['visualization']['size'] and \
                                 not c['is_goal_block'] and not c['is_drop_zone'] and not self.already_delivered(c):
                             if i == 0:
-                                print('found')
-                                self.foundGoalBlockMessage(c, agent_name)
+                                #print('found')
+                                #TODO Message sending should look like this!
+                                self._sendMessage(Util.foundGoalBlockMessage(c), agent_name)
+                                #self.foundGoalBlockMessage(c, agent_name)
                                 self._phase = Phase.PLAN_PATH_TO_OBJECT
                                 self._current_obj = c
                                 return None, {}
