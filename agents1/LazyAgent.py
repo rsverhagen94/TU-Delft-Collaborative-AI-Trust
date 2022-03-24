@@ -11,6 +11,8 @@ from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.messages.message import Message
 import re
 import json
+import csv
+import os
 
 from bw4t.BW4TBrain import BW4TBrain
 
@@ -53,11 +55,17 @@ class LazyAgent(BW4TBrain):
         self._goal_object_delivered = []
         self._current_obj = None
         self._can_be_lazy = True
+        self._trust = {}
+        self._arrayWorld = None
+        self.read_trust()
 
     def filter_bw4t_observations(self, state):
         return state
 
     def decide_on_bw4t_action(self, state: State):
+        self.write_beliefs()
+        if self._trust == {}:
+            self.initialize_trust()
         agent_name = state[self.agent_id]['obj_id']
         # Add team members
         for member in state['World']['team_members']:
@@ -69,15 +77,20 @@ class LazyAgent(BW4TBrain):
         self.update_info(receivedMessages)
 
         # Update trust beliefs for team members
-        self._trustBlief(self._teamMembers, receivedMessages)
+        self._trustBlief(self._teamMembers, receivedMessages, state, closeBlocks)
 
-        # if Phase.MOVE_TO_OBJECT or not Phase.DROP_OBJECT or not Phase.PLAN_PATH_TO_OBJECT or not Phase.PLAN_PATH_TO_OBJECT or not Phase.GRAB:
-        #         self.found_next_obj()
+        # Update arrayWorld
+        for obj in closeObjects:
+            loc = obj['location']
+            self._arrayWorld[loc[0]][loc[1]] = []
+
+        if Phase.MOVE_TO_OBJECT or not Phase.DROP_OBJECT or not Phase.PLAN_PATH_TO_OBJECT or not Phase.PLAN_PATH_TO_OBJECT or not Phase.GRAB:
+                self.found_next_obj()
 
         if self.__is_lazy() and self._phase != Phase.START and self._can_be_lazy and self._phase in [
             Phase.SEARCH_ROOM,
             Phase.MOVING_BLOCK,
-            #Phase.MOVE_TO_OBJECT,
+            # Phase.MOVE_TO_OBJECT,
             Phase.SEARCH_RANDOM_ROOM,
             # Phase.PLAN_PATH_TO_CLOSED_DOOR
         ]:
@@ -92,13 +105,14 @@ class LazyAgent(BW4TBrain):
                 obj = self._current_obj
                 obj['location'] = state[agent_name]['location']
                 self._goal_objects_found.append(obj)
-                self.droppingBlockMessage(self._current_obj, state[agent_name]['location'], agent_name)
+                #self._sendMessage(self._current_obj, state[agent_name]['location'], agent_name)
+                self._sendMessage(Util.droppingBlockMessage(self._current_obj,state[agent_name]['location']), agent_name)
                 return DropObject.__name__, {'object_id': obj['obj_id']}
         else:
             self._can_be_lazy = True
 
         while True:
-            print(self._phase)
+            #print(self._phase)
             # if there is a goal block alreay found go to it
 
             if not self._goal_objects and self._phase is not Phase.START:
@@ -131,7 +145,7 @@ class LazyAgent(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                self._sendMessage(Util.moveToMessage(self._door['room_name']), agent_name)
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
@@ -161,8 +175,8 @@ class LazyAgent(BW4TBrain):
                 # Open door
                 is_open = state.get_room_doors(self._door['room_name'])[0]['is_open']
                 if not is_open:
-                    self._sendMessage("Opening door of: " + self._door['room_name'], agent_name)
-                    self._sendMessage("Searching through " + self._door['room_name'], agent_name)
+                    self._sendMessage(Util.openingDoorMessage(self._door['room_name']), agent_name)
+                    self._sendMessage(Util.searchingThroughMessage(self._door['room_name']), agent_name)
                     return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
                 self._phase = Phase.SEARCH_ROOM
             if Phase.SEARCH_ROOM == self._phase:
@@ -175,6 +189,7 @@ class LazyAgent(BW4TBrain):
                 for c in contents:
                     if "Block" in c['name'] and c not in self._objects:
                         self._objects.append(c)
+
                     # self.foundBlockMessage(c, agent_name)
                     for i in range(len(self._goal_objects)):
                         if c['visualization']['colour'] == self._goal_objects[i]['visualization']['colour'] and \
@@ -190,6 +205,7 @@ class LazyAgent(BW4TBrain):
                             else:
                                 self._goal_objects_found.append(c)
 
+
                 action = self._navigator.get_move_action(self._state_tracker)
 
                 if action is not None:
@@ -203,7 +219,7 @@ class LazyAgent(BW4TBrain):
 
             if Phase.MOVE_TO_OBJECT == self._phase:
 
-                print("moving to obj")
+                #print("moving to obj")
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
@@ -212,8 +228,8 @@ class LazyAgent(BW4TBrain):
                 # self._can_be_lazy = True
 
             if Phase.GRAB == self._phase:
-                print("ggrabbing")
-                self.pickingUpBlockMessage(self._current_obj, agent_name)
+                #print("ggrabbing")
+                self._sendMessage(Util.pickingUpBlockMessage(self._current_obj), agent_name)
                 self._navigator.reset_full()
                 self._navigator.add_waypoints([self._goal_objects[0]['location']])
                 self._phase = Phase.MOVING_BLOCK
@@ -233,11 +249,11 @@ class LazyAgent(BW4TBrain):
 
             if Phase.DROP_OBJECT == self._phase:
                 if state[agent_name]['is_carrying']:
-                    print("dropppgbg")
+                    #print("dropppgbg")
                     self._goal_object_delivered.append(self._goal_objects[0])
                     self._goal_objects.remove(self._goal_objects[0])
                     self._can_be_lazy = True
-                    self.droppingBlockMessage(self._current_obj, state[agent_name]['location'], agent_name)
+                    self._sendMessage(Util.droppingBlockMessage(self._current_obj,state[agent_name]['location']), agent_name)
 
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
@@ -256,11 +272,13 @@ class LazyAgent(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                #self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                self._sendMessage(Util.moveToMessage(self._door['room_name']),agent_name)
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
     def update_info(self, receivedMessages):
+        # TODO act according to trust values
         for member in self._teamMembers:
             for msg in receivedMessages[member]:
                 print(msg)
@@ -299,6 +317,13 @@ class LazyAgent(BW4TBrain):
                     if not there:
                         self._goal_objects_found.append(block)
 
+                    if self._arrayWorld[block['location'][0], block['location'][1]] is None:
+                        self._arrayWorld[block['location'][0], block['location'][1]] = []
+                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                        "memberName": member,
+                        "block": block['visualization'],
+                        "action": "found",
+                    })
 
 
                 elif "Picking up goal block: " in msg:
@@ -323,6 +348,14 @@ class LazyAgent(BW4TBrain):
                     # for b in self._goal_objects:
                     #     if b['visualization'] == vis:
                     #         self._goal_objects.remove(b)
+
+                    if self._arrayWorld[block['location'][0], block['location'][1]] is None:
+                        self._arrayWorld[block['location'][0], block['location'][1]] = []
+                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                        "memberName": member,
+                        "block": block['visualization'],
+                        "action": "pickup"
+                    })
 
 
                 elif "Droppped goal block: " in msg:
@@ -364,13 +397,15 @@ class LazyAgent(BW4TBrain):
                                 self._current_obj['visualization']['colour'] == vis['colour']:
                             self._phase = Phase.DROP_OBJECT
 
-    def _sendMessage(self, mssg, sender):
-        '''
-        Enable sending messages in one line of code
-        '''
-        msg = Message(content=mssg, from_id=sender)
-        if msg.content not in self.received_messages:
-            self.send_message(msg)
+                    if self._arrayWorld[block['location'][0], block['location'][1]] is None:
+                        self._arrayWorld[block['location'][0], block['location'][1]] = []
+                    self._arrayWorld[block['location'][0], block['location'][1]].append({
+                        "memberName": member,
+                        "block": block['visualization'],
+                        "action": "drop"
+                    })
+
+
 
     def _processMessages(self, teamMembers):
         '''
@@ -385,7 +420,39 @@ class LazyAgent(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
 
-    def _trustBlief(self, member, received):
+    def read_trust(self):
+        # agentname_trust.csv
+        file_name = self.agent_id + '_trust.csv'
+        #fprint(file_name)
+        if os.path.exists(file_name):
+            with open(file_name, newline='\n') as file:
+                reader = csv.reader(file, delimiter=',')
+                for row in reader:
+                    self._trust[row[0]] = {"pick-up": row[1], "drop-off": row[2], "found": row[3], "average": row[4],
+                                           "rep": row[5]}
+        else:
+            f = open(file_name, 'x')
+            f.close()
+
+        #print(self._trust)
+    def initialize_trust(self):
+        team = self._teamMembers
+        for member in team:
+            self._trust[member] = {"pick-up": 0.5, "drop-off": 0.5, "found": 0.5, "average": 0.5,
+                                   "rep": 0.5}
+
+    def write_beliefs(self):
+        file_name = self.agent_id + '_trust.csv'
+        with open(file_name, 'w') as file:
+            # TODO add name to file
+            writer = csv.DictWriter(file, ["pick-up", "drop-off", "found", "average", "rep"])
+            #writer.writeheader()
+            names = self._trust.keys()
+            for name in names:
+                writer.writerow(self._trust[name])
+
+
+    def _trustBlief(self, member, received, state, close_objects):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
@@ -404,39 +471,6 @@ class LazyAgent(BW4TBrain):
     def __is_lazy(self):
         return random.randint(0, 1) == 1
 
-    def moveToMessage(self, agent_name):
-        self._sendMessage('Moving to ' + self._door['room_name'], agent_name)
-
-    def openingDoorMessage(self, agent_name):
-        self._sendMessage('Opening door of ' + self._door['room_name'], agent_name)
-
-    def searchingThroughMessage(self, agent_name):
-        self._sendMessage('Searching through ' + self._door['room_name'], agent_name)
-
-    def foundGoalBlockMessage(self, data, agent_name):
-        item_info = dict(list(data['visualization'].items())[:3])
-        self._sendMessage(
-            "Found goal block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
-
-    def foundBlockMessage(self, data, agent_name):
-        item_info = dict(list(data['visualization'].items())[:3])
-        self._sendMessage(
-            "Found block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
-
-    def pickingUpBlockMessage(self, data, agent_name):
-        item_info = dict(list(data['visualization'].items())[:3])
-        self._sendMessage(
-            "Picking up goal block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
-
-    def droppingBlockMessage(self, data, location, agent_name):
-        item_info = dict(list(data['visualization'].items())[:3])
-        self._sendMessage(
-            "Droppped goal block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in location]) + ")", agent_name)
-
     def already_delivered(self, o1):
         for o in self._goal_object_delivered:
             if o['visualization']['shape'] == o1['visualization']['shape'] and o['visualization']['colour'] == \
@@ -454,5 +488,5 @@ class LazyAgent(BW4TBrain):
                 self._phase = Phase.PLAN_PATH_TO_OBJECT
                 self._current_obj = o
                 found = True
-                print('moving to found one')
+                #print('moving to found one')
         return found
