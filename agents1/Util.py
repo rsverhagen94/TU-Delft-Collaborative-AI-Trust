@@ -61,8 +61,8 @@ class Util():
             rep[member] = trust[member]['rep']
         return "Reputation:" + json.dumps(rep)
 
-    # TODO: implement methods: foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate
-    # in agent class and pass to this method
+    # TODO -  Implement methods: foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate
+    # TODO -  In agent class; Each method takes block as argument (use to update for each agent)
 
     @staticmethod
     def update_info_general(arrayWorld, receivedMessages, teamMembers,
@@ -95,7 +95,7 @@ class Util():
                     block['location'] = (loc[0], loc[1])
                     block['visualization'] = vis
 
-                    foundGoalBlockUpdate()
+                    foundGoalBlockUpdate(block)
 
                     if arrayWorld[block['location'][0], block['location'][1]] is None:
                         arrayWorld[block['location'][0], block['location'][1]] = []
@@ -118,7 +118,7 @@ class Util():
                     block['location'] = (loc[0], loc[1])
                     block['visualization'] = vis
 
-                    foundBlockUpdate()
+                    foundBlockUpdate(block)
 
                     if arrayWorld[block['location'][0], block['location'][1]] is None:
                         arrayWorld[block['location'][0], block['location'][1]] = []
@@ -142,7 +142,7 @@ class Util():
                     block['location'] = (loc[0], loc[1])
                     block['visualization'] = vis
 
-                    pickUpBlockUpdate()
+                    pickUpBlockUpdate(block)
 
                     if arrayWorld[block['location'][0], block['location'][1]] is None:
                         arrayWorld[block['location'][0], block['location'][1]] = []
@@ -165,7 +165,7 @@ class Util():
                     block['visualization'] = vis
                     block['location'] = loc
 
-                    dropGoalBlockUpdate()
+                    dropGoalBlockUpdate(block)
 
                     if arrayWorld[block['location'][0], block['location'][1]] is None:
                         arrayWorld[block['location'][0], block['location'][1]] = []
@@ -188,7 +188,7 @@ class Util():
                     block['visualization'] = vis
                     block['location'] = loc
 
-                    dropBlockUpdate()
+                    dropBlockUpdate(block)
 
                     if arrayWorld[block['location'][0], block['location'][1]] is None:
                         arrayWorld[block['location'][0], block['location'][1]] = []
