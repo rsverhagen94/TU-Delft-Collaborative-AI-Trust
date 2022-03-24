@@ -477,16 +477,59 @@ class LazyAgent(BW4TBrain):
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
         # You can change the default value to your preference
-        default = 0.5
-        trustBeliefs = {}
-        for member in received.keys():
-            trustBeliefs[member] = default
-        for member in received.keys():
-            for message in received[member]:
-                if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
-                    break
-        return trustBeliefs
+
+        # Go throug the seen objects
+        #print(self._arrayWorld)
+        if close_objects is not None:
+            for o in close_objects:
+                loc = o['location']
+                messages = self._arrayWorld[loc[0], loc[1]]
+                # If we find messages for the location of the object
+                if messages is not None and len(messages) > 0:
+                    # If last message is 'pick-up' substract from trust
+                    if messages[-1]['action'] == "pick-up":
+                        member = messages[-1]['memberName']
+                        self._trust[member]['pick-up'] = max(self._trust[member]['pick-up'] - 0.1, 0)
+                    # If last message is 'found' or 'drop-of' add to trust
+                    if messages[-1]['action'] == "found" or messages[-1]['drop-off'] == "found":
+                        if o['visualization'] == messages[-1]['block']:
+                            self._trust[member]['found'] = min(self._trust[member]['found'] + 0.1, 1)
+                    if len(messages) > 1:
+                        i = len(messages) - 2
+                        while i >= 0:
+                            member = messages[i]['memberName']
+                            if messages[-1]['action'] == "drop-off":
+                                self._trust[member]['drop-off'] = min(self._trust[member]['drop-off'] + 0.1, 1)
+                                break
+                            if not messages[-1]['action'] == "found":
+                                break
+                            if o['visualization'] == messages[-1]['block']:
+                                self._trust[member]['found'] = min(self._trust[member]['found'] + 0.1, 1)
+                            else:
+                                self._trust[member]['found'] = max(self._trust[member]['found'] - 0.1, 0)
+                            i -= 1
+
+
+        agentLocation = state[self.agent_id]['location']
+        for x in range(agentLocation[0] - 1, agentLocation[0] + 2):
+            for y in range(agentLocation[1] - 1, agentLocation[0] + 2):
+                messages = self._arrayWorld[x][y]
+                if messages is not None and len(messages) > 0:
+                    member = messages[-1]['memberName']
+                    if isinstance(messages, list) and messages[-1]['action'] == "found" or messages[-1]['action'] == "drop-off":
+                        if close_objects is None:
+                            self._trust[member][messages[-1]['action']] = max(self._trust[member][messages[-1]['action']] - 0.1, 0)
+                        else:
+                            found = False
+                            for o in close_objects:
+                                if o['location'] == (x,y):
+                                    if o['visualization'] == messages[-1]['block']:
+                                        found = True
+                            if found is False:
+                                self._trust[member][messages[-1]['action']] = max(self._trust[member][messages[-1]['action']] - 0.1, 0)
+
+
+
 
     def __is_lazy(self):
         return random.randint(0, 1) == 1
