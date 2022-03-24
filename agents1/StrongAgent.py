@@ -136,12 +136,14 @@ class StrongAgent(BW4TBrain):
                                 else:
                                     # TODO send a message that an object was found
                                     print("FOUND OBJECT PICK UP")
+                                    self._sendMessage("Found " + obj[0]["colour"] + " " + str(obj[0]["shape"]), self.agent_id)
                                     # Grab object if there is a capacity
                                     if self.capacity < 2:
                                         self.capacity += 1
                                         self.drop_off_locations.append((obj[1], loc))
                                         self.desired_objects.remove((des, loc))
                                         # TODO send a message that an object is grabbed
+                                        self._sendMessage("Picked " + obj[0]["colour"] + " " + str(obj[0]["shape"]), self.agent_id)
                                         return GrabObject.__name__, {'object_id': obj[1]}
 
                     # In case we are filled, deliver items, next pahse
