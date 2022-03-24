@@ -10,6 +10,7 @@ from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.messages.message import Message
 from matrx.actions.object_actions import GrabObject, DropObject
 from bw4t.BW4TBrain import BW4TBrain
+from agents1.Util import Util
 
 
 class Phase(enum.Enum):
@@ -54,6 +55,8 @@ class BlindAgent(BW4TBrain):
         self._current_obj = None
         self._is_color_blind = True
         self._drop_location_blind = None
+
+        self._arrayWorld = None
 
     def filter_bw4t_observations(self, state):
         for obj in state:
@@ -106,7 +109,7 @@ class BlindAgent(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self.moveToMessage(agent_name)
+                self._sendMessage(Util.moveToMessage(self._door['room_name']), agent_name)
 
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -136,12 +139,12 @@ class BlindAgent(BW4TBrain):
                 is_open = state.get_room_doors(self._door['room_name'])[0]['is_open']
 
                 if not is_open:
-                    self.openingDoorMessage(agent_name)
+                    self._sendMessage(Util.openingDoorMessage(self._door['room_name']), agent_name)
                     self._phase = Phase.SEARCH_ROOM
-                    self.searchingThroughMessage(agent_name)
+                    self._sendMessage(Util.searchingThroughMessage(self._door['room_name']), agent_name)
                     return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
                 else:
-                    self.searchingThroughMessage(agent_name)
+                    self._sendMessage(Util.searchingThroughMessage(self._door['room_name']), agent_name)
                     self._phase = Phase.SEARCH_ROOM
 
             if Phase.SEARCH_ROOM == self._phase:
@@ -153,7 +156,7 @@ class BlindAgent(BW4TBrain):
                     if "Block" in c['name']:
                         if c not in self._objects:
                             self._objects.append(c)
-                            self.foundBlockMessage(c, agent_name)
+                            self._sendMessage(Util.foundBlockMessage(c, True), agent_name)
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
@@ -199,8 +202,8 @@ class BlindAgent(BW4TBrain):
                 l = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal, objs_in_area))
                 # If object is still there
                 if len(l) > 0:
-                    self._current_obj = l[0]
-                    self.pickingUpBlockSimpleMessage(self._current_obj, agent_name)
+                    self._cur
+                    self._sendMessage(Util.pickingUpBlockSimpleMessage(self._current_obj, True), agent_name)
 
                     self._phase = Phase.GRAB
                     return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
@@ -223,7 +226,7 @@ class BlindAgent(BW4TBrain):
                     # TODO: Here decrease trust for teamMember ?
                     # And then pick up and move it yourself
                     self._current_obj = l[0]
-                    self.pickingUpBlockSimpleMessage(self._current_obj, agent_name)
+                    self._sendMessage(Util.pickingUpBlockSimpleMessage(self._current_obj, True), agent_name)
 
                     self._phase = Phase.GRAB
                     return GrabObject.__name__, {'object_id': self._current_obj['obj_id']}
@@ -254,7 +257,7 @@ class BlindAgent(BW4TBrain):
                     return action, {}
 
                 if state[agent_name]['is_carrying']:
-                    self.droppingBlockSimpleMessage(self._current_obj, self._drop_location_blind, agent_name)
+                    self._sendMessage(Util.droppingBlockSimpleMessage(self._current_obj, self._drop_location_blind, True), agent_name)
                     return DropObject.__name__, {'object_id': self._current_obj['obj_id']}
 
                 # After droping block, check if there is another goal to follow
@@ -268,9 +271,12 @@ class BlindAgent(BW4TBrain):
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
                 # Send message of current action
-                self.moveToMessage(agent_name)
+                self._sendMessage(Util.moveToMessage(self._door['room_name']), agent_name)
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
+
+    def _prepareWorldArray(self, state):
+        (x, y) = state['World']['grid_shape']
 
 
     def _sendMessage(self, mssg, sender):
@@ -357,33 +363,3 @@ class BlindAgent(BW4TBrain):
                     trustBeliefs[member] -= 0.1
                     break
         return trustBeliefs
-
-    def moveToMessage(self, agent_name):
-        self._sendMessage('Moving to ' + self._door['room_name'], agent_name)
-
-    def openingDoorMessage(self, agent_name):
-        self._sendMessage('Opening door of ' + self._door['room_name'], agent_name)
-
-    def searchingThroughMessage(self, agent_name):
-        self._sendMessage('Searching through ' + self._door['room_name'], agent_name)
-
-    def foundBlockMessage(self, data, agent_name):
-        get_with_color = 2 if self._is_color_blind else 3
-        item_info = dict(list(data['visualization'].items())[:get_with_color])
-        self._sendMessage(
-            "Found block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
-
-    def pickingUpBlockSimpleMessage(self, data, agent_name):
-        get_with_color = 2 if self._is_color_blind else 3
-        item_info = dict(list(data['visualization'].items())[:get_with_color])
-        self._sendMessage(
-            "Picking up block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in data['location']]) + ")", agent_name)
-
-    def droppingBlockSimpleMessage(self, data, location, agent_name):
-        get_with_color = 2 if self._is_color_blind else 3
-        item_info = dict(list(data['visualization'].items())[:get_with_color])
-        self._sendMessage(
-            "Dropped block: " + json.dumps(item_info) +
-            " at location (" + ', '.join([str(loc) for loc in location]) + ")", agent_name)

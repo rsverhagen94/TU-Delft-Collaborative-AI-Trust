@@ -1,5 +1,6 @@
 import enum
 import random
+import numpy as np
 from typing import Dict
 
 from matrx.actions.door_actions import OpenDoorAction
@@ -74,7 +75,20 @@ class LazyAgent(BW4TBrain):
                 # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers)
 
+        if self._arrayWorld is None:
+            self._arrayWorld = np.empty(state['World']['grid_shape'], dtype=list)
+
         self.update_info(receivedMessages)
+
+        # Get agent location & close objects
+        agentLocation = state[self.agent_id]['location']
+        closeObjects = state.get_objects_in_area((agentLocation[0] - 1, agentLocation[1] - 1),
+                                                 bottom_right=(agentLocation[0] + 1, agentLocation[1] + 1))
+        # Filter out only blocks
+        closeBlocks = None
+        if closeObjects is not None:
+            closeBlocks = [obj for obj in closeObjects
+                           if 'CollectableBlock' in obj['class_inheritance']]
 
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages, state, closeBlocks)
@@ -277,12 +291,18 @@ class LazyAgent(BW4TBrain):
                 self._navigator.add_waypoints([doorLoc])
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
+    def  _sendMessage(self, mssg, sender):
+        '''
+        Enable sending messages in one line of code
+        '''
+        msg = Message(content=mssg, from_id=sender)
+        if msg.content not in self.received_messages:
+            self.send_message(msg)
+
     def update_info(self, receivedMessages):
         # TODO act according to trust values
         for member in self._teamMembers:
             for msg in receivedMessages[member]:
-                print(msg)
-                # dummy block
                 block = {
                     'is_drop_zone': False,
                     'is_goal_block': False,
@@ -326,7 +346,7 @@ class LazyAgent(BW4TBrain):
                     })
 
 
-                elif "Picking up goal block: " in msg:
+                elif "Picking up goal block " in msg:
 
                     pattern = re.compile("{(.* ?)}")
                     vis = re.search(pattern, msg).group(0)
@@ -358,7 +378,7 @@ class LazyAgent(BW4TBrain):
                     })
 
 
-                elif "Droppped goal block: " in msg:
+                elif "Dropped goal block " in msg:
                     pattern = re.compile("{(.* ?)}")
                     vis = re.search(pattern, msg).group(0)
 
