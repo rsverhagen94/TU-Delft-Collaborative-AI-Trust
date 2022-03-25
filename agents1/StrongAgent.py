@@ -36,6 +36,13 @@ class StrongAgent(BW4TBrain):
         self.initialization_flag = True
         self.memory = None
         self.all_rooms = []
+        with open('agents1/Trust', 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(['StrongAgent', 'ColorbindAgent', 'LazyAgent', 'LiarAgent'])
+            writer.writerow(['StrongAgent'])
+            writer.writerow(['ColorbindAgent'])
+            writer.writerow(['LazyAgent'])
+            writer.writerow(['LiarAgent'])
 
     def initialize(self):
         super().initialize()
@@ -130,7 +137,6 @@ class StrongAgent(BW4TBrain):
                                 # first two items from bottom to up, if they are we pick them
                                 # in case they are not we save them in the memory for later use
                                 self._messageFoundGoalBlock(str(obj[0]), str(loc))
-                                self.write_to_memory()
 
                                 if ((des, loc)) not in self.desired_objects[0:(2 - self.capacity)] \
                                         and ((des, loc)) in self.desired_objects[(2 - self.capacity):(4 - self.capacity)]:
@@ -308,7 +314,7 @@ class StrongAgent(BW4TBrain):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
 
     def write_to_memory(self):
-        with open('agents1/memory', 'a') as f:
+        with open('agents1/Trust', 'a') as f:
             writer = csv.writer(f)
             writer.writerow([0, 0.6, 1, 0.4])
 
