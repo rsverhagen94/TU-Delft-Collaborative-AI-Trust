@@ -20,7 +20,7 @@ class Phase(enum.Enum):
     DROP_OBJECT = 8
 
 
-class StrongAgent(BW4TBrain):
+class ColorblindAgent(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
@@ -33,9 +33,19 @@ class StrongAgent(BW4TBrain):
         self.drop_off_locations = []
         self.object_to_be_dropped = None
         self.initialization_flag = True
-        self.memory = None
+
+        # memory keeps track of the objects that were located but should be retrieved later
+        #   it contains the following information
+        #   {
+        #       "visualization" : the visualization of the object that has to be picked up
+        #       "location"      : the location where the object was found (TODO if a specific object is needed,
+        #                           go to the nearest object with that visualization if multiple are available in this array)
+        #       "drop_off_location" : where the object need to be dropped
+        #   }
+        self.memory = []
         self.all_rooms = []
         self.detected_objects = []
+        self.processed_messages = []
 
     def initialize(self):
         super().initialize()
@@ -74,17 +84,20 @@ class StrongAgent(BW4TBrain):
 
             # Add location for every desired object
             for obj in desired_objects:
-                found_obj.append((obj["visualization"], obj["location"]))
+                found_obj.append(({ "shape": obj["visualization"]["shape"], "colour": None }, obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
         while True:
             # TODO parse all new messages
             # if a desired object is found, add it to self.detected_objects list
             # if an object from detected_objects has been collected/dropped, remove it from the list
-            #   AND remove the last waypoint from the navigatora
+            #   AND remove the last waypoint from the navigator
             #   AND self._phase = self.previous_phase
             #   AND keep track of already dropped objects
-            print(self._receiveMessages())
+            for msg in self.received_messages:
+                if not msg in processed_messages:
+                    self._parseMessage(msg)
+                    self.processed_messages.append(msg)
 
             if len(self.detected_objects) > 0:
                 self.previous_phase = self._phase
@@ -130,7 +143,7 @@ class StrongAgent(BW4TBrain):
                     # For all possible objects save only visualization and id
                     found_obj = []
                     for obj in object_prop:
-                        found_obj.append((obj["visualization"], obj["obj_id"]))
+                        found_obj.append((obj["visualization"], obj["obj_id"], obj["location"]))
 
                     # Check if some of the found objects that can be collected are desired objects
                     for obj in found_obj:
@@ -139,32 +152,14 @@ class StrongAgent(BW4TBrain):
                                 # In case they are desired objects for the strong agent we are interested only in the
                                 # first two items from bottom to up, if they are we pick them
                                 # in case they are not we save them in the memory for later use
-                                if ((des, loc)) not in self.desired_objects[0:(2 - self.capacity)] \
-                                        and ((des, loc)) in self.desired_objects[(2 - self.capacity):(4 - self.capacity)]:
-                                    print("FOUND OBJECT FOR MEMORY")
-                                    # NOTE a small bug was found. It does not find and pick object
-                                    # when the memory is pointing to the middle room (room 5).
-                                    # In all other cases it work properly
-                                    self.memory = state[self._state_tracker.agent_id]['location']
-                                else:
-                                    # TODO send a message that an object was found
-                                    print("FOUND OBJECT PICK UP")
-                                    self._sendMessage("Found " + obj[0]["colour"] + " " + str(obj[0]["shape"]), self.agent_id)
-                                    # Grab object if there is a capacity
-                                    if self.capacity < 2:
-                                        self.capacity += 1
-                                        self.drop_off_locations.append((obj[1], loc))
-                                        self.desired_objects.remove((des, loc))
-                                        # TODO send a message that an object is grabbed
-                                        self._sendMessage("Picked " + obj[0]["colour"] + " " + str(obj[0]["shape"]), self.agent_id)
-                                        return GrabObject.__name__, {'object_id': obj[1]}
+                                if ((des, loc)) in self.desired_objects and \
+                                        not ((des, obj[2])) in map((lambda mem: (mem["visualization"], mem["location"])), self.memory):
+                                # if ((des, loc)) != self.desired_objects[0] \
+                                #         and ((des, loc)) in self.desired_objects:
 
-                    # In case we are filled, deliver items, next pahse
-                    if self.capacity > 1:
-                        self._phase = Phase.DELIVER_ITEM
-                    # In case there is only one object left needed and is found deliver it, next phase
-                    elif len(self.desired_objects) < 2 and self.capacity > 0:
-                        self._phase = Phase.DELIVER_ITEM
+                                    self._sendMessage("Found " + str(obj[0]["shape"]), self.agent_id)
+                                    self.memory.append({ "visualization": { "shape": des["shape"], "colour": None }, "location": obj[2], "drop_off_location": loc })
+                                    self.memory.sort(key= lambda mem: mem["location"], reverse=True)
 
                     # If no desired object was found just move
                     return action, {}
@@ -211,9 +206,9 @@ class StrongAgent(BW4TBrain):
                         # Use the traverse method phase for now and check on every step
                         # could be implemented to go to the room and then traverse it again
                         # now just checks every step
-                        if self.memory is not None:
+                        if len(self.memory) != 0:
                             self._navigator.reset_full()
-                            self._navigator.add_waypoints([self.memory])
+                            self._navigator.add_waypoints([self.memory.peek()["location"]])
                             self._phase = Phase.TRAVERSE_ROOM
                         else:
                             # If memory is empty continue traversing rooms
@@ -311,6 +306,10 @@ class StrongAgent(BW4TBrain):
                 if mssg.from_id == member:
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
+
+    def _parseMessage(self, msg):
+        if "Found" in msg.message:
+            pass
 
     def _trustBlief(self, member, received):
         '''
