@@ -7,6 +7,7 @@ from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
+import csv
 
 
 class Phase(enum.Enum):
@@ -129,6 +130,7 @@ class StrongAgent(BW4TBrain):
                                 # first two items from bottom to up, if they are we pick them
                                 # in case they are not we save them in the memory for later use
                                 self._messageFoundGoalBlock(str(obj[0]), str(loc))
+                                self.write_to_memory()
 
                                 if ((des, loc)) not in self.desired_objects[0:(2 - self.capacity)] \
                                         and ((des, loc)) in self.desired_objects[(2 - self.capacity):(4 - self.capacity)]:
@@ -304,6 +306,11 @@ class StrongAgent(BW4TBrain):
 
     def _messageDroppedGoalBlock(self, block_visualization, location):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
+
+    def write_to_memory(self):
+        with open('agents1/memory', 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([0, 0.6, 1, 0.4])
 
 
     def _processMessages(self, teamMembers):
