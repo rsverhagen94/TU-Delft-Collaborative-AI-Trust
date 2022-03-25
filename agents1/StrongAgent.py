@@ -8,6 +8,7 @@ from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
 import csv
+import pandas as pd
 
 
 class Phase(enum.Enum):
@@ -36,13 +37,7 @@ class StrongAgent(BW4TBrain):
         self.initialization_flag = True
         self.memory = None
         self.all_rooms = []
-        with open('agents1/Trust', 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(['StrongAgent', 'ColorbindAgent', 'LazyAgent', 'LiarAgent'])
-            writer.writerow(['StrongAgent'])
-            writer.writerow(['ColorbindAgent'])
-            writer.writerow(['LazyAgent'])
-            writer.writerow(['LiarAgent'])
+        self.write_to_memory()
 
     def initialize(self):
         super().initialize()
@@ -314,9 +309,10 @@ class StrongAgent(BW4TBrain):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
 
     def write_to_memory(self):
-        with open('agents1/Trust', 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow([0, 0.6, 1, 0.4])
+        data = {'StrongAgent': [0.5, 0.5, 0.5, 0.5], 'ColorblindAget': [0.5, 0.5, 0.5, 0.5], 'LazyAgent': [0.5, 0.5, 0.5, 0.5], 'LiarAgent': [0.5, 0.5, 0.5, 0.5]}
+        df = pd.DataFrame(data, index=['StrongAgent', 'ColorblindAget', 'LazyAgent', 'LiarAgent'], dtype=float)
+        print(df)
+        df.to_csv("Trust.csv")
 
 
     def _processMessages(self, teamMembers):
