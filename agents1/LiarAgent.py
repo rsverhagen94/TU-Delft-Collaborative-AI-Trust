@@ -21,11 +21,11 @@ class Phase(enum.Enum):
 
 
 class PossibleActions(enum.Enum):
-    MOVING_TO_ROOM = 1,
-    OPENING_DOOR = 2,
-    SEARCHING_A_ROOM = 3,
-    ENCOUNTERING_A_BLOCK = 4,
-    PICKING_UP_A_BLOCK = 5,
+    MOVING_TO_ROOM = 1
+    OPENING_DOOR = 2
+    SEARCHING_A_ROOM = 3
+    ENCOUNTERING_A_BLOCK = 4
+    PICKING_UP_A_BLOCK = 5
     DROPPING_A_BLOCK = 6
 
 
@@ -49,6 +49,7 @@ class LiarAgent(BW4TBrain):
         self.already_encountered_items = []
 
         self._previous_phase = None
+        self.grid_shape = None
 
     def initialize(self):
         super().initialize()
@@ -90,6 +91,9 @@ class LiarAgent(BW4TBrain):
                 found_obj.append((obj["visualization"], obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
+            self.grid_shape = state["grid_shape"]
+
+        # TODO send messages for all cases
         while True:
 
             # Phase entering room
@@ -116,13 +120,13 @@ class LiarAgent(BW4TBrain):
                 self._phase = Phase.TRAVERSE_ROOM
 
             if Phase.TRAVERSE_ROOM == self._phase:
-                if self._previous_phase != self.phase:
-                    action = pickAnAction(PossibleActions.SEARCHING_A_ROOM)
-                    if action == PossibleActions.SEARCHIN_A_ROOM:
+                if self._previous_phase != self._phase:
+                    action = self.pickAnAction(PossibleActions.SEARCHING_A_ROOM)
+                    if action == PossibleActions.SEARCHING_A_ROOM:
                         # be honest
                         self._sendMessage("Searching through " + room)
                     else:
-                        self._sendMessage(generateAMessageFromAction(action))
+                        self._sendMessage(self.generateAMessageFromAction(action))
 
                 self._previous_phase = self._phase
                 # Every time update the state for the new location of the agent
@@ -281,7 +285,7 @@ class LiarAgent(BW4TBrain):
                 doorLoc = doorLoc[0], doorLoc[1] + 1
 
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                self._sendMessage('Moving to door of ' + self._door['room_name'])
                 self._navigator.add_waypoints([doorLoc])
                 # go to the next phase
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -302,15 +306,32 @@ class LiarAgent(BW4TBrain):
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
     # pick an action from the PossibleActions with 20% chance it is the actual current action
-    def pickAnAction(currentAction):
+    def pickAnAction(self, currentAction):
         if random.randint(1,10) > 8:
             return currentAction
-        return random.choice(PossibleActions)
+        return PossibleActions(random.randint(1, len(PossibleActions)))
 
     # generate a random message from the given action
-    def generateAMessageFromAction(action):
+    def generateAMessageFromAction(self, action):
         # TODO
-        pass
+        if action == PossibleActions.MOVING_TO_ROOM:
+            return "Moving to " + (random.choice(self.all_rooms) if len(self.all_rooms != 0) else "0?")
+        elif action == PossibleActions.OPENING_DOOR:
+            return "Opening door of " + (random.choice(self.all_rooms) if len(self.all_rooms != 0) else "0?")
+        elif action == PossibleActions.SEARCHING_A_ROOM:
+            return "Searching through " + (random.choice(self.all_rooms) if len(self.all_rooms != 0) else "0?")
+        elif action == PossibleActions.ENCOUNTERING_A_BLOCK:
+            # TODO size? {"size": 0.5, "shape": 1, "colour": "#0008ff" } was used as an example
+            # TODO this could be an invalid location (for ex. a wall)
+            return "Found goal block " + random.choice(self.desired_objects)["visualization"] + " at location " + (random.choice(1, self.grid_shape[0]), random.choice(1, grid_shape[1]))
+        elif action == PossibleActions.PICKING_UP_A_BLOCK:
+            return "Picking up goal block " + random.choice(self.desired_objects)["visualization"] + " at location " + (random.choice(1, self.grid_shape[0]), random.choice(1, grid_shape[1]))
+        elif action == PossibleActions.DROPPING_A_BLOCK:
+            return "Dropped goal block " + random.choice(self.desired_objects)["visualization"] + " at location " + (random.choice(1, self.grid_shape[0]), random.choice(1, grid_shape[1]))
+        else:
+            print("Unexpected action received: ", action)
+            exit(-1)
+        return "Unreachable"
 
     def _sendMessage(self, mssg):
         '''
