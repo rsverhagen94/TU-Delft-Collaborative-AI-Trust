@@ -15,7 +15,7 @@ if __name__ == "__main__":
     agents = [
         #{'name':'agent1', 'botclass':StrongAgent, 'settings':{}},
         {'name':'agent2', 'botclass':ColorblindAgent, 'settings':{}},
-        #{'name':'human', 'botclass':Human, 'settings':{}}
+        {'name':'human', 'botclass':Human, 'settings':{}}
         ]
 
     print("Started world...")

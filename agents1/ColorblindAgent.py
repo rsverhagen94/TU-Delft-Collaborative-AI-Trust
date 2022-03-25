@@ -95,7 +95,7 @@ class ColorblindAgent(BW4TBrain):
             #   AND self._phase = self.previous_phase
             #   AND keep track of already dropped objects
             for msg in self.received_messages:
-                if not msg in processed_messages:
+                if not msg in self.processed_messages and msg.from_id != self.agent_id:
                     self._parseMessage(msg)
                     self.processed_messages.append(msg)
 
@@ -308,8 +308,10 @@ class ColorblindAgent(BW4TBrain):
         return receivedMessages
 
     def _parseMessage(self, msg):
-        if "Found" in msg.message:
-            pass
+        if "Found" in msg.content:
+            message = msg.content.split()
+            message = message[message.index("Found")+1:]
+            print(message)
 
     def _trustBlief(self, member, received):
         '''
