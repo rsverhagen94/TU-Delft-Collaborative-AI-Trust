@@ -1,7 +1,9 @@
 import enum
+import json
 import random
 import os
 import csv
+import re
 from typing import Dict
 import numpy as np
 
@@ -25,7 +27,8 @@ class Phase(enum.Enum):
     FIND_BLOCK = 6,
     GRAB = 7,
     MOVE_TO_OBJECT = 8,
-    MOVING_BLOCK = 9
+    MOVING_BLOCK = 9,
+    CHECK_GOAL_ZONE = 10
 
 
 class LiarAgent(BW4TBrain):
@@ -55,6 +58,7 @@ class LiarAgent(BW4TBrain):
         return state
 
     def decide_on_bw4t_action(self, state: State):
+        # print()
         self.write_beliefs()
         if self._trust == {}:
             self.initialize_trust()
@@ -66,7 +70,8 @@ class LiarAgent(BW4TBrain):
                 # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
-
+        # print("alala: ", receivedMessages)
+        # self.checkLocationOfBlock(receivedMessages)
         if self._arrayWorld is None:
             self._arrayWorld = np.empty(state['World']['grid_shape'], dtype=list)
 
@@ -104,9 +109,16 @@ class LiarAgent(BW4TBrain):
                          if 'class_inheritance' in door and 'Door' in door['class_inheritance']]
 
                 if self._searched_doors_index >= len(doors):
-                    return None, {}
-                self._door = doors[self._searched_doors_index]
-                self._searched_doors_index += 1
+                    # check_next_to_goal_zone = random.uniform(0, 1)
+                    # if check_next_to_goal_zone <= 0.5:
+                    #     self._phase = Phase.CHECK_GOAL_ZONE
+                    #     return None, {}
+                    # else:
+                    self._door = random.choice(doors)
+                    # return None, {}
+                else:
+                    self._door = doors[self._searched_doors_index]
+                    self._searched_doors_index += 1
 
                 door_location = self._door['location']
                 # Location in front of door is south from door
@@ -158,7 +170,7 @@ class LiarAgent(BW4TBrain):
                     self._sendMessage(Util.searchingThroughMessage(self._door['room_name']), agent_name)
                     # self.searchingThroughMessage(agent_name)
                 else:
-                    self._sendMessage(Util.searchingThroughMessageLie(state, self._door['room_name']),agent_name)
+                    self._sendMessage(Util.searchingThroughMessageLie(state, self._door['room_name']), agent_name)
                     # self.searchingThroughMessageLie(agent_name, state)
 
                 self._navigator.add_waypoints(room_area)
@@ -202,7 +214,6 @@ class LiarAgent(BW4TBrain):
                                 self._sendMessage(Util.foundBlockMessageLie(), agent_name)
                             self._objects.append(c)
 
-
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action is not None:
                     return action, {}
@@ -236,7 +247,8 @@ class LiarAgent(BW4TBrain):
                 if state[agent_name]['is_carrying']:
                     lie = random.uniform(0, 1)
                     if lie <= 0.2:
-                        self._sendMessage(Util.droppingBlockMessage(self._current_obj, state[agent_name]['location']), agent_name)
+                        self._sendMessage(Util.droppingBlockMessage(self._current_obj, state[agent_name]['location']),
+                                          agent_name)
                     else:
                         self._sendMessage(Util.droppingBlockMessageLie(), agent_name)
                     self._goal_objects.remove(self._goal_objects[0])
@@ -246,9 +258,21 @@ class LiarAgent(BW4TBrain):
                     for object in self._goal_objects_found:
                         if object['visualization']['colour'] == self._goal_objects[0]['visualization']['colour'] and \
                                 object['visualization']['shape'] == self._goal_objects[0]['visualization']['shape']:
+                            (picked, location) = \
+                                self.checkLocationOfBlock(receivedMessages, object['location'], object['visualization'])
+                            if picked is False:
+                                location = [object['location']]
+                            elif picked is True and location is None:
+                                self._phase = Phase.PLAN_PATH_TO_UNSEARCHED_DOOR
+                                break
+                            print("type1: ", type(location), " actual: ", location)
+                            print("type2: ", type(location[0]), " actual: ", location[0])
                             self._navigator.reset_full()
                             self._goal_objects_found.remove(object)
-                            self._navigator.add_waypoints([object['location']])
+                            if isinstance(location, tuple):
+                                self._navigator.add_waypoints([location])
+                            else:
+                                self._navigator.add_waypoints(location)
                             self._phase = Phase.MOVE_TO_OBJECT
                             self._current_obj = object
                 else:
@@ -278,7 +302,7 @@ class LiarAgent(BW4TBrain):
     def read_trust(self):
         # agentname_trust.csv
         file_name = str(self.agent_id) + '_trust.csv'
-        #fprint(file_name)
+        # fprint(file_name)
         if os.path.exists(file_name):
             with open(file_name, newline='\n') as file:
                 reader = csv.reader(file, delimiter=',')
@@ -289,7 +313,8 @@ class LiarAgent(BW4TBrain):
             f = open(file_name, 'x')
             f.close()
 
-        #print(self._trust)
+        # print(self._trust)
+
     def initialize_trust(self):
         team = self._teamMembers
         for member in team:
@@ -301,12 +326,12 @@ class LiarAgent(BW4TBrain):
         with open(file_name, 'w') as file:
             # TODO add name to file
             writer = csv.DictWriter(file, ["pick-up", "drop-off", "found", "average", "rep"])
-            #writer.writeheader()
+            # writer.writeheader()
             names = self._trust.keys()
             for name in names:
                 writer.writerow(self._trust[name])
 
-    def _trustBlief(self, member, received, state, close_objects):
+    def _trustBlief(self, members, received, state, close_objects):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
@@ -314,34 +339,34 @@ class LiarAgent(BW4TBrain):
 
         # Go throug the seen objects
         # print(self._arrayWorld)
-        print("zzz: ", self._trust)
+        print("l: ", self._trust)
         if close_objects is not None:
             for o in close_objects:
                 loc = o['location']
                 messages = self._arrayWorld[loc[0], loc[1]]
                 # If we find messages for the location of the object
                 if messages is not None and len(messages) > 0:
+                    member = messages[-1]['memberName']
                     # If last message is 'pick-up' substract from trust
                     if messages[-1]['action'] == "pick-up":
-                        member = messages[-1]['memberName']
-                        self._trust[member]['pick-up'] = max(self._trust[member]['pick-up'] - 0.1, 0)
+                        self._trust[member]['pick-up'] = max(round(self._trust[member]['pick-up'] - 0.1, 2), 0)
                     # If last message is 'found' or 'drop-of' add to trust
                     if messages[-1]['action'] == "found" or messages[-1]['action'] == "drop-off":
                         if o['visualization'] == messages[-1]['block']:
-                            self._trust[member]['found'] = min(self._trust[member]['found'] + 0.1, 1)
+                            self._trust[member]['found'] = min(round(self._trust[member]['found'] + 0.1, 2), 1)
                     if len(messages) > 1:
                         i = len(messages) - 2
                         while i >= 0:
                             member = messages[i]['memberName']
                             if messages[-1]['action'] == "drop-off":
-                                self._trust[member]['drop-off'] = min(self._trust[member]['drop-off'] + 0.1, 1)
+                                self._trust[member]['drop-off'] = min(round(self._trust[member]['drop-off'] + 0.1, 2), 1)
                                 break
                             if not messages[-1]['action'] == "found":
                                 break
                             if o['visualization'] == messages[-1]['block']:
-                                self._trust[member]['found'] = min(self._trust[member]['found'] + 0.1, 1)
+                                self._trust[member]['found'] = min(round(self._trust[member]['found'] + 0.1, 2), 1)
                             else:
-                                self._trust[member]['found'] = max(self._trust[member]['found'] - 0.1, 0)
+                                self._trust[member]['found'] = max(round(self._trust[member]['found'] - 0.1, 2), 0)
                             i -= 1
 
         agentLocation = state[self.agent_id]['location']
@@ -354,7 +379,7 @@ class LiarAgent(BW4TBrain):
                         'action'] == "drop-off":
                         if close_objects is None:
                             self._trust[member][messages[-1]['action']] = max(
-                                self._trust[member][messages[-1]['action']] - 0.1, 0)
+                                round(self._trust[member][messages[-1]['action']] - 0.1, 2), 0)
                         else:
                             found = False
                             for o in close_objects:
@@ -363,8 +388,7 @@ class LiarAgent(BW4TBrain):
                                         found = True
                             if found is False:
                                 self._trust[member][messages[-1]['action']] = max(
-                                    self._trust[member][messages[-1]['action']] - 0.1, 0)
-
+                                    round(self._trust[member][messages[-1]['action']] - 0.1, 2), 0)
 
     def foundGoalBlockUpdate(self, block, member):
         return
@@ -383,3 +407,33 @@ class LiarAgent(BW4TBrain):
 
     def updateGoalBlocks(self, state):
         return
+
+    def checkLocationOfBlock(self, receivedMessages, knownLocation, visualzation):
+        found = False
+        location = None
+        for member in self._teamMembers:
+            for message in receivedMessages[member]:
+                # print("nope: ", member, ": ", str(message))
+                print("pppp: ", str(knownLocation))
+                if str(message).startswith("Picking up block") and str(message).endswith(str(knownLocation)):
+                    shape = "\"shape\": " + str(visualzation['shape'])
+                    print("l-a luat")
+                    for m in reversed(receivedMessages[member]):
+                        if str(m).startswith("Dropped block") and str(m).__contains__(shape):
+                            print("l-a si lasat")
+                            pattern = re.compile("{(.* ?)}")
+                            vis = re.search(pattern, m).group(0)
+
+                            pattern2 = re.compile("\((.* ?)\)")
+                            loc = re.search(pattern2, m).group(0)
+                            loc = loc.replace("(", "[")
+                            loc = loc.replace(")", "]")
+                            loc = json.loads(loc)
+                            vis = json.loads(vis)
+                            location = (loc[0], loc[1])
+                            break
+                    # print("l-am gasit")
+                    found = True
+                    break
+
+        return found, location
