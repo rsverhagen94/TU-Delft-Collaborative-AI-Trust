@@ -60,15 +60,19 @@ class LazyAgent(BW4TBrain):
         self._can_be_lazy = True
         self._trust = {}
         self._arrayWorld = None
-        self.read_trust()
+
 
     def filter_bw4t_observations(self, state):
         return state
 
     def decide_on_bw4t_action(self, state: State):
-        self.write_beliefs()
+        # -----------------TRUST-----------------
         if self._trust == {}:
             self.initialize_trust()
+        self.read_trust()
+        self.write_beliefs()
+        # ------------------------------------
+
         agent_name = state[self.agent_id]['obj_id']
         # Add team members
         for member in state['World']['team_members']:
@@ -449,11 +453,12 @@ class LazyAgent(BW4TBrain):
         file_name = self.agent_id + '_trust.csv'
         #fprint(file_name)
         if os.path.exists(file_name):
-            with open(file_name, newline='\n') as file:
+            with open(file_name, newline='') as file:
                 reader = csv.reader(file, delimiter=',')
                 for row in reader:
-                    self._trust[row[0]] = {"pick-up": row[1], "drop-off": row[2], "found": row[3], "average": row[4],
-                                           "rep": row[5]}
+                    if row:
+                        self._trust[row[0]] = {"pick-up": row[1], "drop-off": row[2], "found": row[3], "average": row[4],
+                                               "rep": row[5]}
         else:
             f = open(file_name, 'x')
             f.close()
@@ -468,12 +473,14 @@ class LazyAgent(BW4TBrain):
     def write_beliefs(self):
         file_name = self.agent_id + '_trust.csv'
         with open(file_name, 'w') as file:
-            # TODO add name to file
-            writer = csv.DictWriter(file, ["pick-up", "drop-off", "found", "average", "rep"])
+
+            writer = csv.DictWriter(file, ["name", "pick-up", "drop-off", "found", "average", "rep"])
             #writer.writeheader()
             names = self._trust.keys()
             for name in names:
-                writer.writerow(self._trust[name])
+                row = self._trust[name]
+                row['name'] = name
+                writer.writerow(row)
 
 
     def _trustBlief(self, member, received, state, close_objects):
@@ -495,7 +502,7 @@ class LazyAgent(BW4TBrain):
                         member = messages[-1]['memberName']
                         self._trust[member]['pick-up'] = max(self._trust[member]['pick-up'] - 0.1, 0)
                     # If last message is 'found' or 'drop-of' add to trust
-                    if messages[-1]['action'] == "found" or messages[-1]['drop-off'] == "found":
+                    if messages[-1]['action'] == "found" or messages[-1]['action'] == "found":
                         if o['visualization'] == messages[-1]['block']:
                             self._trust[member]['found'] = min(self._trust[member]['found'] + 0.1, 1)
                     if len(messages) > 1:
