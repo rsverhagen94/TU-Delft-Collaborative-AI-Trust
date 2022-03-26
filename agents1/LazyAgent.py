@@ -39,6 +39,7 @@ class LazyAgent(BW4TBrain):
         self.decision = -1
         self.stop_when = 0
         self.my_object = None
+        self.use_memory = True
 
     def initialize(self):
         super().initialize()
@@ -287,24 +288,29 @@ class LazyAgent(BW4TBrain):
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 decision = self.getRandom50()
-                print("GO TO MEMORY: ", decision)
-                print("MEMORY", self.memory)
+                print("USE MEMORY", self.use_memory)
                 if len(self.memory) > 0 and self.desired_objects[0][0]["shape"] == \
                         self.memory[0]["visualization"]["shape"] \
-                        and self.desired_objects[0][0]["colour"] == self.memory[0]["visualization"]["colour"]:
+                        and self.desired_objects[0][0]["colour"] == self.memory[0]["visualization"]["colour"]\
+                        and self.use_memory:
 
-                    print("GO TO OBJECT", self.memory[0])
+                    print("GO TO MEMORY: ", decision)
+                    print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
 
                     self._phase = Phase.TRAVERSE_ROOM
                     if decision:
                         self.stop_when = -1
+                        self.use_memory = True
+                        print("GO TO OBJECT", self.memory[0])
                     else:
                         distance = self.getRandom1() * self.shortestDistance(
                             state[self._state_tracker.agent_id]['location'], self.memory[0]["location"])
 
                         self.stop_when = int(round(distance * self.getRandom1()))
+                        print("STOP when", self.stop_when)
+                        self.use_memory = False
                 else:
                     self._navigator.reset_full()
 
@@ -343,6 +349,7 @@ class LazyAgent(BW4TBrain):
                     # Location in front of door is south from door
                     doorLoc = doorLoc[0], doorLoc[1] + 1
 
+                    self.use_memory = True
                     # Send message of current action
                     decision = self.getRandom50()
                     print("GO TO ROOM: ", decision)
