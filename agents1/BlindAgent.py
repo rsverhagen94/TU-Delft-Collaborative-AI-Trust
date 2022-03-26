@@ -74,8 +74,7 @@ class BlindAgent(BW4TBrain):
         if self._trust == {}:
             self.initialize_trust()
 
-        # TODO
-        # self.write_beliefs()
+        self.write_beliefs()
 
         state = self.filter_bw4t_observations(state)
         agent_name = state[self.agent_id]['obj_id']
@@ -107,7 +106,7 @@ class BlindAgent(BW4TBrain):
                            if 'CollectableBlock' in obj['class_inheritance']]
 
         # Update trust beliefs for team members
-        self._trustBlief(self._teamMembers, receivedMessages, state, closeBlocks)
+        self._trustBlief(state, closeBlocks)
 
         # Update arrayWorld
         for obj in closeObjects:
@@ -340,26 +339,35 @@ class BlindAgent(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
 
-    def read_trust(self):
-        # agentname_trust.csv
-        file_name = self.agent_id + '_trust.csv'
-        #fprint(file_name)
-        if os.path.exists(file_name):
-            with open(file_name, newline='\n') as file:
-                reader = csv.reader(file, delimiter=',')
-                for row in reader:
-                    self._trust[row[0]] = {"pick-up": row[1], "drop-off": row[2], "found": row[3], "average": row[4],
-                                           "rep": row[5]}
-        else:
-            f = open(file_name, 'x')
-            f.close()
-
-        #print(self._trust)
     def initialize_trust(self):
         team = self._teamMembers
         for member in team:
             self._trust[member] = {"pick-up": 0.5, "drop-off": 0.5, "found": 0.5, "average": 0.5,
                                    "rep": 0.5}
+
+    def read_trust(self):
+        file_name = self.agent_id + '_trust.csv'
+        if os.path.exists(file_name):
+            with open(file_name, newline='') as file:
+                reader = csv.reader(file, delimiter=',')
+                for row in reader:
+                    if row:
+                        self._trust[row[0]] = {"pick-up": float(row[1]), "drop-off": float(row[2]), "found": float(row[3]),
+                                               "average": float(row[4]),
+                                               "rep": float(row[5])}
+        else:
+            f = open(file_name, 'x')
+            f.close()
+
+    def write_beliefs(self):
+        file_name = self.agent_id + '_trust.csv'
+        with open(file_name, 'w') as file:
+            writer = csv.DictWriter(file, ["name", "pick-up", "drop-off", "found", "average", "rep"])
+            names = self._trust.keys()
+            for name in names:
+                row = self._trust[name]
+                row['name'] = name
+                writer.writerow(row)
 
     def foundGoalBlockUpdate(self, block, member):
         location = block['location']
@@ -432,7 +440,7 @@ class BlindAgent(BW4TBrain):
 
         # Go throug the seen objects
         # print(self._arrayWorld)
-        print("l: ", self._trust)
+        # print("l: ", self._trust)
         if close_objects is not None:
             for o in close_objects:
                 loc = o['location']
