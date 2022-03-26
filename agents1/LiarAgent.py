@@ -91,7 +91,8 @@ class LiarAgent(BW4TBrain):
                 found_obj.append((obj["visualization"], obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
-            self.grid_shape = state["grid_shape"]
+            self.grid_shape = state["grid_shape"]["grid_shape"]
+            print("GRID", PossibleActions(3))
 
         # TODO send messages for all cases
         while True:
@@ -121,12 +122,12 @@ class LiarAgent(BW4TBrain):
 
             if Phase.TRAVERSE_ROOM == self._phase:
                 if self._previous_phase != self._phase:
-                    action = self.pickAnAction(PossibleActions.SEARCHING_A_ROOM)
-                    if action == PossibleActions.SEARCHING_A_ROOM:
+                    possible_action = self.pickAnAction(PossibleActions.SEARCHING_A_ROOM)
+                    if possible_action  == PossibleActions.SEARCHING_A_ROOM:
                         # be honest
                         self._sendMessage("Searching through " + room)
                     else:
-                        self._sendMessage(self.generateAMessageFromAction(action))
+                        self._sendMessage(self.generateAMessageFromAction(possible_action ))
 
                 self._previous_phase = self._phase
                 # Every time update the state for the new location of the agent
@@ -144,7 +145,7 @@ class LiarAgent(BW4TBrain):
                     # For all possible objects save only visualization and id
                     found_obj = []
                     for obj in object_prop:
-                        found_obj.append((obj["visualization"], obj["obj_id"]))
+                        found_obj.append((obj["visualization"], obj["obj_id"], obj["location"]))
 
                     # Check if some of the found objects that can be collected are desired objects
                     for obj in found_obj:
@@ -153,32 +154,40 @@ class LiarAgent(BW4TBrain):
                                 # In case they are desired objects for the strong agent we are interested only in the
                                 # first two items from bottom to up, if they are we pick them
                                 # in case they are not we save them in the memory for later use
-                                if ((des, loc)) not in self.desired_objects[0:(2 - self.capacity)] \
-                                        and ((des, loc)) in self.desired_objects[(2 - self.capacity):(4 - self.capacity)]:
-                                    print("FOUND OBJECT FOR MEMORY")
+                                if ((des, loc)) != self.desired_objects[0] \
+                                        and ((des, loc)) in self.desired_objects:
                                     # Note a small bug was found. It does not find and pick object
                                     # when the memory is pointing to the middle room (room 5).
                                     # In all other cases it work properly
                                     self.memory = state[self._state_tracker.agent_id]['location']
+
+                                    possible_action = self.pickAnAction(PossibleActions.ENCOUNTERING_A_BLOCK)
+                                    if possible_action == PossibleActions.ENCOUNTERING_A_BLOCK:
+                                        self._sendMessage("Found goal block " + str(obj[0]) + " at location " + str(obj[2]))
+                                    else:
+                                        self._sendMessage(self.generateAMessageFromAction(possible_action))
                                 else:
-                                    # TODO send a message that an object was found
-                                    print("FOUND OBJECT PICK UP")
-                                    self._sendMessage("Found " + obj[0]["colour"] + " " + str(obj[0]["shape"]))
                                     # Grab object if there is a capacity
-                                    if self.capacity < 2:
+                                    if self.capacity < 1:
                                         self.capacity += 1
                                         self.drop_off_locations.append((obj[1], loc))
                                         self.desired_objects.remove((des, loc))
-                                        # TODO send a message that an object is grabbed
-                                        self._sendMessage("Picked " + obj[0]["colour"] + " " + str(obj[0]["shape"]))
+
+                                        possible_action  = self.pickAnAction(PossibleActions.PICKING_UP_A_BLOCK)
+                                        if possible_action  == PossibleActions.PICKING_UP_A_BLOCK:
+                                            # be honest
+                                            self._sendMessage("Picking up goal block " + str(des) + " at location " + str(loc))
+                                        else:
+                                            self._sendMessage(self.generateAMessageFromAction(possible_action))
+
                                         return GrabObject.__name__, {'object_id': obj[1]}
 
                     # In case we are filled, deliver items, next pahse
-                    if self.capacity > 1:
+                    if self.capacity > 0:
                         self._phase = Phase.DELIVER_ITEM
                     # In case there is only one object left needed and is found deliver it, next phase
-                    elif len(self.desired_objects) < 2 and self.capacity > 0:
-                        self._phase = Phase.DELIVER_ITEM
+                    # elif len(self.desired_objects) < 2 and self.capacity > 0:
+                    #     self._phase = Phase.DELIVER_ITEM
 
                     # If no desired object was found just move
                     return action, {}
@@ -207,7 +216,7 @@ class LiarAgent(BW4TBrain):
                 for obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
-                        self.object_to_be_dropped = obj_id
+                        self.object_to_be_dropped = (obj_id, loc)
                         # if it is the correct location drop the object
                         self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_id, loc))
@@ -245,7 +254,18 @@ class LiarAgent(BW4TBrain):
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+                possible_action  = self.pickAnAction(PossibleActions.DROPPING_A_BLOCK)
+                if possible_action  == PossibleActions.DROPPING_A_BLOCK:
+                    # TODO cheating a little bit here, since the visualization is not saved anywhere
+                    # for now the visualization of the dropped block is taken from the self.desired_objects list
+                    # by getting the block that has a drop off location equal to the agent's current location
+                    # update this after the memory of this agent is updated to be like the StrongAgent's memory
+                    agent_location = state[self._state_tracker.agent_id]['location']
+                    self._sendMessage("Dropped goal block " + str(filter(self.desired_objects, lambda block: block[1] == agent_location)[0][0]) + " at location " + str(agent_location))
+                else:
+                    self._sendMessage(self.generateAMessageFromAction(possible_action))
+
+                return DropObject.__name__, {'object_id': self.object_to_be_dropped[0]}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -285,7 +305,12 @@ class LiarAgent(BW4TBrain):
                 doorLoc = doorLoc[0], doorLoc[1] + 1
 
                 # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'])
+                possible_action = self.pickAnAction(PossibleActions.MOVING_TO_ROOM)
+                if possible_action == PossibleActions.MOVING_TO_ROOM:
+                    self._sendMessage("Moving to " + self._door['obj_id'])
+                else:
+                    self._sendMessage(self.generateAMessageFromAction(possible_action))
+
                 self._navigator.add_waypoints([doorLoc])
                 # go to the next phase
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -301,6 +326,14 @@ class LiarAgent(BW4TBrain):
 
             if Phase.OPEN_DOOR == self._phase:
                 self._phase = Phase.ENTER_ROOM
+
+                # send a message to notify the others that you are opening a door
+                possible_action = self.pickAnAction(PossibleActions.OPENING_DOOR)
+                if possible_action == PossibleActions.OPENING_DOOR:
+                    self._sendMessage("Opening door of " + self._door['obj_id'])
+                else:
+                    self._sendMessage(self.generateAMessageFromAction(possible_action))
+
                 # Open door
                 # If already opened, no change
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
@@ -313,21 +346,21 @@ class LiarAgent(BW4TBrain):
 
     # generate a random message from the given action
     def generateAMessageFromAction(self, action):
-        # TODO
+        print("generating a message from action")
         if action == PossibleActions.MOVING_TO_ROOM:
-            return "Moving to " + (random.choice(self.all_rooms) if len(self.all_rooms != 0) else "0?")
+            return "Moving to " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
         elif action == PossibleActions.OPENING_DOOR:
-            return "Opening door of " + (random.choice(self.all_rooms) if len(self.all_rooms != 0) else "0?")
+            return "Opening door of " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
         elif action == PossibleActions.SEARCHING_A_ROOM:
-            return "Searching through " + (random.choice(self.all_rooms) if len(self.all_rooms != 0) else "0?")
+            return "Searching through " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
         elif action == PossibleActions.ENCOUNTERING_A_BLOCK:
             # TODO size? {"size": 0.5, "shape": 1, "colour": "#0008ff" } was used as an example
             # TODO this could be an invalid location (for ex. a wall)
-            return "Found goal block " + random.choice(self.desired_objects)["visualization"] + " at location " + (random.choice(1, self.grid_shape[0]), random.choice(1, grid_shape[1]))
+            return "Found goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str((random.randint(1, self.grid_shape[0]), random.randint(1, self.grid_shape[1])))
         elif action == PossibleActions.PICKING_UP_A_BLOCK:
-            return "Picking up goal block " + random.choice(self.desired_objects)["visualization"] + " at location " + (random.choice(1, self.grid_shape[0]), random.choice(1, grid_shape[1]))
+            return "Picking up goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str((random.randint(1, self.grid_shape[0]), random.randint(1, self.grid_shape[1])))
         elif action == PossibleActions.DROPPING_A_BLOCK:
-            return "Dropped goal block " + random.choice(self.desired_objects)["visualization"] + " at location " + (random.choice(1, self.grid_shape[0]), random.choice(1, grid_shape[1]))
+            return "Dropped goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str((random.randint(1, self.grid_shape[0]), random.randint(1, self.grid_shape[1])))
         else:
             print("Unexpected action received: ", action)
             exit(-1)
