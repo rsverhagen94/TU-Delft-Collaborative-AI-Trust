@@ -27,7 +27,7 @@ class StrongAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self.desired_objects = []
-        self.agent_name = None;
+        self.agent_name = None
         # only the strong agents can pick 2 blocks
         # for other agents this is 0 or 1
         self.capacity = 0
