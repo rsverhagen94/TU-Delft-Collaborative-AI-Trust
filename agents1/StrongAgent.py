@@ -7,8 +7,8 @@ from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
-import csv
 import pandas as pd
+import numpy as np
 
 
 class Phase(enum.Enum):
@@ -37,7 +37,6 @@ class StrongAgent(BW4TBrain):
         self.initialization_flag = True
         self.memory = None
         self.all_rooms = []
-        self._init_trust_table()
 
     def initialize(self):
         super().initialize()
@@ -79,6 +78,8 @@ class StrongAgent(BW4TBrain):
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
+
+            self._init_trust_table(self._teamMembers)
 
         while True:
 
@@ -308,9 +309,13 @@ class StrongAgent(BW4TBrain):
     def _messageDroppedGoalBlock(self, block_visualization, location):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
 
-    def _init_trust_table(self):
-        data = {'StrongAgent': [0.5, 0.5, 0.5, 0.5], 'ColorblindAget': [0.5, 0.5, 0.5, 0.5], 'LazyAgent': [0.5, 0.5, 0.5, 0.5], 'LiarAgent': [0.5, 0.5, 0.5, 0.5]}
-        df = pd.DataFrame(data, index=['StrongAgent', 'ColorblindAget', 'LazyAgent', 'LiarAgent'], dtype=float)
+    def _init_trust_table(self, ids):
+        data = {}
+        for id in ids:
+            arr = np.zeros(len(ids))
+            arr.fill(0.5)
+            data.update({id: arr})
+        df = pd.DataFrame(data, index=ids, dtype=float)
         print(df)
         df.to_csv("Trust.csv")
 
