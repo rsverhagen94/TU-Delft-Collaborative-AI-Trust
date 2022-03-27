@@ -27,7 +27,7 @@ class StrongAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self.desired_objects = []
-        self.agent_name = None;
+        self.agent_name = None
         # only the strong agents can pick 2 blocks
         # for other agents this is 0 or 1
         self.capacity = 0
@@ -36,6 +36,9 @@ class StrongAgent(BW4TBrain):
         self.initialization_flag = True
         self.memory = []
         self.all_rooms = []
+        self.ticks = 0
+        self.receivedMessages = {}
+        self.totalMessagesReceived = 0
 
     def initialize(self):
         super().initialize()
@@ -47,20 +50,24 @@ class StrongAgent(BW4TBrain):
         return state
 
     def decide_on_bw4t_action(self, state: State):
-        agent_name = state[self.agent_id]['obj_id']
-        self.agent_name = agent_name
-        # Add team members
-        for member in state['World']['team_members']:
-            if member != agent_name and member not in self._teamMembers:
-                self._teamMembers.append(member)
-                # Process messages from team members
-        receivedMessages = self._processMessages(self._teamMembers)
+        self.ticks = self.ticks + 1
+        # print(self.ticks)
+        # Process messages from team members
+        self._processMessages()
         # Update trust beliefs for team members
-        self._trustBelief(self._teamMembers, receivedMessages)
+        self._trustBelief(self._teamMembers, self.receivedMessages)
 
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
+
+            agent_name = state[self.agent_id]['obj_id']
+            self.agent_name = agent_name
+            # Add team members
+            for member in state['World']['team_members']:
+                if member != agent_name and member not in self._teamMembers:
+                    self._teamMembers.append(member)
+                    self.receivedMessages[member] = []
 
             # Add all rooms in a list
             self.all_rooms = sorted(state.get_all_room_names())
@@ -129,7 +136,7 @@ class StrongAgent(BW4TBrain):
                             # in case they are not we save them in the memory for later use
                             self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
 
-                            if ((des, loc)) in self.desired_objects[0:(2 - self.capacity)]:
+                            if (des, loc) in self.desired_objects[0:(2 - self.capacity)]:
                                 if self.capacity < 2:
                                     self.capacity += 1
                                     self.drop_off_locations.append((obj[0], obj[1], loc))
@@ -144,32 +151,26 @@ class StrongAgent(BW4TBrain):
                                     return GrabObject.__name__, {'object_id': obj[1]}
                                 else:
                                     self.addToMemory(obj[0], obj[2], loc)
-                                    self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
-                                                         reverse=True)
-                                    print("MEMORY", self.memory)
 
-                            elif ((des, loc)) in self.desired_objects:
+                            elif (des, loc) in self.desired_objects:
                                 # Note a small bug was found. It does not find and pick object
                                 # when the memory is pointing to the middle room (room 5).
                                 # In all other cases it work properly
                                 # Grab object if there is a capacity
 
                                 self.addToMemory(obj[0], obj[2], loc)
-                                self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
-                                                     reverse=True)
-                                print("MEMORY", self.memory)
 
                 # In case we are filled, deliver items, next phase
                 if self.capacity > 1:
-                    print("Deliver 2")
+                    # print("Deliver 2")
                     self._phase = Phase.DELIVER_ITEM
                 # In case there is only one object left needed and is found deliver it, next phase
                 elif len(self.desired_objects) < 2 and self.capacity > 0:
-                    print("Get block")
+                    # print("Get block")
                     self._phase = Phase.DELIVER_ITEM
 
                     # If no desired object was found just move
-                if action != None:
+                if action is not None:
                     return action, {}
                 elif self._phase != Phase.DELIVER_ITEM:
                     # If the room is traversed go to te next room
@@ -194,7 +195,7 @@ class StrongAgent(BW4TBrain):
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
                 # Check if the current location of the agent is the correct drop off location
-                print("WAYPOINTS", self._navigator.get_all_waypoints())
+                # print("WAYPOINTS", self._navigator.get_all_waypoints())
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
@@ -223,7 +224,7 @@ class StrongAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                print("dropped object")
+                # print("dropped object")
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
@@ -232,7 +233,6 @@ class StrongAgent(BW4TBrain):
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
 
-                print("AAAAAAaa")
                 closedDoors = [door for door in state.values()
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                         'is_open']]
@@ -283,7 +283,7 @@ class StrongAgent(BW4TBrain):
                     doorLoc = doorLoc[0], doorLoc[1] + 1
 
                     # Send message of current action
-                    self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                    self._sendMessage('Moving to door of ' + self._door['room_name'], self.agent_name)
                     self._navigator.add_waypoints([doorLoc])
                     # go to the next phase
                     self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -331,18 +331,19 @@ class StrongAgent(BW4TBrain):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location,
                           self.agent_name)
 
-    def _processMessages(self, teamMembers):
+    def _processMessages(self):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
         '''
-        receivedMessages = {}
-        for member in teamMembers:
-            receivedMessages[member] = []
-        for mssg in self.received_messages:
-            for member in teamMembers:
+
+        for mssg in self.received_messages[self.totalMessagesReceived:]:
+            for member in self._teamMembers:
                 if mssg.from_id == member:
-                    receivedMessages[member].append(mssg.content)
-        return receivedMessages
+                    self.receivedMessages[member].append((self.ticks, mssg.content))
+                    self.totalMessagesReceived = self.totalMessagesReceived + 1
+        # for key in self.receivedMessages:
+        #     for ticks, msg in self.receivedMessages[key]:
+        #         print(ticks, ' ', msg[:20])
 
     def _trustBelief(self, member, received):
         '''
@@ -374,3 +375,7 @@ class StrongAgent(BW4TBrain):
             self.memory.append({"visualization": vis,
                                 "location": loc,
                                 "drop_off_location": drop})
+
+        self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
+                             reverse=True)
+        print("MEMORY", self.memory)
