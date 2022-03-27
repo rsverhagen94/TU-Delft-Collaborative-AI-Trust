@@ -223,7 +223,7 @@ class StrongAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                print("dropped object")
+                # print("dropped object")
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
@@ -232,7 +232,6 @@ class StrongAgent(BW4TBrain):
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
 
-                print("AAAAAAaa")
                 closedDoors = [door for door in state.values()
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                         'is_open']]
@@ -240,11 +239,11 @@ class StrongAgent(BW4TBrain):
                                               self.memory[0]["visualization"]["shape"]
                                               and self.desired_objects[0][0]["colour"] ==
                                               self.memory[0]["visualization"]["colour"]) or
-                                             (len(self.memory) > 1 and
-                                              self.desired_objects[0][1]["shape"] ==
+                                             (len(self.desired_objects) > 1 and
+                                              self.desired_objects[1][0]["shape"] ==
                                               self.memory[0]["visualization"]["shape"]
                                               and self.memory[0]["visualization"]["colour"] ==
-                                              self.desired_objects[0][1]["colour"])):
+                                              self.desired_objects[1][0]["colour"] and self.capacity < 1)):
 
                     print("MEMORY", self.memory)
                     self._navigator.reset_full()
