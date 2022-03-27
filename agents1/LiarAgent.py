@@ -261,7 +261,7 @@ class LiarAgent(BW4TBrain):
                     # by getting the block that has a drop off location equal to the agent's current location
                     # update this after the memory of this agent is updated to be like the StrongAgent's memory
                     agent_location = state[self._state_tracker.agent_id]['location']
-                    self._sendMessage("Dropped goal block " + str(filter(self.desired_objects, lambda block: block[1] == agent_location)[0][0]) + " at location " + str(agent_location))
+                    self._sendMessage("Dropped goal block " + str(list(filter(lambda block: block[1] == agent_location, self.desired_objects))[0]) + " at location " + str(agent_location))
                 else:
                     self._sendMessage(self.generateAMessageFromAction(possible_action))
 
@@ -354,13 +354,12 @@ class LiarAgent(BW4TBrain):
         elif action == PossibleActions.SEARCHING_A_ROOM:
             return "Searching through " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
         elif action == PossibleActions.ENCOUNTERING_A_BLOCK:
-            # TODO size? {"size": 0.5, "shape": 1, "colour": "#0008ff" } was used as an example
-            # TODO this could be an invalid location (for ex. a wall)
-            return "Found goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str((random.randint(1, self.grid_shape[0]), random.randint(1, self.grid_shape[1])))
+            # when lying about finding, picking up, or dropping a goal block, use your own location, otherwise the location could be invalid
+            return "Found goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str(self.state[self._state_tracker.agent_id]['location'])
         elif action == PossibleActions.PICKING_UP_A_BLOCK:
-            return "Picking up goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str((random.randint(1, self.grid_shape[0]), random.randint(1, self.grid_shape[1])))
+            return "Picking up goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str(self.state[self._state_tracker.agent_id]['location'])
         elif action == PossibleActions.DROPPING_A_BLOCK:
-            return "Dropped goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str((random.randint(1, self.grid_shape[0]), random.randint(1, self.grid_shape[1])))
+            return "Dropped goal block " + str(random.choice(self.desired_objects)[0]) + " at location " + str(self.state[self._state_tracker.agent_id]['location'])
         else:
             print("Unexpected action received: ", action)
             exit(-1)
