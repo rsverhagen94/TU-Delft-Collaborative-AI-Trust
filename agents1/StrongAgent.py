@@ -79,7 +79,7 @@ class StrongAgent(BW4TBrain):
                 found_obj.append((obj["visualization"], obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
-            self._init_trust_table(self._teamMembers)
+            self._init_trust_table(state['World']['team_members'])
 
         while True:
 
