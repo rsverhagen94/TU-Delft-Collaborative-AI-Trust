@@ -38,6 +38,7 @@ class Phase(enum.Enum):
 # Problems
 # sometimes agents get stuck on delviered goal blocks, spamming pick up goal block
 # agents only open doors without searching them if all doors are open
+# aagent always returns to goal block if it started picking it up
 # TODO check if average trust implemented somewhere
 
 class LazyAgent(BW4TBrain):
@@ -86,7 +87,8 @@ class LazyAgent(BW4TBrain):
         if self._arrayWorld is None:
             self._arrayWorld = np.empty(state['World']['grid_shape'], dtype=list)
 
-        self.update_info(receivedMessages)
+        Util.update_info_general(self._arrayWorld, receivedMessages, self._teamMembers,
+                            self.foundGoalBlockUpdate, self.foundBlockUpdate, self.pickUpBlockUpdate, self.dropBlockUpdate, self.dropGoalBlockUpdate, self.updateRep)
 
         # Get agent location & close objects
         agentLocation = state[self.agent_id]['location']
@@ -109,30 +111,30 @@ class LazyAgent(BW4TBrain):
         if Phase.MOVE_TO_OBJECT or not Phase.DROP_OBJECT or not Phase.PLAN_PATH_TO_OBJECT or not Phase.PLAN_PATH_TO_OBJECT or not Phase.GRAB:
             self.found_next_obj()
 
-        if self.__is_lazy() and self._phase != Phase.START and self._can_be_lazy and self._phase in [
-            Phase.SEARCH_ROOM,
-            Phase.MOVING_BLOCK,
-            # Phase.MOVE_TO_OBJECT,
-            Phase.SEARCH_RANDOM_ROOM,
-            # Phase.PLAN_PATH_TO_CLOSED_DOOR
-        ]:
-            self._can_be_lazy = False
-            self._phase = random.choice(
-                [Phase.SEARCH_RANDOM_ROOM, Phase.PLAN_PATH_TO_OBJECT, Phase.PLAN_PATH_TO_CLOSED_DOOR])
-            if self._phase == Phase.PLAN_PATH_TO_OBJECT and not self._current_obj:
-                self._phase = random.choice(
-                    [Phase.SEARCH_RANDOM_ROOM, Phase.PLAN_PATH_TO_CLOSED_DOOR])
-            if state[agent_name]['is_carrying']:
-                # self._goal_objects_found.remove(self._current_obj)
-                obj = self._current_obj
-                obj['location'] = state[agent_name]['location']
-                self._goal_objects_found.append(obj)
-                # self._sendMessage(self._current_obj, state[agent_name]['location'], agent_name)
-                self._sendMessage(Util.droppingBlockMessage(self._current_obj, state[agent_name]['location']),
-                                  agent_name)
-                return DropObject.__name__, {'object_id': obj['obj_id']}
-        else:
-            self._can_be_lazy = True
+        # if self.__is_lazy() and self._phase != Phase.START and self._can_be_lazy and self._phase in [
+        #     Phase.SEARCH_ROOM,
+        #     Phase.MOVING_BLOCK,
+        #     # Phase.MOVE_TO_OBJECT,
+        #     Phase.SEARCH_RANDOM_ROOM,
+        #     # Phase.PLAN_PATH_TO_CLOSED_DOOR
+        # ]:
+        #     self._can_be_lazy = False
+        #     self._phase = random.choice(
+        #         [Phase.SEARCH_RANDOM_ROOM, Phase.PLAN_PATH_TO_OBJECT, Phase.PLAN_PATH_TO_CLOSED_DOOR])
+        #     if self._phase == Phase.PLAN_PATH_TO_OBJECT and not self._current_obj:
+        #         self._phase = random.choice(
+        #             [Phase.SEARCH_RANDOM_ROOM, Phase.PLAN_PATH_TO_CLOSED_DOOR])
+        #     if state[agent_name]['is_carrying']:
+        #         # self._goal_objects_found.remove(self._current_obj)
+        #         obj = self._current_obj
+        #         obj['location'] = state[agent_name]['location']
+        #         self._goal_objects_found.append(obj)
+        #         # self._sendMessage(self._current_obj, state[agent_name]['location'], agent_name)
+        #         self._sendMessage(Util.droppingBlockMessage(self._current_obj, state[agent_name]['location']),
+        #                           agent_name)
+        #         return DropObject.__name__, {'object_id': obj['obj_id']}
+        # else:
+        #     self._can_be_lazy = True
 
         while True:
             # print(self._phase)
@@ -221,7 +223,7 @@ class LazyAgent(BW4TBrain):
                                 not c['is_goal_block'] and not c['is_drop_zone'] and not self.already_delivered(c):
 
                             self._sendMessage(Util.foundGoalBlockMessage(c), agent_name)
-
+                            print("yayayayayAyayayayyaAYAYAAYYAAAAAAAAAAAAAAAAAAAASDASYDYSADYADA")
                             if i == 0:
                                 # print('found')
                                 self._phase = Phase.PLAN_PATH_TO_OBJECT
@@ -311,140 +313,157 @@ class LazyAgent(BW4TBrain):
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
-    def update_info(self, receivedMessages):
-        # TODO implement more sophisticated trust metric hold tuples of block with probability
-        avg_reps = {}
-        for member in self._teamMembers:
-            avg_reps[member] = 0
-            for msg in receivedMessages[member]:
-                block = {
-                    'is_drop_zone': False,
-                    'is_goal_block': False,
-                    'is_collectable': True,
-                    'name': 'some_block',
-                    'obj_id': 'some_block',
-                    'location': (0, 0),
-                    'is_movable': True,
-                    'carried_by': [],
-                    'is_traversable': True,
-                    'class_inheritance': ['CollectableBlock', 'EnvObject', 'object'],
-                    'visualization': {'size': -1, 'shape': -1, 'colour': '#00000', 'depth': 80, 'opacity': 1.0}}
+    # def update_info(self, receivedMessages):
+    #     # TODO implement more sophisticated trust metric hold tuples of block with probability
+    #     avg_reps = {}
+    #     for member in self._teamMembers:
+    #         avg_reps[member] = 0
+    #         for msg in receivedMessages[member]:
+    #             block = {
+    #                 'is_drop_zone': False,
+    #                 'is_goal_block': False,
+    #                 'is_collectable': True,
+    #                 'name': 'some_block',
+    #                 'obj_id': 'some_block',
+    #                 'location': (0, 0),
+    #                 'is_movable': True,
+    #                 'carried_by': [],
+    #                 'is_traversable': True,
+    #                 'class_inheritance': ['CollectableBlock', 'EnvObject', 'object'],
+    #                 'visualization': {'size': -1, 'shape': -1, 'colour': '#00000', 'depth': 80, 'opacity': 1.0}}
+    #
+    #             if "Found goal block " in msg:
+    #                 pattern = re.compile("{(.* ?)}")
+    #                 vis = re.search(pattern, msg).group(0)
+    #
+    #                 pattern2 = re.compile("\((.* ?)\)")
+    #                 loc = re.search(pattern2, msg).group(0)
+    #                 loc = loc.replace("(", "[")
+    #                 loc = loc.replace(")", "]")
+    #                 loc = json.loads(loc)
+    #                 vis = json.loads(vis)
+    #                 block['location'] = (loc[0], loc[1])
+    #                 block['visualization'] = vis
+    #
+    #                 self.foundGoalBlockUpdate(block, member)
+    #
+    #                 if self._arrayWorld[block['location'][0], block['location'][1]] is None:
+    #                     self._arrayWorld[block['location'][0], block['location'][1]] = []
+    #                 self._arrayWorld[block['location'][0], block['location'][1]].append({
+    #                     "memberName": member,
+    #                     "block": block['visualization'],
+    #                     "action": "found",
+    #                 })
+    #
+    #
+    #             elif "Picking up goal block " in msg:
+    #
+    #                 pattern = re.compile("{(.* ?)}")
+    #                 vis = re.search(pattern, msg).group(0)
+    #
+    #                 pattern2 = re.compile("\((.* ?)\)")
+    #                 loc = re.search(pattern2, msg).group(0)
+    #                 loc = loc.replace("(", "[")
+    #                 loc = loc.replace(")", "]")
+    #                 loc = json.loads(loc)
+    #                 vis = json.loads(vis)
+    #
+    #                 block['location'] = (loc[0], loc[1])
+    #                 block['visualization'] = vis
+    #
+    #                 self.pickUpBlockUpdate(loc, member)
+    #
+    #                 if self._arrayWorld[block['location'][0], block['location'][1]] is None:
+    #                     self._arrayWorld[block['location'][0], block['location'][1]] = []
+    #                 self._arrayWorld[block['location'][0], block['location'][1]].append({
+    #                     "memberName": member,
+    #                     "block": block['visualization'],
+    #                     "action": "pickup"
+    #                 })
+    #
+    #
+    #             elif "Dropped goal block " in msg:
+    #                 pattern = re.compile("{(.* ?)}")
+    #                 vis = re.search(pattern, msg).group(0)
+    #
+    #                 pattern2 = re.compile("\((.* ?)\)")
+    #                 loc = re.search(pattern2, msg).group(0)
+    #                 loc = loc.replace("(", "[")
+    #                 loc = loc.replace(")", "]")
+    #                 loc = json.loads(loc)
+    #                 vis = json.loads(vis)
+    #                 # do stuff
+    #                 block['visualization'] = vis
+    #                 block['location'] = loc
+    #
+    #                 self.dropGoalBlockUpdate(block, member)
+    #
+    #                 if self._arrayWorld[block['location'][0], block['location'][1]] is None:
+    #                     self._arrayWorld[block['location'][0], block['location'][1]] = []
+    #                 self._arrayWorld[block['location'][0], block['location'][1]].append({
+    #                     "memberName": member,
+    #                     "block": block['visualization'],
+    #                     "action": "drop"
+    #                 })
+    #
+    #             elif "Reputation: " in msg:
+    #                 pattern = re.compile("{(.* ?)}")
+    #                 rep = re.search(pattern, msg).group(0)
+    #                 rep = json.loads(rep)
+    #                 for name in rep.keys():
+    #                     avg_reps[name] += rep[name]
+    #     # ASSUMPTION --> every agent communicates rep every tturn for everyone
+    #     self.updateRep()
 
-                if "Found goal block " in msg:
-                    pattern = re.compile("{(.* ?)}")
-                    vis = re.search(pattern, msg).group(0)
-
-                    pattern2 = re.compile("\((.* ?)\)")
-                    loc = re.search(pattern2, msg).group(0)
-                    loc = loc.replace("(", "[")
-                    loc = loc.replace(")", "]")
-                    loc = json.loads(loc)
-                    vis = json.loads(vis)
-                    block['location'] = (loc[0], loc[1])
-                    block['visualization'] = vis
-
-                    if self._trust[member]['found'] >= 0.7:
-                        there = False
-                        for b in self._goal_objects_found:
-                            if b['visualization']['shape'] == vis['shape'] and b['visualization'][
-                                'colour'] == vis['colour'] and not self.already_delivered(block):
-                                there = True
-                        if not there:
-                            self._goal_objects_found.append(block)
-
-                    if self._arrayWorld[block['location'][0], block['location'][1]] is None:
-                        self._arrayWorld[block['location'][0], block['location'][1]] = []
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
-                        "memberName": member,
-                        "block": block['visualization'],
-                        "action": "found",
-                    })
-
-
-                elif "Picking up goal block " in msg:
-
-                    pattern = re.compile("{(.* ?)}")
-                    vis = re.search(pattern, msg).group(0)
-
-                    pattern2 = re.compile("\((.* ?)\)")
-                    loc = re.search(pattern2, msg).group(0)
-                    loc = loc.replace("(", "[")
-                    loc = loc.replace(")", "]")
-                    loc = json.loads(loc)
-                    vis = json.loads(vis)
-
-                    block['location'] = (loc[0], loc[1])
-                    block['visualization'] = vis
-
-                    if (self._trust[member]['pick-up'] >= 0.7 and self._trust[member]['verified'] > 3) or self._trust[member]['rep'] > 0.7:
-                        for b in self._goal_objects_found:
-                            if b['visualization']['shape'] == vis['shape'] and b['visualization'][
-                                'colour'] == vis['colour'] and b['location'] == (loc[0], loc[1]):
-                                self._goal_objects_found.remove(b)
-                        # for b in self._goal_objects:
-                        #     if b['visualization'] == vis:
-                        #         self._goal_objects.remove(b)
-
-                    if self._arrayWorld[block['location'][0], block['location'][1]] is None:
-                        self._arrayWorld[block['location'][0], block['location'][1]] = []
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
-                        "memberName": member,
-                        "block": block['visualization'],
-                        "action": "pickup"
-                    })
-
-
-                elif "Dropped goal block " in msg:
-                    pattern = re.compile("{(.* ?)}")
-                    vis = re.search(pattern, msg).group(0)
-
-                    pattern2 = re.compile("\((.* ?)\)")
-                    loc = re.search(pattern2, msg).group(0)
-                    loc = loc.replace("(", "[")
-                    loc = loc.replace(")", "]")
-                    loc = json.loads(loc)
-                    vis = json.loads(vis)
-                    # do stuff
-                    block['visualization'] = vis
-                    block['location'] = loc
-
-                    if self._trust[member]['drop-off'] >= 0.7:
-                        obj = None
-                        for b in self._goal_objects:
-                            if b['visualization']['shape'] == vis['shape'] and b['visualization']['colour'] == vis[
-                                'colour'] and b['location'] == (loc[0], loc[1]):
-                                obj = b
-                            elif b['visualization']['shape'] == vis['shape'] and b['visualization'][
-                                'colour'] == vis['colour'] and not b['location'] == (loc[0], loc[1]):
-                                self._goal_objects_found.append(block)
-                        if obj is not None:
-                            self._goal_objects.remove(obj)
-                            self._goal_object_delivered.append(obj)
-
-                        if self._current_obj:
-                            if self._current_obj['visualization']['shape'] == vis['shape'] and \
-                                    self._current_obj['visualization']['colour'] == vis['colour']:
-                                self._phase = Phase.DROP_OBJECT
-
-                    if self._arrayWorld[block['location'][0], block['location'][1]] is None:
-                        self._arrayWorld[block['location'][0], block['location'][1]] = []
-                    self._arrayWorld[block['location'][0], block['location'][1]].append({
-                        "memberName": member,
-                        "block": block['visualization'],
-                        "action": "drop"
-                    })
-
-                elif "Reputation: " in msg:
-                    pattern = re.compile("{(.* ?)}")
-                    rep = re.search(pattern, msg).group(0)
-                    rep = json.loads(rep)
-                    for name in rep.keys():
-                        avg_reps[name] += rep[name]
-        # ASSUMPTION --> every agent communicates rep every tturn for everyone
+    def updateRep(self, avg_reps):
         for member in self._teamMembers:
             self._trust[member]['rep'] = avg_reps[member] / len(self._teamMembers)
 
+    def dropGoalBlockUpdate(self, block, member):
+        if self._trust[member]['drop-off'] >= 0.7:
+            obj = None
+            for b in self._goal_objects:
+                if b['visualization']['shape'] == block['shape'] and b['visualization']['colour'] == block[
+                    'colour'] and b['location'] == block['location']:
+                    obj = b
+                elif b['visualization']['shape'] == block['shape'] and b['visualization'][
+                    'colour'] == block['colour'] and not b['location'] == block['location']:
+                    self._goal_objects_found.append(block)
+            if obj is not None:
+                self._goal_objects.remove(obj)
+                self._goal_object_delivered.append(obj)
 
+            if self._current_obj:
+                if self._current_obj['visualization']['shape'] == block['shape'] and \
+                        self._current_obj['visualization']['colour'] == block['colour']:
+                    self._phase = Phase.DROP_OBJECT
+
+    def pickUpBlockUpdate(self, block, member):
+        if (self._trust[member]['pick-up'] >= 0.7 and self._trust[member]['verified'] > 3) or self._trust[member][
+            'rep'] > 0.7:
+            for b in self._goal_objects_found:
+                if b['visualization']['shape'] == block['shape'] and b['visualization'][
+                    'colour'] == block['colour'] and b['location'] == block['location']:
+                    self._goal_objects_found.remove(b)
+            # for b in self._goal_objects:
+            #     if b['visualization'] == vis:
+            #         self._goal_objects.remove(b)
+
+    def foundGoalBlockUpdate(self, block, member):
+        if self._trust[member]['found'] >= 0.7:
+            there = False
+            for b in self._goal_objects_found:
+                if b['visualization']['shape'] == block['shape'] and b['visualization'][
+                    'colour'] == block['colour'] and not self.already_delivered(block):
+                    there = True
+            if not there:
+                self._goal_objects_found.append(block)
+
+    def foundBlockUpdate(self, block, member):
+        return
+
+    def dropBlockUpdate(self, block, member):
+        return
 
     def _processMessages(self, teamMembers):
         '''
@@ -514,7 +533,7 @@ class LazyAgent(BW4TBrain):
                         self._trust[member]['pick-up'] = max(self._trust[member]['pick-up'] - 0.1, 0)
                         self._trust[member]['verified'] += 1
                     # If last message is 'found' or 'drop-of' add to trust
-                    if messages[-1]['action'] == "found" or messages[-1]['action'] == "found":
+                    if messages[-1]['action'] == "found" or messages[-1]['action'] == "drop-off":
                         if o['visualization'] == messages[-1]['block']:
                             self._trust[member]['found'] = min(self._trust[member]['found'] + 0.1, 1)
                             self._trust[member]['verified'] += 1

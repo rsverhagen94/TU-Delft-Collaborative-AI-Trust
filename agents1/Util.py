@@ -51,7 +51,7 @@ class Util():
     @staticmethod
     def droppingBlockMessage(data, location):
         item_info = dict(list(data['visualization'].items())[:3])
-        return "Droppped goal block " + json.dumps(item_info) \
+        return "Dropped goal block " + json.dumps(item_info) \
                + " at location (" + ', '.join([str(loc) for loc in location]) + ")"
 
     @staticmethod
