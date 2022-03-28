@@ -320,12 +320,14 @@ class Liar(BW4TBrain):
             # self._picked_up.append(block)
 
         # dropped goal block [block_vis] at location [location]
-        dropped_messages = [msg.content for msg in self.received_messages
+        dropped_messages = [msg for msg in self.received_messages
                             if Messages.DROPPED_GOAL_BLOCK1.value[0] in msg.content]
         for msg in dropped_messages:
-            first = msg.split('block ')[1]
+            text = msg.content
+            print(text)
+            first = text.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
-            location = eval(msg.split('location ')[1])
+            location = eval(text.split('location ')[1])
             jsonblock = json.loads(block)
             if self._target_missing_and_at_target_location(jsonblock, location):
                 del self._missing[self._current_target_block]
