@@ -27,6 +27,10 @@ class Phase(enum.Enum):
     PICKUP_BLOCK=11,
     DROP_BLOCK=12,
     SEARCH_ROOM=13
+    
+class State(enum.Enum):
+    MOVING_TO_ROOM=0,
+    MOVING_TO_GOAL=1,
    
 
 
@@ -42,15 +46,26 @@ class StrongAgent(BaseLineAgent):
         super().initialize()
         self._carrying = []
         self._unsearched_rooms = None
+        self._rooms_searched_by_teammembers = []
         self._required_blocks = None
         self._found_blocks = []
         self._current_room = None  
         self._door = None 
         self._phase = Phase.PLAN_NEXT_ACTION 
         self.gf_start = None
+        self._teammember_states = {}    # states of teammembers will be added in this dict with the key being the teammembers ID
+        self._current_state = {'type': None}
+        self._index = -1
         
     def _handleMessages(self, messages):
-        pass
+        for member in self._teamMembers:
+            if member not in messages:
+                continue
+            for msg in messages[member]:
+                if 'Moving to ' in msg and 'door' not in msg:
+                    room_id = msg.replace("Moving to ", "", 1)
+                    self._rooms_searched_by_teammembers.append(room_id)
+                    self._teammember_states[member]['state'] = {'type': State.MOVING_TO_ROOM, 'room': room_id}
 
     def filter_bw4t_observations(self, state):
         return state
@@ -60,6 +75,13 @@ class StrongAgent(BaseLineAgent):
         self._you = state[self.agent_id]
         # Add team members
         for member in state['World']['team_members']:
+            index = state['World']['team_members'].index(member)
+            if self._index == -1 and member == agent_name:
+                self._index = index
+            if member != agent_name and member not in self._teammember_states:
+                self._teammember_states[member] = {}
+                self._teammember_states[member]['index'] = index
+                self._teammember_states[member]['state'] = {'type': None}
             if member!=agent_name and member not in self._teamMembers:
                 self._teamMembers.append(member)   
         # add required blocks
@@ -112,6 +134,18 @@ class StrongAgent(BaseLineAgent):
         closedDoors = [door for door in state.values()
             if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door['is_open']]
         
+        # if a teammate with a higher 'dominance', aka index, is searching the same room as us move to another possible room
+        for member_states in self._teammember_states.values():
+            # print("member index: {}, my index: {}".format(member_states['index'], self._index))
+            # print(str(member_states['state']))
+            # print(str(self._current_state))
+            if (member_states['index'] < self._index 
+                    and member_states['state']['type'] == State.MOVING_TO_ROOM 
+                    and self._current_state == member_states['state']):
+                self._phase = Phase.PLAN_NEXT_ACTION
+                print("NEED TO PICK ANOTHER ROOM")
+                break
+        
         while True:
             if Phase.PLAN_NEXT_ACTION==self._phase:
                 self._navigator.reset_full()
@@ -133,6 +167,10 @@ class StrongAgent(BaseLineAgent):
                 # get a list of all rooms that are not yet traversed/searched (completely)
                 possible_rooms = [room for room in state.values()
                                     if 'class_inheritance' in room and 'Door' in room['class_inheritance'] and room['room_name'] in self._unsearched_rooms]
+                    
+                # remove rooms that are already being searched by teammembers from possible roomslass_inheritance'] and room['name'] == member['state']['room']])
+                possible_rooms = [room for room in possible_rooms if room['room_name'] not in self._rooms_searched_by_teammembers]
+                        
                 if len(possible_rooms) == 0:
                     # some rooms where not completely searched apparently, so restart searching all rooms
                     possible_rooms = [room for room in state.values()
@@ -143,6 +181,7 @@ class StrongAgent(BaseLineAgent):
                 move_to_room = min(possible_rooms, key=lambda r: self.dist(self._you, r, state=state))
                 
                 self._sendMessage('Moving to {}'.format(move_to_room['room_name']), agent_name)
+                self._current_state = {'type': State.MOVING_TO_ROOM, 'room': move_to_room['room_name']}
                         
                 self._current_room = move_to_room
                 if not move_to_room['is_open']:
@@ -187,7 +226,8 @@ class StrongAgent(BaseLineAgent):
                                 and goal['visualization']['colour'] == self._carrying[0]['visualization']['colour']]
                 self._navigator.add_waypoints([goals[0]['location']])
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
-                pass
+                
+                self._current_state = {'type': State.MOVING_TO_GOAL}
             
             if Phase.FOLLOW_PATH_TO_ROOM==self._phase:
                 self._state_tracker.update(state)
@@ -195,7 +235,6 @@ class StrongAgent(BaseLineAgent):
                 if action != None:
                     return action, {}
                 self._phase = Phase.PLAN_SEARCH_ROOM
-                pass
             
             if Phase.FOLLOW_PATH_TO_BLOCK==self._phase:
                 self._state_tracker.update(state)
