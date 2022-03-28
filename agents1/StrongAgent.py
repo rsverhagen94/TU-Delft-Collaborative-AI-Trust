@@ -30,7 +30,8 @@ class StrongAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self.desired_objects = []
-        self.agent_name = None;
+        self.all_desired_objects = []
+        self.agent_name = None
         # only the strong agents can pick 2 blocks
         # for other agents this is 0 or 1
         self.capacity = 0
@@ -43,6 +44,8 @@ class StrongAgent(BW4TBrain):
         # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
         self.grab = False
         self.drop = False
+
+        self.obj_id = None
 
     def initialize(self):
         super().initialize()
@@ -84,6 +87,9 @@ class StrongAgent(BW4TBrain):
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
+
+            self.all_desired_objects = self.desired_objects.copy()
+            sorted(self.all_desired_objects, key=lambda obj: obj[1], reverse=True)
 
         while True:
 
@@ -218,6 +224,9 @@ class StrongAgent(BW4TBrain):
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
+                if len(self.desired_objects) == 0:
+                    self._phase = Phase.GO_TO_REORDER_ITEMS
+
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
@@ -286,10 +295,9 @@ class StrongAgent(BW4TBrain):
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
             if Phase.GO_TO_REORDER_ITEMS == self._phase:
+                locations = []
                 # sort the location of the picked items so that the first dropped will be at the bottom
-                for _, _, loc in self.drop_off_locations:
-                    locations.append(loc)
-                locations.sort(reverse=True)
+                locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
                 self._navigator.reset_full()
                 # Add the navigation
                 self._navigator.add_waypoints(locations)
@@ -297,27 +305,36 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.REORDER_ITEMS
 
             if Phase.REORDER_ITEMS == self._phase:
-                if state[self._state_tracker.agent_id]['location'] in map(lambda obj: obj[2], drop_off_locations):
+                if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
+                    self.all_desired_objects.pop(0)
                     self._phase = Phase.GRAB_AND_DROP
 
-                action = self._navigator.get_move_action(self._state_tracker)
-                # Move to the next location
-                if action != None:
-                    return action, {}
-                else:
-                    print("SHOULD BE DONE!")
+                if self._phase != Phase.GRAB_AND_DROP:
+                    self._state_tracker.update(state)
+                    action = self._navigator.get_move_action(self._state_tracker)
+                    # Move to the next location
+                    if action != None:
+                        return action, {}
+                    else:
+                        print("SHOULD BE DONE!")
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:
+                    self.obj_id = self.getObjectIdFromLocation(state, state[self._state_tracker.agent_id]['location'])
                     self.grab = True
-                    return GrabObject.__name__, {'object_id': obj[1]}
+                    return GrabObject.__name__, {'object_id': self.obj_id}
                 if not self.drop:
                     self.drop = True
-                    return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+                    return DropObject.__name__, {'object_id': self.obj_id}
 
                 self.grab = False
                 self.drop = False
                 self._phase = Phase.REORDER_ITEMS
+
+    def getObjectIdFromLocation(self, state, loc):
+        for obj in state.get_closest_with_property("is_collectable"):
+            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
+                return obj["obj_id"]
 
     def _sendMessage(self, mssg, sender):
         '''
