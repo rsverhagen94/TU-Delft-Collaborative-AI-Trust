@@ -84,7 +84,7 @@ class ColorblindAgent(BW4TBrain):
 
             # Add location for every desired object
             for obj in desired_objects:
-                found_obj.append(({ "shape": obj["visualization"]["shape"], "colour": None }, obj["location"]))
+                found_obj.append(({"shape": obj["visualization"]["shape"], "colour": None }, obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
         while True:
@@ -152,8 +152,9 @@ class ColorblindAgent(BW4TBrain):
                                 # In case they are desired objects for the strong agent we are interested only in the
                                 # first two items from bottom to up, if they are we pick them
                                 # in case they are not we save them in the memory for later use
-                                if ((des, loc)) in self.desired_objects and \
-                                        not ((des, obj[2])) in map((lambda mem: (mem["visualization"], mem["location"])), self.memory):
+                                if ((des, loc)) in self.desired_objects:
+                                #        and \
+                                #        not ((des, obj[2])) in map((lambda mem: (mem["visualization"], mem["location"])), self.memory):
                                 # if ((des, loc)) != self.desired_objects[0] \
                                 #         and ((des, loc)) in self.desired_objects:
 
