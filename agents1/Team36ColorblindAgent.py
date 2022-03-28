@@ -40,8 +40,9 @@ class ColorBlindAgent(BW4TBrain):
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
         self._found = {}
-        self._missing = None
+        self._missing = None # TODO: checken of deze overal op de juiste manier gebruikt wordt
         self._rooms_being_visited = {}
+        self._target_location = (11, 22) # location next to the middle target block
 
     def initialize(self):
         super().initialize()
@@ -89,9 +90,19 @@ class ColorBlindAgent(BW4TBrain):
         self._trustBlief(self._teamMembers, receivedMessages)
         while True:
             if Phase.PLAN_NEXT_ACTION == self._phase:
-                if len(self._found.keys()) > 0 and list(self._found.keys())[0] == repr(self._missing[0]):
+                new_target = None
+                try:
+                    if len(self._found['priority']) > 0:
+                        new_target = self._found['priority'].pop()
+                except KeyError:
+                    pass
+                if new_target is None:
+                    for target in self._found.values():
+                        if len(target) > 0:
+                            new_target = target.pop()
+                if new_target is not None:
                     self._navigator.reset_full()
-                    self._navigator.add_waypoint(list(self._found.values())[0])
+                    self._navigator.add_waypoint(new_target)
                     self._phase = Phase.WALK_TO_BLOCK
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
@@ -132,6 +143,7 @@ class ColorBlindAgent(BW4TBrain):
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
             if Phase.SEARCH_ROOM == self._phase:
+                # TODO: Zorgen dat hij eerst de hele kamer doorzoekt voor hij dingen weg gaat brengen
                 self._room_tiles = [tile for tile in state.values()
                                     if 'class_inheritance' in tile
                                     and 'AreaTile' in tile['class_inheritance']
@@ -159,15 +171,14 @@ class ColorBlindAgent(BW4TBrain):
                     self._sendMessage(
                         'Found goal block ' + str(block['visualization']) + ' at location ' + str(block['location']),
                         agent_name, state)
+                    try:
+                        self._found[repr(block['visualization'])].add(block['location'])
+                    except KeyError:
+                        self._found[repr(block['visualization'])] = {block['location']}
                 tar = [match for match in matching
-                       if match['visualization'] == self._missing[0]]
+                       if match['visualization'] in self._missing]
 
-                if len(tar) > 0:
-                    self._sendMessage(
-                        'Picking up goal block ' + str(tar[0]['visualization']) + ' at location ' + str(
-                            tar[0]['location']), agent_name, state)
-                    self._phase = Phase.PLAN_BRING_TO_TARGET
-                    return GrabObject.__name__, {'object_id': tar[0]['obj_id']}
+
                 self._state_tracker.update(state)
                 # Follow path to tile
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -180,9 +191,9 @@ class ColorBlindAgent(BW4TBrain):
                 if len(state.get_self()['is_carrying']) == 0:
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
-                    targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
+                    # targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
                     self._navigator.reset_full()
-                    self._navigator.add_waypoint(targetLoc)
+                    self._navigator.add_waypoint(self._target_location) # always bring to the slot next to the middle target slot
                     self._phase = Phase.BRING_TO_TARGET
 
             if Phase.BRING_TO_TARGET == self._phase:
@@ -192,10 +203,8 @@ class ColorBlindAgent(BW4TBrain):
                     return action, {}
                 self._phase = Phase.PLAN_NEXT_ACTION
                 target = self._getTarget(state, state.get_self()['is_carrying'][0])
-                self._sendMessage('Dropped goal block ' + str(target) + ' at location ' + str(
-                    target['location']), agent_name, state)
-                if target['visualization'] in self._missing:
-                    self._missing.remove(target['visualization'])
+                self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
+                    self._target_location), agent_name, state)
                 return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
 
             if Phase.WALK_TO_BLOCK == self._phase:
@@ -207,7 +216,7 @@ class ColorBlindAgent(BW4TBrain):
                 self._state_tracker.update(state)
                 matching = self._getTargetBlocks(state)
                 tar = [match for match in matching
-                       if match['visualization'] == self._missing[0]]
+                       if match['visualization'] in self._missing]
                 if len(tar) > 0:
                     self._sendMessage(
                         'Picking up goal block ' + str(tar[0]['visualization']) + ' at location ' + str(
@@ -242,7 +251,7 @@ class ColorBlindAgent(BW4TBrain):
             jsonblock = json.loads(block)
             if jsonblock in self._missing:
                 self._missing.remove(jsonblock)
-            if repr(jsonblock) in self._found:
+            if jsonblock not in self._missing and repr(jsonblock) in self._found:
                 self._found.pop(repr(jsonblock))
 
         # Check if someone found block
@@ -253,8 +262,11 @@ class ColorBlindAgent(BW4TBrain):
             block = first.split(' at')[0].replace("\'", '\"')
             location = eval(first.split('location ')[1])
             jsonblock = json.loads(block)
-            if repr(jsonblock) not in self._found and jsonblock in self._missing:
-                self._found[repr(jsonblock)] = location
+            if jsonblock in self._missing:
+                try:
+                    self._found['priority'].add(location)
+                except KeyError:
+                    self._found['priority'] = {location}
 
         # Check if someone picked up block
         picked_up_messages = [msg.content for msg in self.received_messages
@@ -262,11 +274,13 @@ class ColorBlindAgent(BW4TBrain):
         for msg in picked_up_messages:
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
+            location = eval(first.split('location ')[1])
             jsonblock = json.loads(block)
+            jsonblock.pop('colour')
             # if jsonblock in self._missing:
             #     self._missing.remove(jsonblock)
             if repr(jsonblock) in self._found:
-                self._found.pop(repr(jsonblock))
+                self._found[repr(jsonblock)].remove(location)
 
         visiting_messages = [msg.content for msg in self.received_messages
                           if Messages.MOVING_TO_ROOM.value[0] in msg.content]
