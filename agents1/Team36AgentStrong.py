@@ -97,10 +97,11 @@ class StrongAgent(BaseLineAgent):
             target['visualization'].pop('visualize_from_center')
         found_target_ids = map(lambda a: a['obj_id'], self._found_blocks)
         for target in _targets:
-            
+            for b in self._required_blocks:
+                if b['visualization'] == target['visualization']:
+                    self._sendMessage('Found goal block {} at location {}'.format(target['visualization'], target['location']), agent_name)
             is_found = target['obj_id'] in found_target_ids
             if not is_found:
-                self._sendMessage('Found goal block {} at location {}'.format(target['visualization'], target['location']), agent_name)
                 self._found_blocks.append(target)
             else:
                 # find already existant target block and if the location has changed update the block
@@ -109,7 +110,6 @@ class StrongAgent(BaseLineAgent):
                         and self._found_blocks[i]['location'] != target['location']):
                         self._found_blocks.pop(i)
                         self._found_blocks.append(target)
-                        self._sendMessage('Found goal block {} at location {}'.format(target['visualization'], target['location']), agent_name)
                         break
         
         closedDoors = [door for door in state.values()
