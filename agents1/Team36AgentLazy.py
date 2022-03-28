@@ -110,6 +110,7 @@ class Lazy(BW4TBrain):
                         if str(block['visualization']) in self._found_blocks.keys() and self._found_blocks[str(block['visualization'])] == str(block['location']):
                             del self._found_blocks[str(block['visualization'])]
                         return GrabObject.__name__, {'object_id': block['obj_id']}
+                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
