@@ -44,7 +44,6 @@ class StrongAgent(BaseLineAgent):
 
     def initialize(self):
         super().initialize()
-        self._carrying = []
         self._unsearched_rooms = None
         self._rooms_searched_by_teammembers = []
         self._required_blocks = None
@@ -145,12 +144,13 @@ class StrongAgent(BaseLineAgent):
                 self._phase = Phase.PLAN_NEXT_ACTION
                 print("NEED TO PICK ANOTHER ROOM")
                 break
+            
         
         while True:
             if Phase.PLAN_NEXT_ACTION==self._phase:
                 self._navigator.reset_full()
                 moving_to_target = False
-                if len(self._carrying) < 2 and len(self._carrying) < len(self._required_blocks):
+                if len(state[self.agent_id]['is_carrying']) < 2 and len(state[self.agent_id]['is_carrying']) < len(self._required_blocks):
                     for block in self._found_blocks:
                         if self._required_blocks[0]['visualization'] == block['visualization']:
                             self._phase = Phase.PLAN_PATH_TO_BLOCK
@@ -221,9 +221,9 @@ class StrongAgent(BaseLineAgent):
                 # get the goal for the currently carrying block
                 goals = [goal for goal in state.values() 
                             if 'is_goal_block' in goal and goal['is_goal_block']
-                                and goal['visualization']['shape'] == self._carrying[0]['visualization']['shape']
-                                and goal['visualization']['size'] == self._carrying[0]['visualization']['size']
-                                and goal['visualization']['colour'] == self._carrying[0]['visualization']['colour']]
+                                and goal['visualization']['shape'] == state[self.agent_id]['is_carrying'][0]['visualization']['shape']
+                                and goal['visualization']['size'] == state[self.agent_id]['is_carrying'][0]['visualization']['size']
+                                and goal['visualization']['colour'] == state[self.agent_id]['is_carrying'][0]['visualization']['colour']]
                 self._navigator.add_waypoints([goals[0]['location']])
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
                 
@@ -289,7 +289,7 @@ class StrongAgent(BaseLineAgent):
             
             if Phase.PICKUP_BLOCK==self._phase:
                 print("picking up block: {}".format(self._block['visualization']))
-                self._carrying.append(self._block)
+                state[self.agent_id]['is_carrying'].append(self._block)
                 action = GrabObject.__name__, {'object_id': self._block['obj_id']}
                 self._sendMessage('Picking up goal block {} at location {}'.format(self._block['visualization'], self._block['location']), agent_name)
                 self._phase = Phase.PLAN_NEXT_ACTION
@@ -298,21 +298,21 @@ class StrongAgent(BaseLineAgent):
                 return action
             
             if Phase.DROP_BLOCK==self._phase:
-                block = self._carrying.pop(0)
+                block = state[self.agent_id]['is_carrying'].pop(0)
                 self._sendMessage('Dropped goal block {} at location {}'.format(block['visualization'], state.get_self()['location']), agent_name)
                 action = DropObject.__name__, {'object_id': block['obj_id']}
                 
                 # we dropped a block at a goal state so remove it from requirements
                 for i in reversed(range(len(self._required_blocks))):
                     if (self._required_blocks[i]['visualization']['shape'] == block['visualization']['shape'] and 
-                        self._required_blocks[i]['visualization']['shape'] == block['visualization']['shape'] and 
-                        self._required_blocks[i]['visualization']['shape'] == block['visualization']['shape']):
+                        self._required_blocks[i]['visualization']['size'] == block['visualization']['size'] and 
+                        self._required_blocks[i]['visualization']['colour'] == block['visualization']['colour']):
                         self._required_blocks.pop(i)
                         print("still need {} target blocks".format(len(self._required_blocks)))
                         break
                         
                 
-                if len(self._carrying) == 0:
+                if len(state[self.agent_id]['is_carrying']) == 0:
                     self._phase = Phase.PLAN_NEXT_ACTION
                 else:
                     self._phase = Phase.PLAN_PATH_TO_GOAL
