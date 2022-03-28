@@ -151,7 +151,7 @@ class LazyAgent(BW4TBrain):
                                 # print(self.desired_objects[0])
                                 # print((des, loc))
 
-                                if ((des, loc)) == self.desired_objects[0]:
+                                if ((des, loc)) in self.desired_objects:
                                     decision = self.getRandom50()
                                     print("PICK AN ITEM, DECISION", decision)
 
@@ -165,7 +165,7 @@ class LazyAgent(BW4TBrain):
                                             self._messagePickUpGoalBlock(str(obj[0]), str(loc))
                                             self._phase = Phase.DELIVER_ITEM
 
-                                            for num, dict1 in enumerate(self.memory):
+                                            for dict1 in self.memory:
                                                 if obj[0]["shape"] == dict1["visualization"]["shape"] \
                                                         and obj[0]["colour"] == dict1["visualization"]["colour"]:
                                                     self.memory.remove(dict1)
@@ -173,17 +173,10 @@ class LazyAgent(BW4TBrain):
                                             return GrabObject.__name__, {'object_id': obj[1]}
 
                                         self.addToMemory(obj[0], obj[2], loc)
-                                        self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
-                                                             reverse=True)
 
                                 elif ((des, loc)) in self.desired_objects:
                                     self.addToMemory(obj[0], obj[2], loc)
-                                    #
-                                    # self.memory.append({"visualization": obj[0],
-                                    #                         "location": obj[2],
-                                    #                         "drop_off_location": loc})
-                                    self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
-                                                                 reverse=True)
+
                                     print("MEMORY", self.memory)
 
 
@@ -227,11 +220,6 @@ class LazyAgent(BW4TBrain):
                                                   str(state[self._state_tracker.agent_id]['location']))
                     self.addToMemory(self.my_object[0], state[self._state_tracker.agent_id]['location'], self.my_object[1])
 
-                    # self.memory.append({"visualization": self.my_object[0],
-                    #                     "location": state[self._state_tracker.agent_id]['location'],
-                    #                     "drop_off_location": self.my_object[1]})
-
-                    self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"], reverse=True)
                     self.object_to_be_dropped = self.my_object_id
 
                 elif state[self._state_tracker.agent_id]['location'] == self.drop_off_locations[2]:
@@ -243,14 +231,9 @@ class LazyAgent(BW4TBrain):
 
                     self._phase = Phase.DROP_OBJECT
 
-                    self.desired_objects.pop(0)
+                    self.desired_objects.remove((self.my_object[0], self.my_object[1]))
 
                     self._messageDroppedGoalBlock(str(self.drop_off_locations[0]), str(self.drop_off_locations[2]))
-
-                    # for num, obj in enumerate(self.desired_objects):
-                    #     if self.drop_off_locations[0]["shape"] == obj[0]["shape"] \
-                    #             and self.drop_off_locations[0]["colour"] == obj[0]["colour"]:
-                    #         self.memory.remove(obj)
 
                     print("MEMORY", self.memory)
 
@@ -279,7 +262,6 @@ class LazyAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                # print("dropped object")
                 # Drop object
 
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
@@ -288,14 +270,10 @@ class LazyAgent(BW4TBrain):
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 decision = self.getRandom50()
-                print("USE MEMORY", self.use_memory)
-                if len(self.memory) > 0 and self.desired_objects[0][0]["shape"] == \
-                        self.memory[0]["visualization"]["shape"] \
-                        and self.desired_objects[0][0]["colour"] == self.memory[0]["visualization"]["colour"]\
-                        and self.use_memory:
+                # print("USE MEMORY", self.use_memory)
+                if len(self.memory) > 0 and self.use_memory:
 
                     print("GO TO MEMORY: ", decision)
-                    print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
 
