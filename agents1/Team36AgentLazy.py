@@ -218,6 +218,8 @@ class Lazy(BW4TBrain):
                     if str(target['visualization']) != str(self._missing[self._current_target_block]["block"]):
                         self._found_blocks[str(target['visualization'])] = state.get_self()['location']
                         self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
+                        self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
+                            state.get_self()['location']), agent_name)
                         return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
                     self._state_tracker.update(state)
                     # Follow path to door
