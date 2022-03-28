@@ -18,7 +18,9 @@ class Phase(enum.Enum):
     DELIVER_ITEM = 6,
     FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7,
     DROP_OBJECT = 8
-
+    GO_TO_REORDER_ITEMS = 9
+    REORDER_ITEMS = 10
+    GRAB_AND_DROP = 11
 
 class ColorblindAgent(BW4TBrain):
 
@@ -33,6 +35,7 @@ class ColorblindAgent(BW4TBrain):
         self.drop_off_locations = []
         self.object_to_be_dropped = None
         self.initialization_flag = True
+        self.all_desired_objects = []
 
         # memory keeps track of the objects that were located but should be retrieved later
         #   it contains the following information
@@ -46,6 +49,11 @@ class ColorblindAgent(BW4TBrain):
         self.all_rooms = []
         self.detected_objects = []
         self.processed_messages = []
+
+        self.grab = False
+        self.drop = False
+
+        self.obj_id = None
 
     def initialize(self):
         super().initialize()
@@ -86,6 +94,9 @@ class ColorblindAgent(BW4TBrain):
             for obj in desired_objects:
                 found_obj.append(({"shape": obj["visualization"]["shape"], "colour": None }, obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
+
+            self.all_desired_objects = self.desired_objects.copy()
+            sorted(self.all_desired_objects, key=lambda obj: obj[1], reverse=True)
 
         while True:
             # TODO parse all new messages
@@ -287,6 +298,45 @@ class ColorblindAgent(BW4TBrain):
                 # If already opened, no change
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
+
+            if Phase.GO_TO_REORDER_ITEMS == self._phase:
+                locations = []
+                # sort the location of the picked items so that the first dropped will be at the bottom
+                locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                self._navigator.reset_full()
+                # Add the navigation
+                self._navigator.add_waypoints(locations)
+
+                self._phase = Phase.REORDER_ITEMS
+
+            if Phase.REORDER_ITEMS == self._phase:
+                if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
+                    self.all_desired_objects.pop(0)
+                    self._phase = Phase.GRAB_AND_DROP
+
+                if self._phase != Phase.GRAB_AND_DROP:
+                    self._state_tracker.update(state)
+                    action = self._navigator.get_move_action(self._state_tracker)
+                    # Move to the next location
+                    if action != None:
+                        return action, {}
+                    else:
+                        print("SHOULD BE DONE!")
+
+            if Phase.GRAB_AND_DROP == self._phase:
+                if not self.grab:
+                    self.obj_id = self.getObjectIdFromLocation(state,
+                                                               state[self._state_tracker.agent_id]['location'])
+                    self.grab = True
+                    return GrabObject.__name__, {'object_id': self.obj_id}
+                if not self.drop:
+                    self.drop = True
+                    return DropObject.__name__, {'object_id': self.obj_id}
+
+                self.grab = False
+                self.drop = False
+                self._phase = Phase.REORDER_ITEMS
+
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -340,3 +390,9 @@ class ColorblindAgent(BW4TBrain):
                 # print(x, y)
 
         self._navigator.add_waypoints(list_coordinates)
+
+    def getObjectIdFromLocation(self, state, loc):
+        for obj in state.get_closest_with_property("is_collectable"):
+            if obj["is_collectable"] is True and \
+                    not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
+                return obj["obj_id"]

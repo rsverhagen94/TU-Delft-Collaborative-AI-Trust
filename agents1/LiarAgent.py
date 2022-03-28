@@ -18,6 +18,9 @@ class Phase(enum.Enum):
     DELIVER_ITEM = 6
     FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7
     DROP_OBJECT = 8
+    GO_TO_REORDER_ITEMS = 9
+    REORDER_ITEMS = 10
+    GRAB_AND_DROP = 11
 
 class PossibleActions(enum.Enum):
     MOVING_TO_ROOM = 1
@@ -47,6 +50,13 @@ class LiarAgent(BW4TBrain):
         self.initialization_flag = True
         self.memory = []
         self.all_rooms = []
+
+        # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
+
+        self.grab = False
+        self.drop = False
+
+        self.obj_id = None
 
     def initialize(self):
         super().initialize()
@@ -90,6 +100,8 @@ class LiarAgent(BW4TBrain):
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
             self.all_desired_objects = self.desired_objects.copy()
+            sorted(self.all_desired_objects, key=lambda obj: obj[1], reverse=True)
+
 
         while True:
 
@@ -160,7 +172,8 @@ class LiarAgent(BW4TBrain):
                                     possible_action = self.pickAnAction(PossibleActions.PICKING_UP_A_BLOCK)
                                     if possible_action == PossibleActions.PICKING_UP_A_BLOCK:
                                         # be honest
-                                        self._sendMessage("Picking up goal block " + str(des) + " at location " + str(loc))
+                                        self._sendMessage(
+                                            "Picking up goal block " + str(des) + " at location " + str(loc))
                                     else:
                                         self._sendMessage(self.generateAMessageFromAction(possible_action))
 
@@ -177,7 +190,6 @@ class LiarAgent(BW4TBrain):
                                 # when the memory is pointing to the middle room (room 5).
                                 # In all other cases it work properly
                                 # Grab object if there is a capacity
-
 
                 # In case we are filled, deliver items, next phase
                 if self.capacity == 1:
@@ -252,6 +264,9 @@ class LiarAgent(BW4TBrain):
                 # print("dropped object")
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+
+                if len(self.desired_objects) == 0:
+                    self._phase = Phase.GO_TO_REORDER_ITEMS
 
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
@@ -334,9 +349,47 @@ class LiarAgent(BW4TBrain):
                 # If already opened, no change
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
+            if Phase.GO_TO_REORDER_ITEMS == self._phase:
+                locations = []
+                # sort the location of the picked items so that the first dropped will be at the bottom
+                locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                self._navigator.reset_full()
+                # Add the navigation
+                self._navigator.add_waypoints(locations)
+
+                self._phase = Phase.REORDER_ITEMS
+
+            if Phase.REORDER_ITEMS == self._phase:
+                if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
+                    self.all_desired_objects.pop(0)
+                    self._phase = Phase.GRAB_AND_DROP
+
+                if self._phase != Phase.GRAB_AND_DROP:
+                    self._state_tracker.update(state)
+                    action = self._navigator.get_move_action(self._state_tracker)
+                    # Move to the next location
+                    if action != None:
+                        return action, {}
+                    else:
+                        print("SHOULD BE DONE!")
+
+            if Phase.GRAB_AND_DROP == self._phase:
+                if not self.grab:
+                    self.obj_id = self.getObjectIdFromLocation(state,
+                                                               state[self._state_tracker.agent_id]['location'])
+                    self.grab = True
+                    return GrabObject.__name__, {'object_id': self.obj_id}
+                if not self.drop:
+                    self.drop = True
+                    return DropObject.__name__, {'object_id': self.obj_id}
+
+                self.grab = False
+                self.drop = False
+                self._phase = Phase.REORDER_ITEMS
+
     # pick an action from the PossibleActions with 20% chance it is the actual current action
     def pickAnAction(self, currentAction):
-        if random.randint(1,10) > 8:
+        if random.randint(1, 10) > 8:
             return currentAction
         return PossibleActions(random.randint(1, len(PossibleActions)))
 
@@ -351,11 +404,14 @@ class LiarAgent(BW4TBrain):
             return "Searching through " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
         elif action == PossibleActions.ENCOUNTERING_A_BLOCK:
             # when lying about finding, picking up, or dropping a goal block, use your own location, otherwise the location could be invalid
-            return "Found goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(self.state[self._state_tracker.agent_id]['location'])
+            return "Found goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(
+                self.state[self._state_tracker.agent_id]['location'])
         elif action == PossibleActions.PICKING_UP_A_BLOCK:
-            return "Picking up goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(self.state[self._state_tracker.agent_id]['location'])
+            return "Picking up goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(
+                self.state[self._state_tracker.agent_id]['location'])
         elif action == PossibleActions.DROPPING_A_BLOCK:
-            return "Dropped goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(self.state[self._state_tracker.agent_id]['location'])
+            return "Dropped goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(
+                self.state[self._state_tracker.agent_id]['location'])
         else:
             print("Unexpected action received: ", action)
             exit(-1)
@@ -432,3 +488,9 @@ class LiarAgent(BW4TBrain):
 
         self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
                              reverse=True)
+
+    def getObjectIdFromLocation(self, state, loc):
+        for obj in state.get_closest_with_property("is_collectable"):
+            if obj["is_collectable"] is True and \
+                    not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
+                return obj["obj_id"]
