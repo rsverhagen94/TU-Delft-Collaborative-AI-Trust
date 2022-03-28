@@ -136,11 +136,12 @@ class Lazy(BW4TBrain):
                     self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
                     continue
                 self._state_tracker.update(state)
-                # Follow path to door
-                if str(self._missing[self._current_target_block]['block']) in self._found_blocks.keys():
-                    self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
-                    self._navigator.reset_full()
-                    continue
+                # This will make agent check whether the missing block has been found, and if so go there without finishing its task.
+                # side effect of this means that a lazy agent will drop and immediately pick up the block and continue the task.
+                # if str(self._missing[self._current_target_block]['block']) in self._found_blocks.keys():
+                #     self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
+                #     self._navigator.reset_full()
+                #     continue
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
