@@ -73,9 +73,6 @@ class StrongAgent(BaseLineAgent):
                 required['visualization'].pop('visualize_from_center')
                 print(required['visualization'])
             
-        # pre calculate grassfire heuristic
-        self.create_gf_field(state)
-            
         # initialize unsearched rooms list
         if self._unsearched_rooms == None:
             self._unsearched_rooms = state.get_all_room_names()
@@ -169,8 +166,7 @@ class StrongAgent(BaseLineAgent):
                 self._navigator.add_waypoints([doorLoc])
                 self._phase=Phase.FOLLOW_PATH_TO_CLOSED_DOOR
             
-            if Phase.PLAN_PATH_TO_BLOCK==self._phase:
-                # TODO: select closest occurrence of target block or even better shortest total path (to block and to target from block)
+            if Phase.PLAN_PATH_TO_BLOCK==self._phase:                
                 possible_target = min([target for target in self._found_blocks 
                                         if self._required_blocks[0]['visualization'] == target['visualization']], key=lambda t: self.dist(self._you, t, state=state))
                 if possible_target == None:
@@ -181,7 +177,7 @@ class StrongAgent(BaseLineAgent):
                     self._block = possible_target
                     self._phase = Phase.FOLLOW_PATH_TO_BLOCK
             
-            if Phase.PLAN_PATH_TO_GOAL==self._phase:
+            if Phase.PLAN_PATH_TO_GOAL==self._phase:                
                 self._navigator.reset_full()
                 # get the goal for the currently carrying block
                 goals = [goal for goal in state.values() 
@@ -284,6 +280,7 @@ class StrongAgent(BaseLineAgent):
                 return action
 
     def create_gf_field(self, state):
+        # TODO take moved pieces into account
         if self.gf_start != None and state.get_self()['location'][0] == self.gf_start[0] and state.get_self()['location'][1] == self.gf_start[1]:
             return
         
@@ -342,5 +339,8 @@ class StrongAgent(BaseLineAgent):
         if state == None:
             return sqrt((start['location'][0] - target['location'][0])**2 + (start['location'][1] - target['location'][1])**2)
         else:
+            # calculate grassfire heuristic, will only calculate the field if necessary, aka pieces/you moved
+            self.create_gf_field(state)
+                
             return self.gf_field[target['location'][0]][target['location'][1]]
     
