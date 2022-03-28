@@ -10,14 +10,17 @@ from matrx.messages.message import Message
 
 
 class Phase(enum.Enum):
-    PLAN_PATH_TO_CLOSED_DOOR = 1,
-    FOLLOW_PATH_TO_CLOSED_DOOR = 2,
-    OPEN_DOOR = 3,
-    ENTER_ROOM = 4,
-    TRAVERSE_ROOM = 5,
-    DELIVER_ITEM = 6,
-    FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7,
+    PLAN_PATH_TO_CLOSED_DOOR = 1
+    FOLLOW_PATH_TO_CLOSED_DOOR = 2
+    OPEN_DOOR = 3
+    ENTER_ROOM = 4
+    TRAVERSE_ROOM = 5
+    DELIVER_ITEM = 6
+    FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7
     DROP_OBJECT = 8
+    GO_TO_REORDER_ITEMS = 9
+    REORDER_ITEMS = 10
+    GRAB_AND_DROP = 11
 
 
 class StrongAgent(BW4TBrain):
@@ -36,6 +39,10 @@ class StrongAgent(BW4TBrain):
         self.initialization_flag = True
         self.memory = []
         self.all_rooms = []
+
+        # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
+        self.grab = False
+        self.drop = False
 
     def initialize(self):
         super().initialize()
@@ -302,6 +309,40 @@ class StrongAgent(BW4TBrain):
                 # If already opened, no change
                 self._messageOpenDoor(self._door['room_name'])
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
+
+            if Phase.GO_TO_REORDER_ITEMS == self._phase:
+                # sort the location of the picked items so that the first dropped will be at the bottom
+                for _, _, loc in self.drop_off_locations:
+                    locations.append(loc)
+                locations.sort(reverse=True)
+                self._navigator.reset_full()
+                # Add the navigation
+                self._navigator.add_waypoints(locations)
+
+                self._phase = Phase.REORDER_ITEMS
+
+            if Phase.REORDER_ITEMS == self._phase:
+                if state[self._state_tracker.agent_id]['location'] in map(lambda obj: obj[2], drop_off_locations):
+                    self._phase = Phase.GRAB_AND_DROP
+
+                action = self._navigator.get_move_action(self._state_tracker)
+                # Move to the next location
+                if action != None:
+                    return action, {}
+                else:
+                    print("SHOULD BE DONE!")
+
+            if Phase.GRAB_AND_DROP == self._phase:
+                if not self.grab:
+                    self.grab = True
+                    return GrabObject.__name__, {'object_id': obj[1]}
+                if not self.drop:
+                    self.drop = True
+                    return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+
+                self.grab = False
+                self.drop = False
+                self._phase = Phase.REORDER_ITEMS
 
     def _sendMessage(self, mssg, sender):
         '''
