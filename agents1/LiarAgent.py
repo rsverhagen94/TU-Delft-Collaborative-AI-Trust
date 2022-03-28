@@ -152,19 +152,19 @@ class LiarAgent(BW4TBrain):
                             else:
                                 self._sendMessage(self.generateAMessageFromAction(possible_action))
 
-                            if ((des, loc)) == self.desired_objects[0]:
+                            if ((des, loc)) in self.desired_objects:
                                 if self.capacity == 0:
                                     self.capacity += 1
                                     self.drop_off_locations.append((obj[0], obj[1], loc))
                                     self.desired_objects.remove((des, loc))
-                                    possible_action  = self.pickAnAction(PossibleActions.PICKING_UP_A_BLOCK)
-                                    if possible_action  == PossibleActions.PICKING_UP_A_BLOCK:
+                                    possible_action = self.pickAnAction(PossibleActions.PICKING_UP_A_BLOCK)
+                                    if possible_action == PossibleActions.PICKING_UP_A_BLOCK:
                                         # be honest
                                         self._sendMessage("Picking up goal block " + str(des) + " at location " + str(loc))
                                     else:
                                         self._sendMessage(self.generateAMessageFromAction(possible_action))
 
-                                    for num, dict1 in enumerate(self.memory):
+                                    for dict1 in self.memory:
                                         if obj[0]["shape"] == dict1["visualization"]["shape"] \
                                                 and obj[0]["colour"] == dict1["visualization"]["colour"]:
                                             self.memory.remove(dict1)
@@ -172,31 +172,20 @@ class LiarAgent(BW4TBrain):
                                     return GrabObject.__name__, {'object_id': obj[1]}
                                 else:
                                     self.addToMemory(obj[0], obj[2], loc)
-                                    self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
-                                                         reverse=True)
-                                    print("MEMORY", self.memory)
 
-                            elif ((des, loc)) in self.desired_objects:
                                 # Note a small bug was found. It does not find and pick object
                                 # when the memory is pointing to the middle room (room 5).
                                 # In all other cases it work properly
                                 # Grab object if there is a capacity
 
-                                self.addToMemory(obj[0], obj[2], loc)
-                                self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
-                                                     reverse=True)
-                                print("MEMORY", self.memory)
 
                 # In case we are filled, deliver items, next phase
                 if self.capacity == 1:
-                    print("Deliver 1")
+                    # print("Deliver 1")
                     self._phase = Phase.DELIVER_ITEM
                 # In case there is only one object left needed and is found deliver it, next phase
-                # elif len(self.desired_objects) < 2 and self.capacity > 0:
-                #     print("Get block")
-                #     self._phase = Phase.DELIVER_ITEM
+                # If no desired object was found just move
 
-                    # If no desired object was found just move
                 if action != None:
                     return action, {}
                 elif self._phase != Phase.DELIVER_ITEM:
@@ -212,7 +201,7 @@ class LiarAgent(BW4TBrain):
                 locations.sort(reverse=True)
                 self._navigator.reset_full()
                 # Add the navigation
-                print(locations)
+                # print(locations)
                 self._navigator.add_waypoints(locations)
 
                 # Next phase
@@ -222,7 +211,6 @@ class LiarAgent(BW4TBrain):
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
                 # Check if the current location of the agent is the correct drop off location
-                print("WAYPOINTS", self._navigator.get_all_waypoints())
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
@@ -230,8 +218,8 @@ class LiarAgent(BW4TBrain):
                         # if it is the correct location drop the object
                         self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_viz, obj_id, loc))
-                        possible_action  = self.pickAnAction(PossibleActions.DROPPING_A_BLOCK)
-                        if possible_action  == PossibleActions.DROPPING_A_BLOCK:
+                        possible_action = self.pickAnAction(PossibleActions.DROPPING_A_BLOCK)
+                        if possible_action == PossibleActions.DROPPING_A_BLOCK:
                             # TODO cheating a little bit here, since the visualization is not saved anywhere
                             # for now the visualization of the dropped block is taken from the self.desired_objects list
                             # by getting the block that has a drop off location equal to the agent's current location
@@ -261,7 +249,7 @@ class LiarAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                print("dropped object")
+                # print("dropped object")
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
@@ -270,16 +258,12 @@ class LiarAgent(BW4TBrain):
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
 
-                print("AAAAAAaa")
                 closedDoors = [door for door in state.values()
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                         'is_open']]
-                if len(self.memory) > 0 and (self.desired_objects[0][0]["shape"] ==
-                                              self.memory[0]["visualization"]["shape"]
-                                              and self.desired_objects[0][0]["colour"] ==
-                                              self.memory[0]["visualization"]["colour"]):
+                if len(self.memory) > 0:
 
-                    print("MEMORY", self.memory)
+                    # print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
 
@@ -445,3 +429,6 @@ class LiarAgent(BW4TBrain):
             self.memory.append({"visualization": vis,
                                 "location": loc,
                                 "drop_off_location": drop})
+
+        self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
+                             reverse=True)
