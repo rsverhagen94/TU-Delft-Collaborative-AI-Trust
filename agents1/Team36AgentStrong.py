@@ -27,6 +27,10 @@ class Phase(enum.Enum):
     PICKUP_BLOCK=11,
     DROP_BLOCK=12,
     SEARCH_ROOM=13
+    
+class State(enum.Enum):
+    MOVING_TO_ROOM=0,
+    MOVING_TO_GOAL=1,
    
 
 
@@ -40,17 +44,27 @@ class StrongAgent(BaseLineAgent):
 
     def initialize(self):
         super().initialize()
-        self._carrying = []
         self._unsearched_rooms = None
+        self._rooms_searched_by_teammembers = []
         self._required_blocks = None
         self._found_blocks = []
         self._current_room = None  
         self._door = None 
         self._phase = Phase.PLAN_NEXT_ACTION 
         self.gf_start = None
+        self._teammember_states = {}    # states of teammembers will be added in this dict with the key being the teammembers ID
+        self._current_state = {'type': None}
+        self._index = -1
         
     def _handleMessages(self, messages):
-        pass
+        for member in self._teamMembers:
+            if member not in messages:
+                continue
+            for msg in messages[member]:
+                if 'Moving to ' in msg and 'door' not in msg:
+                    room_id = msg.replace("Moving to ", "", 1)
+                    self._rooms_searched_by_teammembers.append(room_id)
+                    self._teammember_states[member]['state'] = {'type': State.MOVING_TO_ROOM, 'room': room_id}
 
     def filter_bw4t_observations(self, state):
         return state
@@ -60,6 +74,13 @@ class StrongAgent(BaseLineAgent):
         self._you = state[self.agent_id]
         # Add team members
         for member in state['World']['team_members']:
+            index = state['World']['team_members'].index(member)
+            if self._index == -1 and member == agent_name:
+                self._index = index
+            if member != agent_name and member not in self._teammember_states:
+                self._teammember_states[member] = {}
+                self._teammember_states[member]['index'] = index
+                self._teammember_states[member]['state'] = {'type': None}
             if member!=agent_name and member not in self._teamMembers:
                 self._teamMembers.append(member)   
         # add required blocks
@@ -72,9 +93,6 @@ class StrongAgent(BaseLineAgent):
                 required['visualization'].pop('opacity')
                 required['visualization'].pop('visualize_from_center')
                 print(required['visualization'])
-            
-        # pre calculate grassfire heuristic
-        self.create_gf_field(state)
             
         # initialize unsearched rooms list
         if self._unsearched_rooms == None:
@@ -97,10 +115,11 @@ class StrongAgent(BaseLineAgent):
             target['visualization'].pop('visualize_from_center')
         found_target_ids = map(lambda a: a['obj_id'], self._found_blocks)
         for target in _targets:
-            
+            for b in self._required_blocks:
+                if b['visualization'] == target['visualization']:
+                    self._sendMessage('Found goal block {} at location {}'.format(target['visualization'], target['location']), agent_name)
             is_found = target['obj_id'] in found_target_ids
             if not is_found:
-                self._sendMessage('Found goal block {} at location {}'.format(target['visualization'], target['location']), agent_name)
                 self._found_blocks.append(target)
             else:
                 # find already existant target block and if the location has changed update the block
@@ -109,17 +128,29 @@ class StrongAgent(BaseLineAgent):
                         and self._found_blocks[i]['location'] != target['location']):
                         self._found_blocks.pop(i)
                         self._found_blocks.append(target)
-                        self._sendMessage('Found goal block {} at location {}'.format(target['visualization'], target['location']), agent_name)
                         break
         
         closedDoors = [door for door in state.values()
             if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door['is_open']]
         
+        # if a teammate with a higher 'dominance', aka index, is searching the same room as us move to another possible room
+        for member_states in self._teammember_states.values():
+            # print("member index: {}, my index: {}".format(member_states['index'], self._index))
+            # print(str(member_states['state']))
+            # print(str(self._current_state))
+            if (member_states['index'] < self._index 
+                    and member_states['state']['type'] == State.MOVING_TO_ROOM 
+                    and self._current_state == member_states['state']):
+                self._phase = Phase.PLAN_NEXT_ACTION
+                print("NEED TO PICK ANOTHER ROOM")
+                break
+            
+        
         while True:
             if Phase.PLAN_NEXT_ACTION==self._phase:
                 self._navigator.reset_full()
                 moving_to_target = False
-                if len(self._carrying) < 2 and len(self._carrying) < len(self._required_blocks):
+                if len(state[self.agent_id]['is_carrying']) < 2 and len(state[self.agent_id]['is_carrying']) < len(self._required_blocks):
                     for block in self._found_blocks:
                         if self._required_blocks[0]['visualization'] == block['visualization']:
                             self._phase = Phase.PLAN_PATH_TO_BLOCK
@@ -136,6 +167,10 @@ class StrongAgent(BaseLineAgent):
                 # get a list of all rooms that are not yet traversed/searched (completely)
                 possible_rooms = [room for room in state.values()
                                     if 'class_inheritance' in room and 'Door' in room['class_inheritance'] and room['room_name'] in self._unsearched_rooms]
+                    
+                # remove rooms that are already being searched by teammembers from possible roomslass_inheritance'] and room['name'] == member['state']['room']])
+                possible_rooms = [room for room in possible_rooms if room['room_name'] not in self._rooms_searched_by_teammembers]
+                        
                 if len(possible_rooms) == 0:
                     # some rooms where not completely searched apparently, so restart searching all rooms
                     possible_rooms = [room for room in state.values()
@@ -146,6 +181,7 @@ class StrongAgent(BaseLineAgent):
                 move_to_room = min(possible_rooms, key=lambda r: self.dist(self._you, r, state=state))
                 
                 self._sendMessage('Moving to {}'.format(move_to_room['room_name']), agent_name)
+                self._current_state = {'type': State.MOVING_TO_ROOM, 'room': move_to_room['room_name']}
                         
                 self._current_room = move_to_room
                 if not move_to_room['is_open']:
@@ -169,8 +205,7 @@ class StrongAgent(BaseLineAgent):
                 self._navigator.add_waypoints([doorLoc])
                 self._phase=Phase.FOLLOW_PATH_TO_CLOSED_DOOR
             
-            if Phase.PLAN_PATH_TO_BLOCK==self._phase:
-                # TODO: select closest occurrence of target block or even better shortest total path (to block and to target from block)
+            if Phase.PLAN_PATH_TO_BLOCK==self._phase:                
                 possible_target = min([target for target in self._found_blocks 
                                         if self._required_blocks[0]['visualization'] == target['visualization']], key=lambda t: self.dist(self._you, t, state=state))
                 if possible_target == None:
@@ -181,17 +216,18 @@ class StrongAgent(BaseLineAgent):
                     self._block = possible_target
                     self._phase = Phase.FOLLOW_PATH_TO_BLOCK
             
-            if Phase.PLAN_PATH_TO_GOAL==self._phase:
+            if Phase.PLAN_PATH_TO_GOAL==self._phase:                
                 self._navigator.reset_full()
                 # get the goal for the currently carrying block
                 goals = [goal for goal in state.values() 
                             if 'is_goal_block' in goal and goal['is_goal_block']
-                                and goal['visualization']['shape'] == self._carrying[0]['visualization']['shape']
-                                and goal['visualization']['size'] == self._carrying[0]['visualization']['size']
-                                and goal['visualization']['colour'] == self._carrying[0]['visualization']['colour']]
+                                and goal['visualization']['shape'] == state[self.agent_id]['is_carrying'][0]['visualization']['shape']
+                                and goal['visualization']['size'] == state[self.agent_id]['is_carrying'][0]['visualization']['size']
+                                and goal['visualization']['colour'] == state[self.agent_id]['is_carrying'][0]['visualization']['colour']]
                 self._navigator.add_waypoints([goals[0]['location']])
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
-                pass
+                
+                self._current_state = {'type': State.MOVING_TO_GOAL}
             
             if Phase.FOLLOW_PATH_TO_ROOM==self._phase:
                 self._state_tracker.update(state)
@@ -199,7 +235,6 @@ class StrongAgent(BaseLineAgent):
                 if action != None:
                     return action, {}
                 self._phase = Phase.PLAN_SEARCH_ROOM
-                pass
             
             if Phase.FOLLOW_PATH_TO_BLOCK==self._phase:
                 self._state_tracker.update(state)
@@ -254,7 +289,7 @@ class StrongAgent(BaseLineAgent):
             
             if Phase.PICKUP_BLOCK==self._phase:
                 print("picking up block: {}".format(self._block['visualization']))
-                self._carrying.append(self._block)
+                state[self.agent_id]['is_carrying'].append(self._block)
                 action = GrabObject.__name__, {'object_id': self._block['obj_id']}
                 self._sendMessage('Picking up goal block {} at location {}'.format(self._block['visualization'], self._block['location']), agent_name)
                 self._phase = Phase.PLAN_NEXT_ACTION
@@ -263,27 +298,28 @@ class StrongAgent(BaseLineAgent):
                 return action
             
             if Phase.DROP_BLOCK==self._phase:
-                block = self._carrying.pop(0)
+                block = state[self.agent_id]['is_carrying'].pop(0)
                 self._sendMessage('Dropped goal block {} at location {}'.format(block['visualization'], state.get_self()['location']), agent_name)
                 action = DropObject.__name__, {'object_id': block['obj_id']}
                 
                 # we dropped a block at a goal state so remove it from requirements
                 for i in reversed(range(len(self._required_blocks))):
                     if (self._required_blocks[i]['visualization']['shape'] == block['visualization']['shape'] and 
-                        self._required_blocks[i]['visualization']['shape'] == block['visualization']['shape'] and 
-                        self._required_blocks[i]['visualization']['shape'] == block['visualization']['shape']):
+                        self._required_blocks[i]['visualization']['size'] == block['visualization']['size'] and 
+                        self._required_blocks[i]['visualization']['colour'] == block['visualization']['colour']):
                         self._required_blocks.pop(i)
                         print("still need {} target blocks".format(len(self._required_blocks)))
                         break
                         
                 
-                if len(self._carrying) == 0:
+                if len(state[self.agent_id]['is_carrying']) == 0:
                     self._phase = Phase.PLAN_NEXT_ACTION
                 else:
                     self._phase = Phase.PLAN_PATH_TO_GOAL
                 return action
 
     def create_gf_field(self, state):
+        # TODO take moved pieces into account
         if self.gf_start != None and state.get_self()['location'][0] == self.gf_start[0] and state.get_self()['location'][1] == self.gf_start[1]:
             return
         
@@ -342,5 +378,8 @@ class StrongAgent(BaseLineAgent):
         if state == None:
             return sqrt((start['location'][0] - target['location'][0])**2 + (start['location'][1] - target['location'][1])**2)
         else:
+            # calculate grassfire heuristic, will only calculate the field if necessary, aka pieces/you moved
+            self.create_gf_field(state)
+                
             return self.gf_field[target['location'][0]][target['location'][1]]
     
