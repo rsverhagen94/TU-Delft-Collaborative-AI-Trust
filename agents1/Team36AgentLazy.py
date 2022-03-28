@@ -19,8 +19,9 @@ class Phase(enum.Enum):
     PLAN_MOVE_IN_ROOM = 5,
     MOVE_IN_ROOM = 6,
     BRING_TO_TARGET = 7,
-    PLAN_BRING_TO_TARGET = 8
-
+    PLAN_BRING_TO_TARGET = 8,
+    PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND = 9,
+    MOVE_TO_TARGET_BLOCK = 10
 
 class Messages(enum.Enum):
     MOVING_TO_ROOM = "Moving to ",
@@ -82,6 +83,37 @@ class Lazy(BW4TBrain):
         self._trustBlief(self._teamMembers, receivedMessages)
 
         while True:
+            print(self._found_blocks)
+            print(self._missing)
+            if Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND == self._phase:
+                if str(self._missing[self._current_target_block]['block']) in self._found_blocks.keys():
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoint(self._found_blocks[str(self._missing[self._current_target_block]['block'])])
+                    self._set_lazy(self._get_distance(self._navigator.get_all_waypoints()[0][1], state.get_self()['location']))
+                    self._phase = Phase.MOVE_TO_TARGET_BLOCK
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+            if Phase.MOVE_TO_TARGET_BLOCK == self._phase:
+                if self._check_if_lazy():
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    continue
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action != None:
+                    return action, {}
+                matching = self._getTargetBlocks(state)
+                for block in matching:
+                    if block['visualization'] == self._missing[self._current_target_block]['block']:
+                        self._sendMessage(
+                            'Picking up goal block ' + str(block['visualization']) + ' at location ' + str(
+                                block['location']), agent_name, state)
+                        self._phase = Phase.PLAN_BRING_TO_TARGET
+                        if str(block['visualization']) in self._found_blocks.keys() and self._found_blocks[str(block['visualization'])] == str(block['location']):
+                            del self._found_blocks[str(block['visualization'])]
+                        return GrabObject.__name__, {'object_id': block['obj_id']}
+
+
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
                 closedDoors = [door for door in state.values()
@@ -98,12 +130,12 @@ class Lazy(BW4TBrain):
                 # Send message of current action
                 self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name, state)
                 self._navigator.add_waypoints([doorLoc])
-                self._set_lazy(len(self._navigator.get_all_waypoints()))
+                self._set_lazy(self._get_distance(self._navigator.get_all_waypoints()[0][1], state.get_self()['location']))
                 self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 if self._check_if_lazy():
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
                     continue
                 self._state_tracker.update(state)
                 # Follow path to door
@@ -138,11 +170,11 @@ class Lazy(BW4TBrain):
                     self._navigator.add_waypoints([tileLoc])
                     self._phase = Phase.MOVE_IN_ROOM
                 else:
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
 
             if Phase.MOVE_IN_ROOM == self._phase:
                 if self._check_if_lazy():
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
                     continue
                 self._state_tracker.update(state)
                 matching = self._getTargetBlocks(state)
@@ -150,12 +182,16 @@ class Lazy(BW4TBrain):
                     self._sendMessage(
                         'Found goal block ' + str(block['visualization']) + ' at location ' + str(block['location']),
                         agent_name, state)
-                if len(matching) > 0:
-                    self._sendMessage(
-                        'Picking up goal block ' + str(matching[0]['visualization']) + ' at location ' + str(
-                            matching[0]['location']), agent_name, state)
-                    self._phase = Phase.PLAN_BRING_TO_TARGET
-                    return GrabObject.__name__, {'object_id': matching[0]['obj_id']}
+                    self._found_blocks[str(block['visualization'])] = block['location']
+                for block in matching:
+                    if block['visualization'] == self._missing[self._current_target_block]['block']:
+                        self._sendMessage(
+                            'Picking up goal block ' + str(block['visualization']) + ' at location ' + str(
+                                block['location']), agent_name, state)
+                        self._phase = Phase.PLAN_BRING_TO_TARGET
+                        if str(block['visualization']) in self._found_blocks.keys() and self._found_blocks[str(block['visualization'])] == str(block['location']):
+                            del self._found_blocks[str(block['visualization'])]
+                        return GrabObject.__name__, {'object_id': block['obj_id']}
                 self._state_tracker.update(state)
                 # Follow path to tile
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -170,7 +206,7 @@ class Lazy(BW4TBrain):
                     targetLoc = self._getTarget(state, state.get_self()['is_carrying'][0])['location']
                     self._navigator.reset_full()
                     self._navigator.add_waypoint(targetLoc)
-                    self._set_lazy(len(self._navigator.get_all_waypoints()))
+                    self._set_lazy(self._get_distance(self._navigator.get_all_waypoints()[0][1], state.get_self()['location']))
                     self._phase = Phase.BRING_TO_TARGET
 
             if Phase.BRING_TO_TARGET == self._phase:
@@ -184,11 +220,11 @@ class Lazy(BW4TBrain):
                 target = self._getTarget(state, state.get_self()['is_carrying'][0])
                 self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
                     state.get_self()['location']), agent_name, state)
-
                 if self._target_missing_and_at_target_location(target['visualization'], state.get_self()['location']):
-                    del self._missing[self._get_missing_dict_key(target['visualization'])]
+                    del self._missing[self._current_target_block]
                     self._current_target_block = str(int(self._current_target_block) + 1)
-
+                else:
+                    self._found_blocks[str(target['visualization'])] = state.get_self()['location']
                 return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
 
     def _check_if_lazy(self):
@@ -205,15 +241,12 @@ class Lazy(BW4TBrain):
         self._be_lazy_after_moves = 0
         if random.random() > 0.5:
             self._be_lazy = True
-            self._be_lazy_after_moves = random.randint(1, amountOfMoves)
+            self._be_lazy_after_moves = random.randint(0, amountOfMoves)
 
     def _target_missing_and_at_target_location(self, target, target_location):
-        for key in self._missing:
-            if self._missing.get(key)['block'] == target:
-                if self._missing.get(key)['location'] == target_location:
-                    return True
-                else:
-                    return False
+        if self._missing.get(self._current_target_block)['block'] == target:
+            if str(self._missing.get(self._current_target_block)['location']) == str(target_location):
+                return True
         return False
 
     def _get_missing_dict_key(self, target):
@@ -221,7 +254,7 @@ class Lazy(BW4TBrain):
             if self._missing.get(key)['block'] == target:
                 return key
 
-    def _sendMessage(self, mssg, sender, state):
+    def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
         '''
@@ -229,7 +262,7 @@ class Lazy(BW4TBrain):
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
-    def _processMessages(self, teamMembers, state):
+    def _processMessages(self, teamMembers):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
         '''
@@ -264,7 +297,7 @@ class Lazy(BW4TBrain):
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
             location = eval(first.split('location ')[1])
-            self._found_blocks[block] = location
+            self._found_blocks[str(block)] = location
 
         # picking up goal block [block_vis] at location [location]
         picked_up_messages = [msg.content for msg in self.received_messages
@@ -272,6 +305,8 @@ class Lazy(BW4TBrain):
         for msg in picked_up_messages:
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
+            if str(block) in self._found_blocks.keys():
+                del self._found_blocks[str(block)]
             self._picked_up.append(block)
 
         # dropped goal block [block_vis] at location [location]
@@ -280,12 +315,13 @@ class Lazy(BW4TBrain):
         for msg in dropped_messages:
             first = msg.split('block ')[1]
             block = first.split(' at')[0].replace("\'", '\"')
-            location = msg.split('location ')[1]
-            if self._target_missing_and_at_target_location(block, location):
-                del self._missing[self._get_missing_dict_key(block)]
+            location = eval(msg.split('location ')[1])
+            jsonblock = json.loads(block)
+            if self._target_missing_and_at_target_location(jsonblock, location):
+                del self._missing[self._current_target_block]
                 self._current_target_block = str(int(self._current_target_block) + 1)
             else:
-                self._dropped_blocks[block] = location
+                self._found_blocks[str(block)] = location
 
         receivedMessages = {}
         for member in teamMembers:
@@ -294,6 +330,8 @@ class Lazy(BW4TBrain):
             for member in teamMembers:
                 if mssg.from_id == member:
                     receivedMessages[member].append(mssg.content)
+
+        self.received_messages.clear()
         return receivedMessages
 
     def _trustBlief(self, member, received):
@@ -322,9 +360,12 @@ class Lazy(BW4TBrain):
             visualisations[i]['visualization'].pop('opacity')
             visualisations[i]['visualization'].pop('depth')
             visualisations[i]['visualization'].pop('visualize_from_center')
-        matching = [x for x in visualisations
-                    if x['visualization'] == self._missing[self._current_target_block]['block']
-                    ]
+        matching = []
+        for x in visualisations:
+            for block in self._missing.values():
+                if x['visualization'] == block['block']:
+                    matching.append(x)
+
         return matching
 
     def _getTarget(self, state, block):
@@ -364,4 +405,8 @@ class Lazy(BW4TBrain):
         for tile in target_blocks:
             if tile['visualization'] == block:
                 return tile
+
+    def _get_distance(self, start, end):
+        return int((abs(int(start[0])-int(end[0])) + abs(int(start[1])-int(end[1]))) / 2)
+
 
