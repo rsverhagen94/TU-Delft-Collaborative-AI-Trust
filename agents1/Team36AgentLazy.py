@@ -136,6 +136,10 @@ class Lazy(BW4TBrain):
                     continue
                 self._state_tracker.update(state)
                 # Follow path to door
+                if str(self._missing[self._current_target_block]['block']) in self._found_blocks.keys():
+                    self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
+                    self._navigator.reset_full()
+                    continue
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
@@ -207,14 +211,18 @@ class Lazy(BW4TBrain):
                     self._phase = Phase.BRING_TO_TARGET
 
             if Phase.BRING_TO_TARGET == self._phase:
+                target = self._getTarget(state, state.get_self()['is_carrying'][0])
                 if not self._check_if_lazy():
+                    if str(target['visualization']) != str(self._missing[self._current_target_block]["block"]):
+                        self._found_blocks[str(target['visualization'])] = state.get_self()['location']
+                        self._phase = Phase.PLAN_PATH_TO_TARGET_BLOCK_IF_FOUND
+                        return DropObject.__name__, {'object_id': state.get_self()['is_carrying'][0]['obj_id']}
                     self._state_tracker.update(state)
                     # Follow path to door
                     action = self._navigator.get_move_action(self._state_tracker)
                     if action != None:
                         return action, {}
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
-                target = self._getTarget(state, state.get_self()['is_carrying'][0])
                 self._sendMessage('Dropped goal block ' + str(target['visualization']) + ' at location ' + str(
                     state.get_self()['location']), agent_name)
                 if self._target_missing_and_at_target_location(target['visualization'], state.get_self()['location']):
@@ -278,14 +286,14 @@ class Lazy(BW4TBrain):
                             if Messages.OPENING_DOOR.value[0] in msg.content]
         for msg in opening_messages:
             room_name = msg.split('of ')
-            self._opened_doors.append(room_name)
+            #self._opened_doors.append(room_name)
 
         # searching through [room name]
         searching_messages = [msg.content for msg in self.received_messages
                              if Messages.SEARCHING_THROUGH.value[0] in msg.content]
         for msg in searching_messages:
             room_name = msg.split('through ')
-            self._searched_rooms.append(room_name)
+            #self._searched_rooms.append(room_name)
 
         # found goal block [block_vis] at location [location]
         found_messages = [msg.content for msg in self.received_messages
@@ -304,7 +312,7 @@ class Lazy(BW4TBrain):
             block = first.split(' at')[0].replace("\'", '\"')
             if str(block) in self._found_blocks.keys():
                 del self._found_blocks[str(block)]
-            self._picked_up.append(block)
+            #self._picked_up.append(block)
 
         # dropped goal block [block_vis] at location [location]
         dropped_messages = [msg.content for msg in self.received_messages
