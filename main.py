@@ -17,10 +17,10 @@ if __name__ == "__main__":
 
         # {'name':'agent1', 'botclass':BaseLineAgent, 'settings':{'slowdown':10}},
         # {'name':'agent2', 'botclass':BaseLineAgent, 'settings':{}},
-        {'name':'lazy', 'botclass':Lazy, 'settings':{}},
-        {'name':'lazy2', 'botclass':Lazy, 'settings':{}},
-        {'name':'lazy3', 'botclass':Lazy, 'settings':{}},
-        {'name':'lazy4', 'botclass':Lazy, 'settings':{}},
+        {'name':'liar', 'botclass':Liar, 'settings':{}},
+        {'name':'liar2', 'botclass':Liar, 'settings':{}},
+        {'name':'lazy3', 'botclass':Liar, 'settings':{}},
+        {'name':'lazy4', 'botclass':Liar, 'settings':{}},
         # {'name':'human', 'botclass':Human, 'settings':{}}
         ]
 
