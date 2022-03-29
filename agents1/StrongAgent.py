@@ -9,6 +9,7 @@ from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
 import pandas as pd
 import numpy as np
+import re
 
 
 class Phase(enum.Enum):
@@ -36,11 +37,16 @@ class StrongAgent(BW4TBrain):
         self.drop_off_locations = []
         self.object_to_be_dropped = None
         self.initialization_flag = True
+        # Stores desired objects
         self.memory = []
+        # Stores all seen objects
+        self.seenObjects = []
         self.all_rooms = []
         self.ticks = 0
         self.receivedMessages = {}
         self.totalMessagesReceived = 0
+        # A list of messages To Be Verified
+        self.tbv = []
 
     def initialize(self):
         super().initialize()
@@ -53,9 +59,10 @@ class StrongAgent(BW4TBrain):
 
     def decide_on_bw4t_action(self, state: State):
         self.ticks = self.ticks + 1
-        # print(self.ticks)
+
         # Process messages from team members
         self._processMessages()
+
         # Update trust beliefs for team members
         self._trustBelief(self._teamMembers, self.receivedMessages)
 
@@ -133,6 +140,8 @@ class StrongAgent(BW4TBrain):
 
                 # Check if some of the found objects that can be collected are desired objects
                 for obj in found_obj:
+                    self.addToSeenObjects((obj[0], obj[2]))
+                    self._messageFoundBlock(str(obj[0]), str(obj[2]))
                     for des, loc in self.desired_objects:
                         if obj[0]["shape"] == des["shape"] and obj[0]["colour"] == des["colour"]:
                             # In case they are desired objects for the strong agent we are interested only in the
@@ -189,7 +198,7 @@ class StrongAgent(BW4TBrain):
                 locations.sort(reverse=True)
                 self._navigator.reset_full()
                 # Add the navigation
-                print(locations)
+                # print(locations)
                 self._navigator.add_waypoints(locations)
 
                 # Next phase
@@ -250,7 +259,7 @@ class StrongAgent(BW4TBrain):
                                               and self.memory[0]["visualization"]["colour"] ==
                                               self.desired_objects[0][1]["colour"])):
 
-                    print("MEMORY", self.memory)
+                    # print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
 
@@ -288,6 +297,7 @@ class StrongAgent(BW4TBrain):
 
                     # Send message of current action
                     self._sendMessage('Moving to door of ' + self._door['room_name'], self.agent_name)
+                    # self._messageMoveRoom()
                     self._navigator.add_waypoints([doorLoc])
                     # go to the next phase
                     self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -334,6 +344,9 @@ class StrongAgent(BW4TBrain):
     def _messageDroppedGoalBlock(self, block_visualization, location):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
 
+    def _messageFoundBlock(self, block_visualization, location):
+        self._sendMessage("Found block " + block_visualization + " at location " + location, self.agent_name)
+
     def _init_trust_table(self, ids):
         data = {}
         for id in ids:
@@ -358,11 +371,10 @@ class StrongAgent(BW4TBrain):
         for mssg in self.received_messages[self.totalMessagesReceived:]:
             for member in self._teamMembers:
                 if mssg.from_id == member:
-                    self.receivedMessages[member].append((self.ticks, mssg.content))
+                    self.receivedMessages[member].append((self.ticks, mssg.content, mssg.from_id))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
-        # for key in self.receivedMessages:
-        #     for ticks, msg in self.receivedMessages[key]:
-        #         print(ticks, ' ', msg[:20])
+                    self.checkMessageTrue(self.ticks, mssg.content, mssg.from_id)
+
 
     def _trustBelief(self, member, received):
         '''
@@ -398,3 +410,63 @@ class StrongAgent(BW4TBrain):
         self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
                              reverse=True)
         print("MEMORY", self.memory)
+
+    def checkMessageTrue(self, ticks, mssg, sender):
+        splitMssg = mssg.split(' ')
+        if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
+            pass
+
+        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            room = splitMssg[2]
+
+        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
+            room = splitMssg[2]
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if str(obj[0]) == vis and str(obj[1]) == loc:
+                    print('True')
+                    return True
+                elif str(obj[1]) == loc:
+                    print('False')
+                    return False
+            print('TBV')
+            self.tbv.append((ticks, mssg, sender))
+            return None
+
+        if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+
+        if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+
+        if splitMssg[0] == 'Found' and splitMssg[2] == 'block':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if str(obj[0]) == vis and str(obj[1]) == loc:
+                    # print('True')
+                    return True
+                elif str(obj[1]) == loc:
+                    # print('False')
+                    return False
+            # print('TBV')
+            self.tbv.append((ticks, mssg, sender))
+            return None
+
+    def getVisLocFromMessage(self, mssg):
+        bv = re.search("\{(.*)\}", mssg)
+        l = re.search("\((.*)\)", mssg)
+        vis = None
+        loc = None
+        if bv is not None:
+            vis = mssg[bv.start(): bv.end()]
+        if l is not None:
+            loc = mssg[l.start(): l.end()]
+        return vis, loc
+
+
+    def addToSeenObjects(self, obj):
+        if obj not in self.seenObjects:
+            self.seenObjects.append(obj)
+            # print('seen objects', self.seenObjects)
