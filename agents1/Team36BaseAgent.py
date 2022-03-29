@@ -33,17 +33,6 @@ class Phase(enum.Enum):
     DROP_BLOCK = 12,
     SEARCH_ROOM = 13
 
-class Messages(enum.Enum):
-    MOVING_TO_ROOM = "Moving to ",
-    OPENING_DOOR = "Opening door of ",
-    SEARCHING_THROUGH = "Searching through ",
-    FOUND_GOAL_BLOCK1 = "Found goal block ",
-    FOUND_GOAL_BLOCK2 = " at location ",
-    PICKING_UP_GOAL_BLOCK1 = "Picking up goal block ",
-    PICKING_UP_GOAL_BLOCK2 = " at location ",
-    DROPPED_GOAL_BLOCK1 = "Dropped goal block ",
-    DROPPED_GOAL_BLOCK2 = " at drop location ",
-
 class State(enum.Enum):
     MOVING_TO_ROOM = 0,
     MOVING_TO_GOAL = 1,
@@ -135,7 +124,8 @@ class BaseAgent(BaseLineAgent):
                         if block_vis == block['visualization'] and block_loc == block['location']:
                             current_world_state['found_blocks'].remove(block)
                             break
-                    # add info to teammembers that a member is carrying a block
+                    # add info to teammember
+                    # current_world_state['teammembers'][member]['state'] = {'type': State.PICKING_UP_BLOCK, 'block': {'visualization': block_vis, 'location': block_loc}}
                     current_world_state['teammembers'][member]['carrying'].append(block_vis)
 
                 elif 'Dropped goal block ' in msg:
@@ -200,6 +190,8 @@ class BaseAgent(BaseLineAgent):
         return observations
     
     def _handleObservations(self, observations):
+        blocks_that_should_be_at_location = [block for block in self._world_state['found_blocks']
+                                                if self.dist(self._you, block) <= 0]
         for block in observations['blocks']:
             self._sendMessage('Found goal block {} at location {}'.format(json.dumps(block['visualization']), block['location']), self._you['obj_id'])
             exists = False
@@ -209,7 +201,13 @@ class BaseAgent(BaseLineAgent):
                     break
             if not exists:
                 self._world_state['found_blocks'].append({'visualization': block['visualization'], 'location': block['location'], 'by': self._you['obj_id']})
-        pass
+
+        # remove all blocks that should exist, but don't and TODO: update trust if it DNE
+        for block in blocks_that_should_be_at_location:
+            for b in observations['blocks']:
+                if b['visualization'] == block['visualization'] and b['location'] == block['location']:
+                    self._world_state['found_blocks'].remove(block)
+                    break
 
     def filter_bw4t_observations(self, state):
         return state
@@ -383,9 +381,7 @@ class BaseAgent(BaseLineAgent):
         else:
             self._navigator.reset_full()
             self._navigator.add_waypoints([possible_target['location']])
-            self._sendMessage(
-                'Picking up goal block {} at location {}'.format(json.dumps(possible_target['visualization']), possible_target['location']),
-                self._you['obj_id'])
+            self._current_state = {'type': State.PICKING_UP_BLOCK, 'block': {'visualization': possible_target['visualization'], 'location': possible_target['location']}}
             self._phase = Phase.FOLLOW_PATH_TO_BLOCK
 
     def plan_path_to_goal(self, state):
@@ -433,11 +429,17 @@ class BaseAgent(BaseLineAgent):
         for block in observations['blocks']:
             for goal in missing_goals:
                 if block['visualization'] == goal['visualization']:
+                    # remove block from world_state
+                    for b in self._world_state['found_blocks']:
+                        if b['visualization'] == block['visualization'] and b['location'] == block['location']:
+                            self._world_state['found_blocks'].remove(b)
+                            break
+
+                    self._sendMessage(
+                        'Picking up goal block {} at location {}'.format(json.dumps(block['visualization']),
+                                                                         block['location']),
+                        self._you['obj_id'])
                     return GrabObject.__name__, {'object_id': block['obj_id']}
-        blocks_that_should_be_at_location = [block for block in self._world_state['found_blocks']
-                                                if block['location'] == self._you['location']]
-        for block in blocks_that_should_be_at_location:
-            self._world_state['found_blocks'].remove(block)
 
     def drop_block(self, agent_name, state):
         self._phase = Phase.PLAN_NEXT_ACTION
@@ -451,10 +453,6 @@ class BaseAgent(BaseLineAgent):
                 break
         self._sendMessage('Dropped goal block {} at drop location {}'.format(json.dumps(block_vis), block['location']), agent_name)
         return DropObject.__name__, {'object_id': block['obj_id']}
-
-    def target_missing_and_at_goal(self, block, location):
-        return str(block) == str(self._missing_blocks[self._current_target_block]['block']) and str(location) == str(
-            self._missing_blocks[self._current_target_block]['location'])
 
     def init_goals(self, state):
         blocks = copy.deepcopy([{'visualization':tile['visualization'], 'location':tile['location']} for tile in state.values()
@@ -480,7 +478,6 @@ class BaseAgent(BaseLineAgent):
                 state.get_self()['location'][1] == self.gf_start[1]:
             return
 
-        print("creating grassfire algo field")
         map = state.get_traverse_map()
         doors = [door['location'] for door in state.values() if
                  'class_inheritance' in door and 'Door' in door['class_inheritance']]
@@ -533,9 +530,8 @@ class BaseAgent(BaseLineAgent):
         self.gf_start = (state.get_self()['location'][0], state.get_self()['location'][1])
 
     def dist(self, start, target, state=None):
-        if state == None:
-            return sqrt((start['location'][0] - target['location'][0]) ** 2 + (
-                        start['location'][1] - target['location'][1]) ** 2)
+        if state is None:
+            return abs(start['location'][0] - target['location'][0]) + abs(start['location'][1] - target['location'][1])
         else:
             # calculate grassfire heuristic, will only calculate the field if necessary, aka pieces/you moved
             self.create_gf_field(state)
