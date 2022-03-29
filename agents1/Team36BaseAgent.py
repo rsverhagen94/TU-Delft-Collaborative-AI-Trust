@@ -38,6 +38,10 @@ class State(enum.Enum):
     MOVING_TO_GOAL = 1,
     PICKING_UP_BLOCK = 2,
 
+class Belief(enum.Enum):
+    TRUST = 0,
+    COMPETENCE = 1,
+    WILLINGNESS = 2
 
 # TODO: fix missing information for block visualization (like for colour blind) or additional (useless) information, cuz who knows what whacky stuff other agents do
 class BaseAgent(BaseLineAgent):
@@ -141,7 +145,7 @@ class BaseAgent(BaseLineAgent):
                         current_world_state['teammembers'][member]['carrying'].remove(block_vis)
                     except ValueError:
                         # member was not carrying block they said they dropped, thus is probably lying
-                        self._decreaseBelief("trust", member, 0.3)
+                        self._decreaseBelief(Belief.TRUST, member, 0.3)
                     # test if location is supposedly goal, if so set goal to be SAT
                     for goal in current_world_state['goals']:
                         if block_loc == goal['location'] and block_vis == goal['visualization']:
@@ -159,45 +163,45 @@ class BaseAgent(BaseLineAgent):
                     vis_and_loc = message.replace('Dropped goal block ', '', 1).split(' at drop location ')
                     for block in self._world_state['goals']:
                         if block['visualization'] == vis_and_loc[0] and not block['satisfied']:
-                            self._decreaseBelief("willingness", member, 0.1)
+                            self._decreaseBelief(Belief.WILLINGNESS, member, 0.1)
 
                 if 'Found' in message and 'colour' not in message:
                     #update capability (agent does not provide all information)
-                    self._decreaseBelief("capability", member, 0.1)
+                    self._decreaseBelief(Belief.COMPETENCE, member, 0.1)
 
     def _increaseBelief(self, type, member, amount):
-        if type == "willingness":
-            if self._beliefs[member]['willingness'] + amount < self._maxTrust:
-                self._beliefs[member]['willingness'] += amount
+        if type == Belief.WILLINGNESS:
+            if self._beliefs[member][Belief.WILLINGNESS] + amount < self._maxTrust:
+                self._beliefs[member][Belief.WILLINGNESS] += amount
             else:
-                self._beliefs[member]['willingness'] = self._maxTrust
-        elif type == "trust":
-            if self._beliefs[member]['trust'] + amount < self._maxTrust:
-                self._beliefs[member]['trust'] += amount
+                self._beliefs[member][Belief.WILLINGNESS] = self._maxTrust
+        elif type == Belief.TRUST:
+            if self._beliefs[member][Belief.TRUST] + amount < self._maxTrust:
+                self._beliefs[member][Belief.TRUST] += amount
             else:
-                self._beliefs[member]['trust'] = self._maxTrust
-        elif type == "competence":
-            if self._beliefs[member]['competence'] + amount < self._maxTrust:
-                self._beliefs[member]['competence'] += amount
+                self._beliefs[member][Belief.TRUST] = self._maxTrust
+        elif type == Belief.COMPETENCE:
+            if self._beliefs[member][Belief.COMPETENCE] + amount < self._maxTrust:
+                self._beliefs[member][Belief.COMPETENCE] += amount
             else:
-                self._beliefs[member]['competence'] = self._maxTrust
+                self._beliefs[member][Belief.COMPETENCE] = self._maxTrust
 
     def _decreaseBelief(self, type, member, amount):
-        if type == "willingness":
-            if self._beliefs[member]['willingness'] - amount > 0.0:
-                self._beliefs[member]['willingness'] -= amount
+        if type == Belief.WILLINGNESS:
+            if self._beliefs[member][Belief.WILLINGNESS] - amount > 0.0:
+                self._beliefs[member][Belief.WILLINGNESS] -= amount
             else:
-                self._beliefs[member]['willingness'] = 0.0
-        elif type == "trust":
-            if self._beliefs[member]['trust'] - amount > 0.0:
-                self._beliefs[member]['trust'] -= amount
+                self._beliefs[member][Belief.WILLINGNESS] = 0.0
+        elif type == Belief.TRUST:
+            if self._beliefs[member][Belief.TRUST] - amount > 0.0:
+                self._beliefs[member][Belief.TRUST] -= amount
             else:
-                self._beliefs[member]['trust'] = 0.0
-        elif type == "competence":
-            if self._beliefs[member]['competence'] - amount > 0.0:
-                self._beliefs[member]['competence'] -= amount
+                self._beliefs[member][Belief.TRUST] = 0.0
+        elif type == Belief.COMPETENCE:
+            if self._beliefs[member][Belief.COMPETENCE] - amount > 0.0:
+                self._beliefs[member][Belief.COMPETENCE] -= amount
             else:
-                self._beliefs[member]['competence'] = 0.0
+                self._beliefs[member][Belief.COMPETENCE] = 0.0
 
     def _handleMessages(self, state):
         # if a goal has been satisfied and you are carrying a block for that goal, drop the block
@@ -257,6 +261,7 @@ class BaseAgent(BaseLineAgent):
             for b in observations['blocks']:
                 if b['visualization'] == block['visualization'] and b['location'] == block['location']:
                     self._world_state['found_blocks'].remove(block)
+                    self._decreaseBelief(Belief.TRUST, block['by'], 0.2)
                     break
 
     def filter_bw4t_observations(self, state):
@@ -287,9 +292,9 @@ class BaseAgent(BaseLineAgent):
         if not self._beliefs:
             for member in state['World']['team_members']:
                 self._beliefs[member] = {
-                    'trust': 0.5,
-                    'competence': 0.5,
-                    'willingness': 0.5
+                    Belief.TRUST: 0.5,
+                    Belief.COMPETENCE: 0.5,
+                    Belief.WILLINGNESS: 0.5
                 }
 
         self._trustBelief(self._teamMembers, receivedMessages)
