@@ -45,6 +45,7 @@ class BaseAgent(BaseLineAgent):
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
 
+        self._maxTrust = 1.0
         self._current_room = None
         self._door = None
         self._carrying_capacity = 1
@@ -166,19 +167,37 @@ class BaseAgent(BaseLineAgent):
 
     def _increaseBelief(self, type, member, amount):
         if type == "willingness":
-            self._beliefs[member]['willingness'] += amount
-        elif type ==  "trust":
-            self._beliefs[member]['trust'] += amount
+            if self._beliefs[member]['willingness'] + amount < self._maxTrust:
+                self._beliefs[member]['willingness'] += amount
+            else:
+                self._beliefs[member]['willingness'] = self._maxTrust
+        elif type == "trust":
+            if self._beliefs[member]['trust'] + amount < self._maxTrust:
+                self._beliefs[member]['trust'] += amount
+            else:
+                self._beliefs[member]['trust'] = self._maxTrust
         elif type == "competence":
-            self._beliefs[member]['competence'] += amount
+            if self._beliefs[member]['competence'] + amount < self._maxTrust:
+                self._beliefs[member]['competence'] += amount
+            else:
+                self._beliefs[member]['competence'] = self._maxTrust
 
     def _decreaseBelief(self, type, member, amount):
         if type == "willingness":
-            self._beliefs[member]['willingness'] -= amount
-        elif type ==  "trust":
-            self._beliefs[member]['trust'] -= amount
+            if self._beliefs[member]['willingness'] - amount > 0.0:
+                self._beliefs[member]['willingness'] -= amount
+            else:
+                self._beliefs[member]['willingness'] = 0.0
+        elif type == "trust":
+            if self._beliefs[member]['trust'] - amount > 0.0:
+                self._beliefs[member]['trust'] -= amount
+            else:
+                self._beliefs[member]['trust'] = 0.0
         elif type == "competence":
-            self._beliefs[member]['competence'] -= amount
+            if self._beliefs[member]['competence'] - amount > 0.0:
+                self._beliefs[member]['competence'] -= amount
+            else:
+                self._beliefs[member]['competence'] = 0.0
 
     def _handleMessages(self, state):
         # if a goal has been satisfied and you are carrying a block for that goal, drop the block
