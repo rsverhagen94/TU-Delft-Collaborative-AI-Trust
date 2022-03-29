@@ -168,13 +168,25 @@ class BaseAgent(BaseLineAgent):
             for message in received[member]:
                 if 'Dropped' in message:
                     vis_and_loc = message.replace('Dropped goal block ', '', 1).split(' at drop location ')
-                    for block in self._world_state['goals']:
-                        if block['visualization'] == vis_and_loc[0] and not block['satisfied']:
+                    block_vis = json.loads(vis_and_loc[0])
+                    block_loc = eval(vis_and_loc[1])
+                    for goal in self._world_state['goals']:
+                        if goal['visualization'] == block_vis and not block_loc == goal['location'] and not goal['satisfied'] and not self.previousGoalsSatisfied(goal['index'] - 1):
                             self._decreaseBelief(Belief.WILLINGNESS, member, 0.1)
 
                 if 'Found' in message and 'colour' not in message:
                     #update capability (agent does not provide all information)
                     self._decreaseBelief(Belief.COMPETENCE, member, 0.1)
+
+    def previousGoalsSatisfied(self, goalIndex):
+        while goalIndex >= 0:
+            for goal in self._world_state['goals']:
+                if goal['index'] == goalIndex and goal['satisfied']:
+                    goalIndex -= 1
+                    break
+                else:
+                    return False
+        return True
 
     def _increaseBelief(self, type, member, amount):
         if type == Belief.WILLINGNESS:
@@ -336,11 +348,18 @@ class BaseAgent(BaseLineAgent):
                     and self._current_state == member_state['state']):
                 self._phase = Phase.PLAN_NEXT_ACTION
                 break
-        if self._test:
-            self._test = False
-            self._sendMessage('Opening door of {}'.format("room_1"), agent_name)
 
         while True:
+
+            if self._test:
+
+                goal = self._world_state['goals'][0]
+                self._sendMessage(
+                    'Dropped goal block {} at drop location {}'.format(json.dumps(goal['visualization']),
+                                                                       goal['location']),
+                    agent_name)
+                self._test = False
+
             if Phase.PLAN_NEXT_ACTION == self._phase:
                 self.plan_next_action(state)
 
@@ -418,24 +437,10 @@ class BaseAgent(BaseLineAgent):
                 self._phase = Phase.VERIFY_GOAL
 
             if Phase.VERIFY_GOAL == self._phase:
-                observations = self._processObservations(state)
-                found_goal = False
-                for goal in self._world_state['goals']:
-                    for block in observations['blocks']:
-                        if block['visualization'] == goal['visualization'] and block['location'] == goal['location']:
-                            goal['verified'] = True
-                            found_goal = True
-                            self._increaseBelief(Belief.TRUST, goal['by'], 0.2)
-                            self._phase = Phase.PLAN_PATH_TO_GOAL
-                if not found_goal:
-                    self._phase = Phase.PLAN_MOVE_OFF_GOAL
+                self.verify_goal(observations)
 
             if Phase.PLAN_MOVE_OFF_GOAL == self._phase:
-                current_location = self._you['location']
-                next_location = current_location[0] + 1, current_location[0]
-                self._navigator.reset_full()
-                self._navigator.add_waypoint(next_location)
-                self._phase = Phase.MOVE_OFF_GOAL
+                self.plan_move_off_goal()
 
             if Phase.MOVE_OFF_GOAL == self._phase:
                 self._state_tracker.update(state)
@@ -443,7 +448,6 @@ class BaseAgent(BaseLineAgent):
                 if action != None:
                     return action, {}
                 self._phase = Phase.DROP_BLOCK
-
 
     def plan_next_action(self, state):
         self._navigator.reset_full()
@@ -593,6 +597,29 @@ class BaseAgent(BaseLineAgent):
                 break
         self._sendMessage('Dropped goal block {} at drop location {}'.format(json.dumps(block_vis), block['location']), agent_name)
         return DropObject.__name__, {'object_id': block['obj_id']}
+
+    def verify_goal(self, observations):
+        found_goal = False
+        for goal in self._world_state['goals']:
+            for block in observations['blocks']:
+                if block['visualization'] == goal['visualization'] and block['location'] == goal['location']:
+                    goal['verified'] = True
+                    found_goal = True
+                    self._increaseBelief(Belief.TRUST, goal['by'], 0.2)
+                    self._phase = Phase.PLAN_PATH_TO_GOAL
+        if not found_goal:
+            for goal in self._world_state['goals']:
+                if not goal['verified'] and goal['satisfied']:
+                    goal['satisfied'] = False
+                    self._decreaseBelief(Belief.TRUST, goal['by'], 0.3)
+            self._phase = Phase.PLAN_MOVE_OFF_GOAL
+
+    def plan_move_off_goal(self):
+        current_location = self._you['location']
+        next_location = current_location[0] - 1, current_location[1] - 1
+        self._navigator.reset_full()
+        self._navigator.add_waypoint(next_location)
+        self._phase = Phase.MOVE_OFF_GOAL
 
     def init_goals(self, state):
         blocks = copy.deepcopy([{'visualization':tile['visualization'], 'location':tile['location']} for tile in state.values()
