@@ -31,7 +31,14 @@ class Phase(enum.Enum):
     OPEN_DOOR = 10,
     PICKUP_BLOCK = 11,
     DROP_BLOCK = 12,
-    SEARCH_ROOM = 13
+    SEARCH_ROOM = 13,
+    FOLLOW_PATH_TO_VERIFY_GOAL = 14,
+    VERIFY_GOAL = 15,
+    PLAN_MOVE_OFF_GOAL = 16,
+    MOVE_OFF_GOAL = 17
+
+
+
 
 class State(enum.Enum):
     MOVING_TO_ROOM = 0,
@@ -76,7 +83,6 @@ class BaseAgent(BaseLineAgent):
         self.gf_start = None
         self._current_state = {'type': None}
         self._carrying_capacity = 1
-        self._current_target_block = '0'
         self._beliefs = {}
         self._test = False
 
@@ -335,7 +341,6 @@ class BaseAgent(BaseLineAgent):
             self._sendMessage('Opening door of {}'.format("room_1"), agent_name)
 
         while True:
-            #print(self._beliefs)
             if Phase.PLAN_NEXT_ACTION == self._phase:
                 self.plan_next_action(state)
 
@@ -404,6 +409,41 @@ class BaseAgent(BaseLineAgent):
 
             if Phase.DROP_BLOCK == self._phase:
                 return self.drop_block(agent_name, state)
+
+            if Phase.FOLLOW_PATH_TO_VERIFY_GOAL == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action != None:
+                    return action, {}
+                self._phase = Phase.VERIFY_GOAL
+
+            if Phase.VERIFY_GOAL == self._phase:
+                observations = self._processObservations(state)
+                found_goal = False
+                for goal in self._world_state['goals']:
+                    for block in observations['blocks']:
+                        if block['visualization'] == goal['visualization'] and block['location'] == goal['location']:
+                            goal['verified'] = True
+                            found_goal = True
+                            self._increaseBelief(Belief.TRUST, goal['by'], 0.2)
+                            self._phase = Phase.PLAN_PATH_TO_GOAL
+                if not found_goal:
+                    self._phase = Phase.PLAN_MOVE_OFF_GOAL
+
+            if Phase.PLAN_MOVE_OFF_GOAL == self._phase:
+                current_location = self._you['location']
+                next_location = current_location[0] + 1, current_location[0]
+                self._navigator.reset_full()
+                self._navigator.add_waypoint(next_location)
+                self._phase = Phase.MOVE_OFF_GOAL
+
+            if Phase.MOVE_OFF_GOAL == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action != None:
+                    return action, {}
+                self._phase = Phase.DROP_BLOCK
+
 
     def plan_next_action(self, state):
         self._navigator.reset_full()
@@ -476,20 +516,32 @@ class BaseAgent(BaseLineAgent):
         if len(state.get_self()['is_carrying']) == 0:
             self._phase = Phase.PLAN_NEXT_ACTION
         else:
-            block = state.get_self()['is_carrying'][0]
-            goals = [goal for goal in self._world_state['goals']
-                        if goal['visualization']['size'] == block['visualization']['size']
-                            and goal['visualization']['shape'] == block['visualization']['shape']
-                            and goal['visualization']['colour'] == block['visualization']['colour']]
-            target = None
-            for goal in goals:
-                target = goal
-                if not goal['satisfied']:
+            unverified_goals = False
+            for goal in self._world_state['goals']:
+                if goal['satisfied'] and not goal['verified']:
+                    targetLoc = goal['location']
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoint(targetLoc)
+                    self._phase = Phase.FOLLOW_PATH_TO_VERIFY_GOAL
+                    unverified_goals = True
                     break
-            targetLoc = target['location']
-            self._navigator.reset_full()
-            self._navigator.add_waypoint(targetLoc)
-            self._phase = Phase.FOLLOW_PATH_TO_GOAL
+
+            if not unverified_goals:
+                block = state.get_self()['is_carrying'][0]
+                goals = [goal for goal in self._world_state['goals']
+                            if goal['visualization']['size'] == block['visualization']['size']
+                                and goal['visualization']['shape'] == block['visualization']['shape']
+                                and goal['visualization']['colour'] == block['visualization']['colour']]
+                target = None
+                for goal in goals:
+                    target = goal
+                    if not goal['satisfied']:
+                        break
+                targetLoc = target['location']
+                self._navigator.reset_full()
+                self._navigator.add_waypoint(targetLoc)
+                self._phase = Phase.FOLLOW_PATH_TO_GOAL
+
 
     def open_door(self, agent_name):
         self._phase = Phase.PLAN_SEARCH_ROOM
