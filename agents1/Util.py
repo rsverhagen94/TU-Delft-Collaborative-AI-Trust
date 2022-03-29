@@ -199,7 +199,7 @@ class Util():
                     arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
                         "block": block['visualization'],
-                        "action": "found",
+                        "action": "pick-up",
                     })
 
                 elif "Dropped goal block " in msg:
@@ -222,7 +222,7 @@ class Util():
                     arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
                         "block": block['visualization'],
-                        "action": "found",
+                        "action": "drop-off",
                     })
 
                 elif "Dropped block " in msg:
@@ -245,7 +245,7 @@ class Util():
                     arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
                         "block": block['visualization'],
-                        "action": "found",
+                        "action": "drop-off",
                     })
                 elif "Reputation: " in msg:
                     pattern = re.compile("{(.* ?)}")
