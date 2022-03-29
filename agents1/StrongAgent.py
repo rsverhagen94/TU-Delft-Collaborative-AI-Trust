@@ -291,7 +291,8 @@ class StrongAgent(BW4TBrain):
 
                     # randomly pick closed door
                     else:
-                        self._door = random.choice(closedDoors)
+                        # self._door = random.choice(closedDoors)
+                        self._door = closedDoors[0]
 
                     # get the location of the door
                     doorLoc = self._door['location']
@@ -384,21 +385,23 @@ class StrongAgent(BW4TBrain):
                     self.receivedMessages[member].append((self.ticks, mssg.content, mssg.from_id))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
                     self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+                    is_true = self.checkMessageTrue(self.ticks, mssg.content, mssg.from_id)
+                    print('mssg', mssg.content, '\n', is_true)
         # print('tbv', self.tbv)
-        tbv_copy = self.tbv
-        for (ticks, mssg, from_id) in tbv_copy:
-            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
-            # print(mssg, is_true)
-            # print(self.seenObjects)
-            if is_true is not None:
-                if is_true:
-                    self.increaseTrust(from_id)
-                    print('truth', self.trustBeliefs[from_id])
-                else:
-                    self.decreaseTrust(from_id)
-                    print('lie', self.trustBeliefs[from_id])
-                self.tbv.remove((ticks, mssg, from_id))
-            # print('no info', self.trustBeliefs[from_id])
+        # tbv_copy = self.tbv
+        # for (ticks, mssg, from_id) in tbv_copy:
+        #     is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
+        #     # print(mssg, is_true)
+        #     # print(self.seenObjects)
+        #     if is_true is not None:
+        #         if is_true:
+        #             self.increaseTrust(from_id)
+        #             print('truth', self.trustBeliefs[from_id])
+        #         else:
+        #             self.decreaseTrust(from_id)
+        #             print('lie', self.trustBeliefs[from_id])
+        #         self.tbv.remove((ticks, mssg, from_id))
+        #     # print('no info', self.trustBeliefs[from_id])
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -437,7 +440,7 @@ class StrongAgent(BW4TBrain):
 
         self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
                              reverse=True)
-        print("MEMORY", self.memory)
+        # print("MEMORY", self.memory)
 
     def checkMessageTrue(self, ticks, mssg, sender):
         splitMssg = mssg.split(' ')
@@ -446,7 +449,6 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
             room = splitMssg[2]
-            self._state_tracker
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
             room = splitMssg[2]
@@ -454,9 +456,7 @@ class StrongAgent(BW4TBrain):
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
             for obj in self.seenObjects:
-                # print(ast.literal_eval(loc))
-                if self.compareObjects(vis, obj[0]) and obj[1] == ast.literal_eval(loc):
-                    print(vis, obj[0], self.compareObjects(vis, obj[0]), str(obj[1]), loc)
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
                     return True
                 elif str(obj[1]) == loc:
                     return False
@@ -467,12 +467,10 @@ class StrongAgent(BW4TBrain):
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
 
-        if splitMssg[0] == 'Found' and splitMssg[2] == 'block':
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'block':
             vis, loc = self.getVisLocFromMessage(mssg)
             for obj in self.seenObjects:
-                # print(str(obj[0]), vis)
-                if self.compareObjects(vis, obj[0]) and obj[1] == ast.literal_eval(loc):
-                    print(vis, obj[0], self.compareObjects(vis, obj[0]), str(obj[1]), loc)
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
                     return True
                 elif str(obj[1]) == loc:
                     return False
@@ -486,7 +484,7 @@ class StrongAgent(BW4TBrain):
         if bv is not None:
             vis = ast.literal_eval(mssg[bv.start(): bv.end()])
         if l is not None:
-            loc = mssg[l.start(): l.end()]
+            loc = ast.literal_eval(mssg[l.start(): l.end()])
         return vis, loc
 
     def compareObjects(self, obj1, obj2):
