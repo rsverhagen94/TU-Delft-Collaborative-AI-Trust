@@ -83,7 +83,8 @@ class BaseAgent(BaseLineAgent):
         self._current_state = {'type': None}
         self._carrying_capacity = 1
         self._current_target_block = '0'
-        
+        self._beliefs = {}
+
         self._world_state = {
             'found_blocks': [],     # list of blocks, contains {'location','visualization','by'(,'obj_id')}
             'teammembers': {},      # dict of teammembers accessible by their id, contains {'state','carrying','index'}
@@ -149,8 +150,7 @@ class BaseAgent(BaseLineAgent):
                         current_world_state['teammembers'][member]['carrying'].remove(block_vis)
                     except ValueError:
                         # member was not carrying block they said they dropped, thus is probably lying
-                        # TODO: update trust system
-                        pass
+                        self._decreaseBelief("trust", member, 0.3)
                     # test if location is supposedly goal, if so set goal to be SAT
                     for goal in current_world_state['goals']:
                         if block_loc == goal['location'] and block_vis == goal['visualization']:
@@ -158,6 +158,37 @@ class BaseAgent(BaseLineAgent):
                             goal['by'] = member
 
         return messages
+
+    def _trustBelief(self, member, received):
+        # You can change the default value to your preference
+        default = 0.5
+        for member in received.keys():
+            for message in received[member]:
+                if 'Dropped' in message:
+                    vis_and_loc = message.replace('Dropped goal block ', '', 1).split(' at drop location ')
+                    for block in self._world_state['goals']:
+                        if block['visualization'] == vis_and_loc[0] and not block['satisfied']:
+                            self._decreaseBelief("willingness", member, 0.1)
+
+                if 'Found' in message and 'colour' not in message:
+                    #update capability (agent does not provide all information)
+                    self._decreaseBelief("capability", member, 0.1)
+
+    def _increaseBelief(self, type, member, amount):
+        if type == "willingness":
+            self._beliefs[member]['willingness'] += amount
+        elif type ==  "trust":
+            self._beliefs[member]['trust'] += amount
+        elif type == "competence":
+            self._beliefs[member]['competence'] += amount
+
+    def _decreaseBelief(self, type, member, amount):
+        if type == "willingness":
+            self._beliefs[member]['willingness'] -= amount
+        elif type ==  "trust":
+            self._beliefs[member]['trust'] -= amount
+        elif type == "competence":
+            self._beliefs[member]['competence'] -= amount
 
     def _handleMessages(self, state):
         # if a goal has been satisfied and you are carrying a block for that goal, drop the block
@@ -236,7 +267,15 @@ class BaseAgent(BaseLineAgent):
         observations = self._processObservations(state)
         self._handleObservations(observations)
         # Update trust beliefs for team members
-        self._trustBlief(self._teamMembers, receivedMessages)
+        if not self._beliefs:
+            for member in state['World']['team_members']:
+                self._beliefs[member] = {
+                    'trust': 0.5,
+                    'competence': 0.5,
+                    'willingness': 0.5
+                }
+
+        self._trustBelief(self._teamMembers, receivedMessages)
 
         closedDoors = [door for door in state.values()
                        if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door['is_open']]
