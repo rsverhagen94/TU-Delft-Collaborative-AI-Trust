@@ -78,9 +78,10 @@ class BaseAgent(BaseLineAgent):
         self._carrying_capacity = 1
         self._current_target_block = '0'
         self._beliefs = {}
+        self._test = False
 
         self._world_state = {
-            'found_blocks': [],     # list of blocks, contains {'location','visualization','by'(,'obj_id')}
+            'found_blocks': [],     # list of blocks, contains {'location','visualization','by',('obj_id')}
             'teammembers': {},      # dict of teammembers accessible by their id, contains {'state','carrying','index'}
             'goals': [],            # list of goals, contains {'location','visualization','index','satisfied','by','checked'}
             'searched_rooms': [],   # list of rooms, contains {'room_id','by'}
@@ -106,7 +107,7 @@ class BaseAgent(BaseLineAgent):
 
                 elif 'Opening door of ' in msg:
                     room_id = msg.split(' ')[-1]
-                    current_world_state['opened_doors'].append({'room_id': room_id, 'by': member})
+                    current_world_state['opened_doors'].append({'room_id': room_id, 'by': member, 'checked': False})
 
                 elif 'Found goal block ' in msg:
                     vis_and_loc = msg.replace('Found goal block ', '', 1).split(' at location ')
@@ -239,8 +240,13 @@ class BaseAgent(BaseLineAgent):
                     break
         
         # teammembers:
+
         # doors:
-            
+        doors = [door for door in state.values()
+                       if 'class_inheritance' in door and 'Door' in door['class_inheritance']]
+        for door in doors:
+            observations['doors'].append({'room_name': door['room_name'], 'is_open': door['is_open'], 'obj_id': door['obj_id']})
+
         return observations
     
     def _handleObservations(self, observations):
@@ -256,13 +262,24 @@ class BaseAgent(BaseLineAgent):
             if not exists:
                 self._world_state['found_blocks'].append({'visualization': block['visualization'], 'location': block['location'], 'by': self._you['obj_id']})
 
-        # remove all blocks that should exist, but don't and TODO: update trust if it DNE
+        # remove all blocks that should exist, but don't and update trust
         for block in blocks_that_should_be_at_location:
             for b in observations['blocks']:
-                if b['visualization'] == block['visualization'] and b['location'] == block['location']:
+                if b['visualization'] == block['visualization'] and b['location'] != block['location']:
                     self._world_state['found_blocks'].remove(block)
-                    self._decreaseBelief(Belief.TRUST, block['by'], 0.2)
+                    self._decreaseBelief(Belief.TRUST, block['by'], 0.1)
                     break
+
+        for door in observations['doors']:
+            for d in self._world_state['opened_doors']:
+                if not door['is_open'] and door['room_name'] == d['room_id'] and not d['checked']:
+                    # door that was said to be opened is not open, decrease trust
+                    self._decreaseBelief(Belief.TRUST, d['by'], 0.05)
+                    d['checked'] = True
+                if door['is_open'] and door['room_name'] == d['room_id'] and not d['checked']:
+                    # member opened door when saying it would open door, increase trust
+                    self._increaseBelief(Belief.TRUST, d['by'], 0.01)
+                    d['checked'] = True
 
     def filter_bw4t_observations(self, state):
         return state
@@ -309,8 +326,12 @@ class BaseAgent(BaseLineAgent):
                     and self._current_state == member_state['state']):
                 self._phase = Phase.PLAN_NEXT_ACTION
                 break
+        if self._test:
+            self._test = False
+            self._sendMessage('Opening door of {}'.format("room_1"), agent_name)
 
         while True:
+            print(self._beliefs)
             if Phase.PLAN_NEXT_ACTION == self._phase:
                 self.plan_next_action(state)
 
