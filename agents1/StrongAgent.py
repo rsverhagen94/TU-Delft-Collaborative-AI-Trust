@@ -10,6 +10,7 @@ from matrx.messages.message import Message
 import pandas as pd
 import numpy as np
 import re
+import ast
 
 
 class Phase(enum.Enum):
@@ -47,6 +48,8 @@ class StrongAgent(BW4TBrain):
         self.totalMessagesReceived = 0
         # A list of messages To Be Verified
         self.tbv = []
+        # For each team member store trust score
+        self.trustBeliefs = {}
 
     def initialize(self):
         super().initialize()
@@ -94,6 +97,7 @@ class StrongAgent(BW4TBrain):
                 found_obj.append((obj["visualization"], obj["location"]))
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
+            self.initTrustBeliefs()
             self._init_trust_table(state['World']['team_members'])
 
         while True:
@@ -363,6 +367,12 @@ class StrongAgent(BW4TBrain):
         print(df)
         df.to_csv('Trust.csv')
 
+    def increaseTrust(self, trustee):
+        self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.1, 0, 1)
+
+    def decreaseTrust(self, trustee):
+        self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.1, 0, 1)
+
     def _processMessages(self):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
@@ -373,8 +383,26 @@ class StrongAgent(BW4TBrain):
                 if mssg.from_id == member:
                     self.receivedMessages[member].append((self.ticks, mssg.content, mssg.from_id))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
-                    self.checkMessageTrue(self.ticks, mssg.content, mssg.from_id)
+                    self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+        # print('tbv', self.tbv)
+        tbv_copy = self.tbv
+        for (ticks, mssg, from_id) in tbv_copy:
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
+            # print(mssg, is_true)
+            # print(self.seenObjects)
+            if is_true is not None:
+                if is_true:
+                    self.increaseTrust(from_id)
+                    print('truth', self.trustBeliefs[from_id])
+                else:
+                    self.decreaseTrust(from_id)
+                    print('lie', self.trustBeliefs[from_id])
+                self.tbv.remove((ticks, mssg, from_id))
+            # print('no info', self.trustBeliefs[from_id])
 
+    def initTrustBeliefs(self):
+        for member in self._teamMembers:
+            self.trustBeliefs[member] = 0.5
 
     def _trustBelief(self, member, received):
         '''
@@ -418,6 +446,7 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
             room = splitMssg[2]
+            self._state_tracker
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
             room = splitMssg[2]
@@ -425,15 +454,12 @@ class StrongAgent(BW4TBrain):
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
             for obj in self.seenObjects:
-                if str(obj[0]) == vis and str(obj[1]) == loc:
-                    print('True')
+                # print(ast.literal_eval(loc))
+                if self.compareObjects(vis, obj[0]) and obj[1] == ast.literal_eval(loc):
+                    print(vis, obj[0], self.compareObjects(vis, obj[0]), str(obj[1]), loc)
                     return True
                 elif str(obj[1]) == loc:
-                    print('False')
                     return False
-            print('TBV')
-            self.tbv.append((ticks, mssg, sender))
-            return None
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
@@ -444,15 +470,13 @@ class StrongAgent(BW4TBrain):
         if splitMssg[0] == 'Found' and splitMssg[2] == 'block':
             vis, loc = self.getVisLocFromMessage(mssg)
             for obj in self.seenObjects:
-                if str(obj[0]) == vis and str(obj[1]) == loc:
-                    # print('True')
+                # print(str(obj[0]), vis)
+                if self.compareObjects(vis, obj[0]) and obj[1] == ast.literal_eval(loc):
+                    print(vis, obj[0], self.compareObjects(vis, obj[0]), str(obj[1]), loc)
                     return True
                 elif str(obj[1]) == loc:
-                    # print('False')
                     return False
-            # print('TBV')
-            self.tbv.append((ticks, mssg, sender))
-            return None
+        return None
 
     def getVisLocFromMessage(self, mssg):
         bv = re.search("\{(.*)\}", mssg)
@@ -460,13 +484,17 @@ class StrongAgent(BW4TBrain):
         vis = None
         loc = None
         if bv is not None:
-            vis = mssg[bv.start(): bv.end()]
+            vis = ast.literal_eval(mssg[bv.start(): bv.end()])
         if l is not None:
             loc = mssg[l.start(): l.end()]
         return vis, loc
 
+    def compareObjects(self, obj1, obj2):
+        for key in obj1:
+            if obj1[key] != obj2[key]:
+                return False
+        return True
 
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
-            # print('seen objects', self.seenObjects)
