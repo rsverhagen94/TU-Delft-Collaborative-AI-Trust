@@ -146,7 +146,7 @@ class BaseAgent(BaseLineAgent):
                         current_world_state['teammembers'][member]['carrying'].remove(block_vis)
                     except ValueError:
                         # member was not carrying block they said they dropped, thus is probably lying
-                        self._decreaseBelief(Belief.TRUST, member, 0.3)
+                        self._decreaseBelief(Belief.TRUST, member, 0.2)
                     # test if location is supposedly goal, if so set goal to be SAT
                     for goal in current_world_state['goals']:
                         if block_loc == goal['location'] and block_vis == goal['visualization']:
@@ -264,11 +264,15 @@ class BaseAgent(BaseLineAgent):
 
         # remove all blocks that should exist, but don't and update trust
         for block in blocks_that_should_be_at_location:
+            verified = False
             for b in observations['blocks']:
-                if b['visualization'] == block['visualization'] and b['location'] != block['location']:
-                    self._world_state['found_blocks'].remove(block)
-                    self._decreaseBelief(Belief.TRUST, block['by'], 0.1)
+                if b['visualization'] == block['visualization'] and b['location'] == block['location']:
+                    verified = True
+                    self._increaseBelief(Belief.TRUST, block['by'], 0.05)
                     break
+            if not verified:
+                self._world_state['found_blocks'].remove(block)
+                self._decreaseBelief(Belief.TRUST, block['by'], 0.1)
 
         for door in observations['doors']:
             for d in self._world_state['opened_doors']:
@@ -331,7 +335,7 @@ class BaseAgent(BaseLineAgent):
             self._sendMessage('Opening door of {}'.format("room_1"), agent_name)
 
         while True:
-            print(self._beliefs)
+            #print(self._beliefs)
             if Phase.PLAN_NEXT_ACTION == self._phase:
                 self.plan_next_action(state)
 
