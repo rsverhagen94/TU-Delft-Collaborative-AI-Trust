@@ -1,20 +1,13 @@
 import copy
-import re
-import sys
-from collections import defaultdict
-from operator import le
-from typing import final, List, Dict, Final
-from functools import reduce
+from typing import Dict
 import json
-from math import sqrt
-import enum, random
+import enum
 from agents1.BW4TBaselineAgent import BaseLineAgent
 from matrx.agents.agent_utils.state import State
 from matrx.agents.agent_utils.navigator import Navigator
 from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
-from matrx.messages.message import Message
 
 
 class Phase(enum.Enum):
@@ -45,7 +38,7 @@ class Phase(enum.Enum):
 
 
 
-class State(enum.Enum):
+class Status(enum.Enum):
     MOVING_TO_ROOM = 0,
     MOVING_TO_GOAL = 1,
     PICKING_UP_BLOCK = 2,
@@ -117,7 +110,7 @@ class BaseAgent(BaseLineAgent):
             for msg in msgs:
                 if 'Moving to ' in msg:
                     room_id = msg.split(' ')[-1]
-                    current_world_state['teammembers'][member]['state'] = {'type': State.MOVING_TO_ROOM, 'room_id': room_id}
+                    current_world_state['teammembers'][member]['state'] = {'type': Status.MOVING_TO_ROOM, 'room_id': room_id}
                     current_world_state['searched_rooms'].append({'room_id': room_id, 'by': member})
 
                 elif 'Opening door of ' in msg:
@@ -565,7 +558,7 @@ class BaseAgent(BaseLineAgent):
         # find closest room
         move_to_room = min(possible_rooms, key=lambda r: self.dist(self._you, r, state=state))
         self._sendMessage('Moving to {}'.format(move_to_room['room_name']), agent_name)
-        self._current_state = {'type': State.MOVING_TO_ROOM, 'room_id': move_to_room['room_name']}
+        self._current_state = {'type': Status.MOVING_TO_ROOM, 'room_id': move_to_room['room_name']}
         self._current_room = move_to_room
         if not move_to_room['is_open']:
             self._door = move_to_room
@@ -593,7 +586,7 @@ class BaseAgent(BaseLineAgent):
         else:
             self._navigator.reset_full()
             self._navigator.add_waypoints([possible_target['location']])
-            self._current_state = {'type': State.PICKING_UP_BLOCK, 'block': {'visualization': possible_target['visualization'], 'location': possible_target['location']}}
+            self._current_state = {'type': Status.PICKING_UP_BLOCK, 'block': {'visualization': possible_target['visualization'], 'location': possible_target['location']}}
             self._phase = Phase.FOLLOW_PATH_TO_BLOCK
 
     def plan_path_to_goal(self, state):
@@ -609,7 +602,7 @@ class BaseAgent(BaseLineAgent):
                 if g['visualization'] == block_vis:
                     goal = g
                     break
-            if g is None:
+            if goal is None:
                 self._phase = Phase.DROP_BLOCK
             else:
                 self._navigator.reset_full()
