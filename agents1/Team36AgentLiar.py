@@ -19,7 +19,7 @@ class Messages(enum.Enum):
     DROPPED_GOAL_BLOCK2 = " at drop location ",
 
 
-class LazyAgent(BaseAgent):
+class LiarAgent(BaseAgent):
 
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
@@ -32,7 +32,7 @@ class LazyAgent(BaseAgent):
     def decide_on_bw4t_action(self, state: State):
         self.__state = state
         super().decide_on_bw4t_action(state)
-        
+
     def _sendMessage(self, mssg, sender):
         """
         Enable sending messages in one line of code
