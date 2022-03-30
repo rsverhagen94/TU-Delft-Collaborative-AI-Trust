@@ -100,7 +100,8 @@ class LazyAgent(BW4TBrain):
 
         Util.update_info_general(self._arrayWorld, receivedMessages, self._teamMembers,
                                  self.foundGoalBlockUpdate, self.foundBlockUpdate, self.pickUpBlockUpdate,
-                                 self.dropBlockUpdate, self.dropGoalBlockUpdate, self.updateRep, self.agent_name)
+                                 self.pickUpBlockSimpleUpdate, self.dropBlockUpdate, self.dropGoalBlockUpdate,
+                                 self.updateRep, self.agent_name)
 
         while True:
             if Phase.START == self._phase:
@@ -485,6 +486,9 @@ class LazyAgent(BW4TBrain):
             return
 
     def dropBlockUpdate(self, block, member):
+        return
+
+    def pickUpBlockSimpleUpdate(self, block, member):
         return
 
     def _processMessages(self, teamMembers):
