@@ -32,13 +32,12 @@ class Phase(enum.Enum):
     DROP_OBJECT = 12
     DROP_OBJECT_NEAR_GOAL = 13
     RESET = 14
+    PLAN_PATH_TO_DROP_ZONE = 15
+    GO_TO_DROP_ZONE = 16
 
 
 # TODO make it send one message when finding block
 # TODO make the check drop goal near work
-# TODO sometimes grabs red block? is weird
-# TODO make work with blind
-# TODO add average trust
 class LazyAgent2(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
@@ -189,7 +188,7 @@ class LazyAgent2(BW4TBrain):
             if Phase.SEARCH_ROOM == self._phase:
                 # -------------------LAZYNESS----------------
                 if self.__is_lazy() and self._can_be_lazy:
-                    self._phase = random.choice([Phase.PLAN_PATH_TO_CLOSED_DOOR, Phase.PLAN_PATH_TO_OBJECT])
+                    self._phase = random.choice([Phase.PLAN_PATH_TO_CLOSED_DOOR, Phase.PLAN_PATH_TO_OBJECT, Phase.PLAN_PATH_TO_DROP_ZONE])
                     self._can_be_lazy = False
                 # -------------------------------------------
 
@@ -229,7 +228,7 @@ class LazyAgent2(BW4TBrain):
             if Phase.PLAN_PATH_TO_OBJECT == self._phase:
                 # -------------------LAZYNESS----------------
                 if self.__is_lazy() and self._can_be_lazy:
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = random.choice([Phase.PLAN_PATH_TO_CLOSED_DOOR, Phase.PLAN_PATH_TO_DROP_ZONE])
                     self._can_be_lazy = False
                 # -------------------------------------------
                 if len(self.blocks[str(self.current)]['locs']) != 0:
@@ -255,7 +254,7 @@ class LazyAgent2(BW4TBrain):
                 # Get objects in area of location
                 objs_in_area = state.get_objects_in_area(location_goal, 1, 1)
                 # Get block at followed location
-                l = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal, objs_in_area))
+                l = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal and self.check_same_visualizations(obj['visualization'], self.blocks[str(self.current)]['visualization']), objs_in_area))
 
                 if len(l) != 0:
                     self._sendMessage(Util.pickingUpBlockMessage(l[0]), agent_name)
@@ -275,7 +274,7 @@ class LazyAgent2(BW4TBrain):
 
                 # -------------------LAZYNESS----------------
                 if self.__is_lazy() and self._can_be_lazy and not self.was_lazy:
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = random.choice([Phase.PLAN_PATH_TO_CLOSED_DOOR, Phase.PLAN_PATH_TO_DROP_ZONE])
                     self._can_be_lazy = False
                     self.was_lazy = True
 
@@ -331,7 +330,7 @@ class LazyAgent2(BW4TBrain):
                     if self.current < 3:
                         self.current += 1
                     else:
-                        print("INDEX IS 3 AYYYYYYY")
+                        self._phase = Phase.STOP
                     self._phase = Phase.RESET
                     return None, {}
 
@@ -357,6 +356,49 @@ class LazyAgent2(BW4TBrain):
 
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+            if Phase.PLAN_PATH_TO_DROP_ZONE == self._phase:
+                self._navigator.reset_full()
+                loc = self.blocks["3"]['drop']
+                as_list = list(loc)
+                as_list[1] += 1
+                loc = tuple(as_list)
+                self.moving_to = loc
+                self._navigator.add_waypoints([loc])
+                self._phase = Phase.GO_TO_DROP_ZONE
+
+            if Phase.GO_TO_DROP_ZONE == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action is not None:
+                    return action, {}
+
+                location_goal = self.moving_to
+                # Get objects in area of location
+                objs_in_area = state.get_objects_in_area(location_goal, 1, 1)
+                # Get block at followed location
+                l = list(filter(lambda obj: 'Block' in obj['name'] and obj[
+                    'location'] == location_goal and self.check_same_visualizations(obj['visualization'],
+                                                                                    self.blocks[str(self.current)][
+                                                                                        'visualization']),
+                                objs_in_area))
+
+                if len(l) != 0:
+                    self._sendMessage(Util.pickingUpBlockMessage(l[0]), agent_name)
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([self.blocks[str(self.current)]['drop']])
+                    self._phase = Phase.MOVING_BLOCK
+
+                    # remove possible location froim dict
+                    self.blocks[str(self.current)]['locs'].remove(self.moving_to)
+                    self.moving_to = None
+
+                    return GrabObject.__name__, {'object_id': l[0]['obj_id']}
+
+                self._phase = Phase.RESET
+
+            if Phase.STOP == self._phase:
+                return None, {}
 
     def __is_lazy(self):
         return random.randint(0, 1) == 1
