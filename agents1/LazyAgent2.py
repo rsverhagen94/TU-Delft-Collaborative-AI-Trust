@@ -36,8 +36,9 @@ class Phase(enum.Enum):
     GO_TO_DROP_ZONE = 16
 
 
+# TODO make it send one message when finding block
 # TODO make the check drop goal near work
-class LazyAgent(BW4TBrain):
+class LazyAgent2(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
         super().__init__(settings)
@@ -67,10 +68,8 @@ class LazyAgent(BW4TBrain):
 
         self.was_lazy = False
 
-        self.foundBlocks = []
-
         # might not be needed at all
-        # self._objects = set()
+        #self._objects = set()
 
     def filter_bw4t_observations(self, state):
         return state
@@ -189,8 +188,7 @@ class LazyAgent(BW4TBrain):
             if Phase.SEARCH_ROOM == self._phase:
                 # -------------------LAZYNESS----------------
                 if self.__is_lazy() and self._can_be_lazy:
-                    self._phase = random.choice(
-                        [Phase.PLAN_PATH_TO_CLOSED_DOOR, Phase.PLAN_PATH_TO_OBJECT, Phase.PLAN_PATH_TO_DROP_ZONE])
+                    self._phase = random.choice([Phase.PLAN_PATH_TO_CLOSED_DOOR, Phase.PLAN_PATH_TO_OBJECT, Phase.PLAN_PATH_TO_DROP_ZONE])
                     self._can_be_lazy = False
                 # -------------------------------------------
 
@@ -199,23 +197,21 @@ class LazyAgent(BW4TBrain):
                 contents = list(filter(lambda obj: 'Block' in obj['name'], contents))
 
                 for c in contents:
-                    # self._objects.add(c)
-                    # self._sendMessage(Util.foundBlockMessage(c), agent_name)
+                    #self._objects.add(c)
+
+                    self._sendMessage(Util.foundBlockMessage(c), agent_name)
 
                     for block in self.blocks.values():
                         if self.check_same_visualizations(c['visualization'], block['visualization']) and not c[
                             'is_goal_block'] and not c['is_drop_zone'] and not self.already_delivered(c):
 
-                            if c not in self.foundBlocks:
-                                self.foundBlocks.append(c)
-
+                            self._sendMessage(Util.foundGoalBlockMessage(c), agent_name)
                             if block["idx"] == self.current:
                                 # print('found')
                                 self._phase = Phase.PLAN_PATH_TO_OBJECT
                                 # found an object, finished searching task, now it can be lazy again
                                 block['locs'].append(c['location'])
                                 self._can_be_lazy = True
-                                self.sendFoundBlockMessages()
                                 return None, {}
                             else:
                                 block['locs'].append(c['location'])
@@ -224,7 +220,7 @@ class LazyAgent(BW4TBrain):
 
                 if action is not None:
                     return action, {}
-                self.sendFoundBlockMessages()
+
                 self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
                 # finished searching room, it can now be lazy again
                 self._can_be_lazy = True
@@ -258,11 +254,7 @@ class LazyAgent(BW4TBrain):
                 # Get objects in area of location
                 objs_in_area = state.get_objects_in_area(location_goal, 1, 1)
                 # Get block at followed location
-                l = list(filter(lambda obj: 'Block' in obj['name'] and obj[
-                    'location'] == location_goal and self.check_same_visualizations(obj['visualization'],
-                                                                                    self.blocks[str(self.current)][
-                                                                                        'visualization']),
-                                objs_in_area))
+                l = list(filter(lambda obj: 'Block' in obj['name'] and obj['location'] == location_goal and self.check_same_visualizations(obj['visualization'], self.blocks[str(self.current)]['visualization']), objs_in_area))
 
                 if len(l) != 0:
                     self._sendMessage(Util.pickingUpBlockMessage(l[0]), agent_name)
@@ -369,7 +361,7 @@ class LazyAgent(BW4TBrain):
                 self._navigator.reset_full()
                 loc = self.blocks["3"]['drop']
                 as_list = list(loc)
-                as_list[1] -= 1
+                as_list[1] += 1
                 loc = tuple(as_list)
                 self.moving_to = loc
                 self._navigator.add_waypoints([loc])
@@ -403,7 +395,6 @@ class LazyAgent(BW4TBrain):
 
                     return GrabObject.__name__, {'object_id': l[0]['obj_id']}
 
-                self.moving_to = None
                 self._phase = Phase.RESET
 
             if Phase.STOP == self._phase:
@@ -481,7 +472,7 @@ class LazyAgent(BW4TBrain):
     def foundBlockUpdate(self, block, member):
         if (self._trust[member]['pick-up'] > 0.7 and self._trust[member]['verified'] > 2) or self._trust[member][
             'rep'] > 0.7:
-            # self._objects.add(block)
+            #self._objects.add(block)
             return
 
     def dropBlockUpdate(self, block, member):
@@ -501,11 +492,6 @@ class LazyAgent(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         self.receivedMessagesIndex = len(self.received_messages)
         return receivedMessages
-
-    def sendFoundBlockMessages(self):
-        for block in self.foundBlocks:
-            self._sendMessage(Util.foundGoalBlockMessage(block), self.agent_name)
-        self.foundBlocks = []
 
     ####################################################
     #                       TRUST

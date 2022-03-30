@@ -1,5 +1,6 @@
 import json
 import re
+import random
 
 class Util():
 
@@ -51,22 +52,73 @@ class Util():
     @staticmethod
     def droppingBlockMessage(data, location):
         item_info = dict(list(data['visualization'].items())[:3])
-        return "Droppped goal block " + json.dumps(item_info) \
+        return "Dropped goal block " + json.dumps(item_info) \
                + " at location (" + ', '.join([str(loc) for loc in location]) + ")"
 
     @staticmethod
     def reputationMessage(trust, team_members):
         rep = {}
         for member in team_members:
-            rep[member] = trust[member]['rep']
-        return "Reputation:" + json.dumps(rep)
+            rep[member] = trust[member]['average']
+        return "Reputation: " + json.dumps(rep)
+
+    @staticmethod
+    def openingDoorMessageLie(state, door):
+        door_names = [room['room_name'] for room in [door for door in state.values()
+                                                     if 'class_inheritance' in door and 'Door' in door[
+                                                         'class_inheritance']]]
+        door_names.remove(door)
+        return 'Opening door of ' + random.choice(door_names)
+
+    @staticmethod
+    def moveToMessageLie(door, doors):
+        room_names = [room['room_name'] for room in doors]
+        room_names.remove(door)
+        return 'Moving to ' + random.choice(room_names)
+
+    @staticmethod
+    def searchingThroughMessageLie(state, door):
+        rooms = [room for room in state.values()
+                 if 'class_inheritance' in room and 'Door' in room['class_inheritance']]
+        room_names = [room['room_name'] for room in rooms]
+        room_names.remove(door)
+        return 'Moving to ' + random.choice(room_names)
+
+    @staticmethod
+    def foundBlockMessageLie():
+        color = "%06x" % random.randint(0, 0xFFFFFF)
+        message = "Found block {\"size\": 0.5, \"shape\": " + \
+                  str(random.randint(0, 2)) + ", \"color\": \"#" + color + \
+                  "\"} at location (" + str(random.randint(0, 12)) + ", " + str(random.randint(0, 23)) + ")"
+        return message
+
+    @staticmethod
+    def pickingUpBlockMessageLie():
+        color = "%06x" % random.randint(0, 0xFFFFFF)
+        message = "Picking up goal block {\"size\": 0.5, \"shape\": " + \
+                  str(random.randint(0, 2)) + ", \"color\": \"#" + color + \
+                  "\"} at location (" + str(random.randint(0, 12)) + ", " + str(random.randint(0, 23)) + ")"
+        return message
+
+    @staticmethod
+    def droppingBlockMessageLie():
+        color = "%06x" % random.randint(0, 0xFFFFFF)
+        message = "Droppped goal block {\"size\": 0.5, \"shape\": " + \
+                  str(random.randint(0, 2)) + ", \"color\": \"#" + color + \
+                  "\"} at location (" + str(random.randint(0, 12)) + ", " + str(random.randint(0, 23)) + ")"
+        return message
+
 
     # TODO -  Implement methods: foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate
     # TODO -  In agent class; Each method takes block & member as arguments (use to update for each agent)
 
     @staticmethod
     def update_info_general(arrayWorld, receivedMessages, teamMembers,
-                            foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate):
+                            foundGoalBlockUpdate, foundBlockUpdate, pickUpBlockUpdate, dropBlockUpdate, dropGoalBlockUpdate, updateRep, agent_name):
+        avg_reps = {}
+        for member in teamMembers:
+            avg_reps[member] = 0
+
         for member in teamMembers:
             for msg in receivedMessages[member]:
                 block = {
@@ -149,7 +201,7 @@ class Util():
                     arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
                         "block": block['visualization'],
-                        "action": "found",
+                        "action": "pick-up",
                     })
 
                 elif "Dropped goal block " in msg:
@@ -172,7 +224,7 @@ class Util():
                     arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
                         "block": block['visualization'],
-                        "action": "found",
+                        "action": "drop-off",
                     })
 
                 elif "Dropped block " in msg:
@@ -195,5 +247,16 @@ class Util():
                     arrayWorld[block['location'][0], block['location'][1]].append({
                         "memberName": member,
                         "block": block['visualization'],
-                        "action": "found",
+                        "action": "drop-off",
                     })
+                elif "Reputation: " in msg:
+                    pattern = re.compile("{(.* ?)}")
+                    rep = re.search(pattern, msg).group(0)
+                    rep = json.loads(rep)
+                    for name in rep.keys():
+                        if name != agent_name:
+                            avg_reps[name] += rep[name]
+        # ASSUMPTION --> every agent communicates rep every tturn for everyone
+        # for member in teamMembers:
+        #     self._trust[member]['rep'] = avg_reps[member] / len(self._teamMembers)
+        updateRep(avg_reps)
