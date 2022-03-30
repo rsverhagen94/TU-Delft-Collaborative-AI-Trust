@@ -193,7 +193,7 @@ class StrongAgent(BW4TBrain):
 
                     # If no desired object was found just move
                 if action is not None:
-                    print("MEMORY", self.memory)
+                    # print("MEMORY", self.memory)
                     return action, {}
                 elif self._phase != Phase.DELIVER_ITEM:
                     # If the room is traversed go to te next room
@@ -442,23 +442,23 @@ class StrongAgent(BW4TBrain):
                     self.receivedMessages[member].append((self.ticks, mssg.content, mssg.from_id))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
                     self.tbv.append((self.ticks, mssg.content, mssg.from_id))
-                    is_true = self.checkMessageTrue(self.ticks, mssg.content, mssg.from_id)
-                    print('mssg', mssg.content, '\n', is_true)
+                    # is_true = self.checkMessageTrue(self.ticks, mssg.content, mssg.from_id)
+                    # print('mssg', mssg.content, '\n', is_true)
         # print('tbv', self.tbv)
-        # tbv_copy = self.tbv
-        # for (ticks, mssg, from_id) in tbv_copy:
-        #     is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
-        #     # print(mssg, is_true)
-        #     # print(self.seenObjects)
-        #     if is_true is not None:
-        #         if is_true:
-        #             self.increaseTrust(from_id)
-        #             print('truth', self.trustBeliefs[from_id])
-        #         else:
-        #             self.decreaseTrust(from_id)
-        #             print('lie', self.trustBeliefs[from_id])
-        #         self.tbv.remove((ticks, mssg, from_id))
-        #     # print('no info', self.trustBeliefs[from_id])
+        tbv_copy = self.tbv
+        for (ticks, mssg, from_id) in tbv_copy:
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
+            # print(mssg, is_true)
+            # print(self.seenObjects)
+            if is_true is not None:
+                if is_true:
+                    self.increaseTrust(from_id)
+                    print('truth', self.trustBeliefs[from_id])
+                else:
+                    self.decreaseTrust(from_id)
+                    print('lie', self.trustBeliefs[from_id])
+                self.tbv.remove((ticks, mssg, from_id))
+            # print('no info', self.trustBeliefs[from_id])
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -512,6 +512,12 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
+            if self.trustBeliefs[sender] >= 0.6:
+                for obj_vis, dropoff_loc in self.all_desired_objects:
+                    if self.compareObjects(vis, obj_vis):
+                        self.addToMemory(vis, loc, dropoff_loc)
+                        # print('added to memory from message')
+            # print('kek')
             for obj in self.seenObjects:
                 if self.compareObjects(vis, obj[0]) and obj[1] == loc:
                     return True
@@ -523,6 +529,15 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
+            if self.trustBeliefs[sender] >= 0.4:
+                for dict1 in self.memory:
+                    if self.compareObjects(dict1['visualization'], vis):
+                        self.memory.remove(dict1)
+                for obj in self.desired_objects:
+                    if self.compareObjects(obj[0], vis):
+                        self.desired_objects.remove(obj)
+                        print('removed from desired')
+                        print('desired', self.desired_objects)
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'block':
             vis, loc = self.getVisLocFromMessage(mssg)
@@ -545,7 +560,8 @@ class StrongAgent(BW4TBrain):
         return vis, loc
 
     def compareObjects(self, obj1, obj2):
-        for key in obj1:
+        keys = ('shape', 'colour')
+        for key in keys:
             if obj1[key] != obj2[key]:
                 return False
         return True
