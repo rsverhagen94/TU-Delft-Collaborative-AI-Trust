@@ -165,7 +165,7 @@ class StrongAgent(BW4TBrain):
                             # in case they are not we save them in the memory for later use
                             self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
 
-                            if (des, loc) in self.desired_objects[0:(2 - self.capacity)]:
+                            if (des, loc) in self.desired_objects:
                                 if self.capacity < 2:
                                     self.capacity += 1
                                     self.drop_off_locations.append((obj[0], obj[1], loc))
@@ -181,14 +181,6 @@ class StrongAgent(BW4TBrain):
                                     return GrabObject.__name__, {'object_id': obj[1]}
                                 else:
                                     self.addToMemory(obj[0], obj[2], loc)
-
-                            elif (des, loc) in self.desired_objects:
-                                # Note a small bug was found. It does not find and pick object
-                                # when the memory is pointing to the middle room (room 5).
-                                # In all other cases it work properly
-                                # Grab object if there is a capacity
-
-                                self.addToMemory(obj[0], obj[2], loc)
 
                 # In case we are filled, deliver items, next phase
                 if self.capacity > 1:
@@ -314,8 +306,8 @@ class StrongAgent(BW4TBrain):
 
                     # randomly pick closed door
                     else:
-                        # self._door = random.choice(closedDoors)
-                        self._door = closedDoors[0]
+                        self._door = random.choice(closedDoors)
+                        # self._door = closedDoors[0]
 
                     # get the location of the door
                     doorLoc = self._door['location']
