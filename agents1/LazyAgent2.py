@@ -34,11 +34,11 @@ class Phase(enum.Enum):
     RESET = 14
 
 
-# TODO add trsut stuff
-# TODO improve lazyness?
 # TODO make it send one message when finding block
 # TODO make the check drop goal near work
-
+# TODO sometimes grabs red block? is weird
+# TODO make work with blind
+# TODO add average trust
 class LazyAgent2(BW4TBrain):
 
     def __init__(self, settings: Dict[str, object]):
@@ -70,7 +70,7 @@ class LazyAgent2(BW4TBrain):
         self.was_lazy = False
 
         # might not be needed at all
-        # self._objects = []
+        #self._objects = set()
 
     def filter_bw4t_observations(self, state):
         return state
@@ -90,33 +90,17 @@ class LazyAgent2(BW4TBrain):
             self.initialize_trust()
             self.read_trust()
         self.write_beliefs()
-        # self._sendMessage(Util.reputationMessage(self._trust,self._teamMembers), agent_name)
         # ------------------------------------
 
-        if self._arrayWorld is None:
-            self._arrayWorld = np.empty(state['World']['grid_shape'], dtype=list)
+        self._prepareArrayWorld(state)
+
+        self._updateWorld(state)
+
+        self._sendMessage(Util.reputationMessage(self._trust, self._teamMembers), agent_name)
 
         Util.update_info_general(self._arrayWorld, receivedMessages, self._teamMembers,
                                  self.foundGoalBlockUpdate, self.foundBlockUpdate, self.pickUpBlockUpdate,
-                                 self.dropBlockUpdate, self.dropGoalBlockUpdate, self.updateRep)
-
-        # Get agent location & close objects
-        agentLocation = state[self.agent_id]['location']
-        closeObjects = state.get_objects_in_area((agentLocation[0] - 1, agentLocation[1] - 1),
-                                                 bottom_right=(agentLocation[0] + 1, agentLocation[1] + 1))
-        # Filter out only blocks
-        closeBlocks = None
-        if closeObjects is not None:
-            closeBlocks = [obj for obj in closeObjects
-                           if 'CollectableBlock' in obj['class_inheritance']]
-
-        # Update trust beliefs for team members
-        self._trustBlief(state, closeBlocks)
-
-        # Update arrayWorld
-        for obj in closeObjects:
-            loc = obj['location']
-            self._arrayWorld[loc[0]][loc[1]] = []
+                                 self.dropBlockUpdate, self.dropGoalBlockUpdate, self.updateRep, self.agent_name)
 
         while True:
             if Phase.START == self._phase:
@@ -214,7 +198,7 @@ class LazyAgent2(BW4TBrain):
                 contents = list(filter(lambda obj: 'Block' in obj['name'], contents))
 
                 for c in contents:
-                    # self._objects.append(c)
+                    #self._objects.add(c)
 
                     self._sendMessage(Util.foundBlockMessage(c), agent_name)
 
@@ -374,6 +358,31 @@ class LazyAgent2(BW4TBrain):
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
+    def __is_lazy(self):
+        return random.randint(0, 1) == 1
+
+    def already_delivered(self, o1):
+        for block in self.blocks.values():
+            if o1['visualization'] == block['visualization']:
+                return True
+        return False
+
+    def check_same_visualizations(self, vis1, vis2):
+        shape = False
+        colour = False
+
+        if "shape" in vis1 and "shape" in vis2:
+            shape = True if vis1['shape'] == vis2['shape'] else False
+
+        if "colour" in vis1 and "colour" in vis2:
+            colour = True if vis1['colour'] == vis2['colour'] else False
+
+        return shape and colour
+
+    ####################################################
+    #                       MESSAGES
+    ####################################################
+
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -382,41 +391,47 @@ class LazyAgent2(BW4TBrain):
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
-    def updateRep(self, avg_reps):
-        for member in self._teamMembers:
-            self._trust[member]['rep'] = avg_reps[member] / len(self._teamMembers)
-
     def dropGoalBlockUpdate(self, block, member):
+        if (self._trust[member]['pick-up'] > 0.7 and self._trust[member]['verified'] > 2) or self._trust[member][
+            'rep'] > 0.7:
+            # check if goal block and dropped at drop-off zone
+            current_block = self.blocks[str(self.current)]
 
-        # check if goal block and dropped at drop-off zone
-        current_block = self.blocks[str(self.current)]
-
-        if self.check_same_visualizations(current_block['visualization'], block['visualization']) and current_block['drop'][0] == block['location'][0] and current_block['drop'][1] == block['location'][1]:
-            self._phase = Phase.DROP_OBJECT
-        else:
-            i = self.current
-            while i < 4:
-                current_block = self.blocks[str(i)]
-                # if dropped somewhere else add to locations
-                if self.check_same_visualizations(['visualization'], block['visualization']):
-                    self.blocks[str(current_block["idx"])]['locs'].append(block['location'])
-                i += 1
-
+            if self.check_same_visualizations(current_block['visualization'], block['visualization']) and \
+                    current_block['drop'][0] == block['location'][0] and current_block['drop'][1] == block['location'][
+                1]:
+                self._phase = Phase.DROP_OBJECT
+            else:
+                i = self.current
+                while i < 4:
+                    current_block = self.blocks[str(i)]
+                    # if dropped somewhere else add to locations
+                    if self.check_same_visualizations(['visualization'], block['visualization']):
+                        self.blocks[str(current_block["idx"])]['locs'].append(block['location'])
+                    i += 1
 
     def pickUpBlockUpdate(self, block, member):
-        for goal in self.blocks.values():
-            for loc in goal['locs']:
-                # if goal in list of loctions, remove
-                if self.check_same_visualizations(goal['visualization'], block['visualization']) and loc[0] == block['location'][0] and loc[1] == block['location'][1]:
-                    self.blocks[str(goal["idx"])]['locs'].remove(loc)
+        if (self._trust[member]['pick-up'] > 0.7 and self._trust[member]['verified'] > 2) or self._trust[member][
+            'rep'] > 0.7:
+            for goal in self.blocks.values():
+                for loc in goal['locs']:
+                    # if goal in list of loctions, remove
+                    if self.check_same_visualizations(goal['visualization'], block['visualization']) and loc[0] == \
+                            block['location'][0] and loc[1] == block['location'][1]:
+                        self.blocks[str(goal["idx"])]['locs'].remove(loc)
 
     def foundGoalBlockUpdate(self, block, member):
-        for goal in self.blocks.values():
-            if self.check_same_visualizations(goal['visualization'], block['visualization']):
-                self.blocks[str(goal["idx"])]['locs'].append((block['location'][0],block['location'][1]))
+        if (self._trust[member]['pick-up'] > 0.7 and self._trust[member]['verified'] > 2) or self._trust[member][
+            'rep'] > 0.7:
+            for goal in self.blocks.values():
+                if self.check_same_visualizations(goal['visualization'], block['visualization']):
+                    self.blocks[str(goal["idx"])]['locs'].append((block['location'][0], block['location'][1]))
 
     def foundBlockUpdate(self, block, member):
-        return
+        if (self._trust[member]['pick-up'] > 0.7 and self._trust[member]['verified'] > 2) or self._trust[member][
+            'rep'] > 0.7:
+            #self._objects.add(block)
+            return
 
     def dropBlockUpdate(self, block, member):
         return
@@ -435,6 +450,167 @@ class LazyAgent2(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         self.receivedMessagesIndex = len(self.received_messages)
         return receivedMessages
+
+    ####################################################
+    #                       TRUST
+    ####################################################
+
+    def _trustBlief(self, state, close_objects):
+        agentLocation = state[self.agent_id]['location']
+        (x, y) = agentLocation
+        messages = self._arrayWorld[x][y]
+        self._arrayWorld[x][y] = []
+        if len(messages) > 0:  # there is some sort of block interaction!
+            realBlock = self.getObjectAtLocation(close_objects, (x, y))
+            if realBlock == "MultipleObj":
+                return
+            if realBlock is None:  # no actual block there so interaction must end with pickup to be valid!
+                self.checkPickUpInteraction(messages)
+            else:  # block is there so interaction must end with found or drop-off to be valid!
+                self.checkFoundInteraction(messages, realBlock)
+
+    def checkPickUpInteraction(self,
+                               interactions):  # assume interactions are for the same type of block(same visualization)
+
+        actionFreq = {
+            "drop-off": 0,
+            "found": 0,
+            "pick-up": 0
+        }
+        properActionOrder = True
+        lastActionNotCorrect = False
+        members = []
+        for i in range(len(interactions)):
+            inter = interactions[i]
+            action = inter['action']
+            members.append((inter['memberName'], action))
+            # inter['block']
+            actionFreq[action] += 1
+            if i == len(interactions) - 1 and action != 'pick-up':
+                lastActionNotCorrect = True  # wrong! decrease trust
+            if action == 'drop-off':
+                if i == len(interactions) - 1:
+                    break
+                if interactions[i + 1]['action'] == 'found':
+                    continue  # good! can be continued!
+                else:
+                    properActionOrder = False
+            elif action == 'found':
+                if i == len(interactions) - 1:
+                    break
+                if interactions[i + 1]['action'] == 'found' or interactions[i + 1]['action'] == 'pick-up':
+                    continue  # good! can be continued!
+                else:
+                    properActionOrder = False
+            elif action == 'pick-up':
+                if i == len(interactions) - 1:  # correct case!
+                    continue  # increase trust
+                elif interactions[i + 1]['action'] == 'drop-off':
+                    continue  # good! can be continued!
+                else:
+                    properActionOrder = False
+        if properActionOrder and not lastActionNotCorrect:
+            if actionFreq["drop-off"] + actionFreq['found'] < 1 and actionFreq['pick-up'] == 1:
+                self.increaseDecreaseTrust(members, False)  # decrease (cannot pickup block that has never been found!!)
+            self.increaseDecreaseTrust(members, True)  # increase trust of all agents
+        elif properActionOrder and lastActionNotCorrect:
+            if actionFreq["drop-off"] + actionFreq['found'] > 1:
+                return  # keep the same trust
+            else:
+                self.increaseDecreaseTrust(members, False)  # decrease trust
+        else:
+            self.increaseDecreaseTrust(members, False)  # decrease trust
+
+    def increaseDecreaseTrust(self, members, isIncrease, block=None):
+
+        val = -0.1
+        if isIncrease:
+            val = 0.1
+        for member in members:
+            if block is not None:
+                val = self.check_same_visualizations(block['visualization'], member[2])
+            self._trust[member[0]][member[1]] = min(max(round(self._trust[member[0]][member[1]] + val, 3), 0), 1)
+            self._trust[member[0]]['verified'] += 1
+
+    def checkFoundInteraction(self, interactions, realBlock):
+        actionFreq = {
+            "drop-off": 0,
+            "found": 0,
+            "pick-up": 0
+        }
+        properActionOrder = True
+        lastActionNotCorrect = False
+        members = []
+        for i in range(len(interactions)):
+            inter = interactions[i]
+            action = inter['action']
+            members.append((inter['memberName'], action, inter['block']))
+            # inter['block']
+            actionFreq[action] += 1
+            if i == len(interactions) - 1:
+                if action == 'pick-up':
+                    lastActionNotCorrect = True  # wrong! decrease trust
+                break
+            if action == 'drop-off':
+                if interactions[i + 1]['action'] == 'found':
+                    continue  # good! can be continued!
+                else:
+                    properActionOrder = False
+            elif action == 'found':
+                if interactions[i + 1]['action'] == 'found' or interactions[i + 1]['action'] == 'pick-up':
+                    continue  # good! can be continued!
+                else:
+                    properActionOrder = False
+            elif action == 'pick-up':
+                if interactions[i + 1]['action'] == 'drop-off':
+                    continue  # good! can be continued!
+                else:
+                    properActionOrder = False
+
+        if properActionOrder and not lastActionNotCorrect:
+            self.increaseDecreaseTrust(members, True, realBlock)  # increase trust of all agents
+        else:
+            self.increaseDecreaseTrust(members, False)  # decrease trust
+
+    def getObjectAtLocation(self, close_objects, location):
+        closeBlocks = None
+        if close_objects is not None:
+            closeBlocks = [obj for obj in close_objects
+                           if location == obj['location']]
+        if len(closeBlocks) == 0:
+            return None
+        if len(closeBlocks) != 1:
+            return "MultipleObj"
+        return closeBlocks[0]
+
+    def _updateWorld(self, state):
+        agentLocation = state[self.agent_id]['location']
+        closeObjects = state.get_objects_in_area((agentLocation[0] - 1, agentLocation[1] - 1),
+                                                 bottom_right=(agentLocation[0] + 1, agentLocation[1] + 1))
+        # Filter out only blocks
+        closeBlocks = None
+        if closeObjects is not None:
+            closeBlocks = [obj for obj in closeObjects
+                           if 'CollectableBlock' in obj['class_inheritance']]
+
+        # Update trust beliefs for team members
+        self._trustBlief(state, closeBlocks)
+
+        # add average trust
+        for member in self._teamMembers:
+            avg = 0
+            for key in self._trust[member].keys():
+                if key in ["pick-up", "drop-off", "found"]:
+                    avg += self._trust[member][key] / 3.0
+            self._trust[member]['average'] = avg
+
+    def _prepareArrayWorld(self, state):
+        worldShape = state['World']['grid_shape']
+        if self._arrayWorld is None:
+            self._arrayWorld = np.empty(worldShape, dtype=list)
+            for x in range(worldShape[0]):
+                for y in range(worldShape[1]):
+                    self._arrayWorld[x, y] = []
 
     def read_trust(self):
         # agentname_trust.csv
@@ -471,82 +647,6 @@ class LazyAgent2(BW4TBrain):
                 row['name'] = name
                 writer.writerow(row)
 
-    def _trustBlief(self, state, close_objects):
-        '''
-        Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
-        '''
-        # You can change the default value to your preference
-
-        # Go throug the seen objects
-        # print(self._arrayWorld)
-        # print("l: ", self._trust)
-        if close_objects is not None:
-            for o in close_objects:
-                loc = o['location']
-                messages = self._arrayWorld[loc[0], loc[1]]
-                # If we find messages for the location of the object
-                if messages is not None and len(messages) > 0:
-                    member = messages[-1]['memberName']
-                    # If last message is 'pick-up' substract from trust
-                    if messages[-1]['action'] == "pick-up":
-                        self._trust[member]['pick-up'] = max(round(self._trust[member]['pick-up'] - 0.1, 3), 0)
-                    # If last message is 'found' or 'drop-of' add to trust
-                    if messages[-1]['action'] == "found" or messages[-1]['action'] == "drop-off":
-                        val = self.check_same_visualizations(o['visualization'], messages[-1]['block'])
-                        self._trust[member]['found'] = min(round(self._trust[member]['found'] + val, 3), 1)
-                    if len(messages) > 1:
-                        i = len(messages) - 2
-                        while i >= 0:
-                            member = messages[i]['memberName']
-                            if messages[-1]['action'] == "drop-off":
-                                self._trust[member]['drop-off'] = min(round(self._trust[member]['drop-off'] + 0.1, 3),
-                                                                      1)
-                                break
-                            if not messages[-1]['action'] == "found":
-                                break
-
-                            val = self.check_same_visualizations(o['visualization'], messages[-1]['block'])
-                            self._trust[member]['found'] = min(round(self._trust[member]['found'] + val, 3), 1)
-
-                            i -= 1
-
-        agentLocation = state[self.agent_id]['location']
-        for x in range(agentLocation[0] - 1, agentLocation[0] + 2):
-            for y in range(agentLocation[1] - 1, agentLocation[0] + 2):
-                messages = self._arrayWorld[x][y]
-                if messages is not None and len(messages) > 0:
-                    member = messages[-1]['memberName']
-                    if isinstance(messages, list) and messages[-1]['action'] == "found" or messages[-1][
-                        'action'] == "drop-off":
-                        if close_objects is None:
-                            self._trust[member][messages[-1]['action']] = max(
-                                round(self._trust[member][messages[-1]['action']] - 0.1, 3), 0)
-                        else:
-                            found = False
-                            for o in close_objects:
-                                if o['location'] == (x, y):
-                                    found = True
-                            if found is False:
-                                self._trust[member][messages[-1]['action']] = max(
-                                    round(self._trust[member][messages[-1]['action']] - 0.1, 3), 0)
-
-    def __is_lazy(self):
-        return random.randint(0, 1) == 1
-
-    def already_delivered(self, o1):
-        for block in self.blocks.values():
-            if o1['visualization'] == block['visualization']:
-                return True
-        return False
-
-    def check_same_visualizations(self, vis1, vis2):
-        shape = False
-        colour = False
-
-        if "shape" in vis1 and "shape" in vis2:
-            shape = True if vis1['shape'] == vis2['shape'] else False
-
-        if "colour" in vis1 and "colour" in vis2:
-            colour = True if vis1['colour'] == vis2['colour'] else False
-
-        return shape and colour
+    def updateRep(self, avg_reps):
+        for member in self._teamMembers:
+            self._trust[member]['rep'] = avg_reps[member] / len(self._teamMembers)
