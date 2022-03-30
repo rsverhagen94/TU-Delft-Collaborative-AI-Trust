@@ -36,18 +36,10 @@ class Phase(enum.Enum):
     PLAN_FIX_SOLUTION = 20,
     FIX_SOLUTION = 21
 
-
-
-
 class Status(enum.Enum):
     MOVING_TO_ROOM = 0,
     MOVING_TO_GOAL = 1,
     PICKING_UP_BLOCK = 2,
-
-class Belief(enum.Enum):
-    TRUST = 0,
-    COMPETENCE = 1,
-    WILLINGNESS = 2
 
 # TODO: fix missing information for block visualization (like for colour blind) or additional (useless) information, cuz who knows what whacky stuff other agents do
 
@@ -107,7 +99,6 @@ class BaseAgent(BaseLineAgent):
         messages = super()._processMessages(teamMembers)
         self.received_messages.clear()
         current_world_state = self._world_state
-        print(current_world_state['searched_rooms'])
 
         for member in messages.keys():
             if member not in current_world_state['teammembers']:
@@ -172,7 +163,7 @@ class BaseAgent(BaseLineAgent):
                         current_world_state['teammembers'][member]['carrying'].remove(block_vis)
                     except ValueError:
                         # member was not carrying block they said they dropped, thus is probably lying
-                        self._decreaseBelief(Belief.TRUST, member, 0.2)
+                        self._decreaseBelief("Trust", member, 0.2)
                     # test if location is supposedly goal, if so set goal to be SAT
                     for goal in current_world_state['goals']:
                         if block_loc == goal['location'] and block_vis == goal['visualization']:
@@ -192,11 +183,11 @@ class BaseAgent(BaseLineAgent):
                     block_loc = eval(vis_and_loc[1])
                     for goal in self._world_state['goals']:
                         if goal['visualization'] == block_vis and not block_loc == goal['location'] and not goal['satisfied'] and not self.previousGoalsSatisfied(goal['index'] - 1):
-                            self._decreaseBelief(Belief.WILLINGNESS, member, 0.1)
+                            self._decreaseBelief("Willingness", member, 0.1)
 
                 if 'Found' in message and 'colour' not in message:
                     #update capability (agent does not provide all information)
-                    self._decreaseBelief(Belief.COMPETENCE, member, 0.1)
+                    self._decreaseBelief("Competence", member, 0.1)
 
     def previousGoalsSatisfied(self, goalIndex):
         while goalIndex >= 0:
@@ -209,38 +200,38 @@ class BaseAgent(BaseLineAgent):
         return True
 
     def _increaseBelief(self, type, member, amount):
-        if type == Belief.WILLINGNESS:
-            if self._beliefs[member][Belief.WILLINGNESS] + amount < self._maxTrust:
-                self._beliefs[member][Belief.WILLINGNESS] += amount
+        if type == "Willingness":
+            if self._beliefs[member]["Willingness"] + amount < self._maxTrust:
+                self._beliefs[member]["Willingness"] += amount
             else:
-                self._beliefs[member][Belief.WILLINGNESS] = self._maxTrust
-        elif type == Belief.TRUST:
-            if self._beliefs[member][Belief.TRUST] + amount < self._maxTrust:
-                self._beliefs[member][Belief.TRUST] += amount
+                self._beliefs[member]["Willingness"] = self._maxTrust
+        elif type == "Trust":
+            if self._beliefs[member]["Trust"] + amount < self._maxTrust:
+                self._beliefs[member]["Trust"] += amount
             else:
-                self._beliefs[member][Belief.TRUST] = self._maxTrust
-        elif type == Belief.COMPETENCE:
-            if self._beliefs[member][Belief.COMPETENCE] + amount < self._maxTrust:
-                self._beliefs[member][Belief.COMPETENCE] += amount
+                self._beliefs[member]["Trust"] = self._maxTrust
+        elif type == "Competence":
+            if self._beliefs[member]["Competence"] + amount < self._maxTrust:
+                self._beliefs[member]["Competence"] += amount
             else:
-                self._beliefs[member][Belief.COMPETENCE] = self._maxTrust
+                self._beliefs[member]["Competence"] = self._maxTrust
 
     def _decreaseBelief(self, type, member, amount):
-        if type == Belief.WILLINGNESS:
-            if self._beliefs[member][Belief.WILLINGNESS] - amount > 0.0:
-                self._beliefs[member][Belief.WILLINGNESS] -= amount
+        if type == "Willingness":
+            if self._beliefs[member]["Willingness"] - amount > 0.0:
+                self._beliefs[member]["Willingness"] -= amount
             else:
-                self._beliefs[member][Belief.WILLINGNESS] = 0.0
-        elif type == Belief.TRUST:
-            if self._beliefs[member][Belief.TRUST] - amount > 0.0:
-                self._beliefs[member][Belief.TRUST] -= amount
+                self._beliefs[member]["Willingness"] = 0.0
+        elif type == "Trust":
+            if self._beliefs[member]["Trust"] - amount > 0.0:
+                self._beliefs[member]["Trust"] -= amount
             else:
-                self._beliefs[member][Belief.TRUST] = 0.0
-        elif type == Belief.COMPETENCE:
-            if self._beliefs[member][Belief.COMPETENCE] - amount > 0.0:
-                self._beliefs[member][Belief.COMPETENCE] -= amount
+                self._beliefs[member]["Trust"] = 0.0
+        elif type == "Competence":
+            if self._beliefs[member]["Competence"] - amount > 0.0:
+                self._beliefs[member]["Competence"] -= amount
             else:
-                self._beliefs[member][Belief.COMPETENCE] = 0.0
+                self._beliefs[member]["Competence"] = 0.0
 
     def _handleMessages(self, state):
         # if a goal has been satisfied and you are carrying a block for that goal, drop the block
@@ -313,11 +304,11 @@ class BaseAgent(BaseLineAgent):
             for b in observations['blocks']:
                 if b['visualization'] == block['visualization'] and b['location'] == block['location']:
                     verified = True
-                    self._increaseBelief(Belief.TRUST, block['by'], 0.05)
+                    self._increaseBelief("Trust", block['by'], 0.05)
                     break
             if not verified:
                 self._world_state['found_blocks'].remove(block)
-                self._decreaseBelief(Belief.TRUST, block['by'], 0.1)
+                self._decreaseBelief("Trust", block['by'], 0.1)
 
         # handle goal verification (only done if standing on a goal, since sense capabilities is a bit iffy)
         goals_to_verify_at_cur_location = [goal for goal in self._world_state['goals']
@@ -332,22 +323,22 @@ class BaseAgent(BaseLineAgent):
             if len(correct_blocks_on_goal) > 0:
                 # this goal has a correct block
                 goal['verified'] = True
-                self._increaseBelief(Belief.TRUST, goal['by'], 0.2)
+                self._increaseBelief("Trust", goal['by'], 0.2)
             else:
                 # this goal was not satisfied, update trust of goal['by']
                 goal['satisfied'] = False
-                self._decreaseBelief(Belief.TRUST, goal['by'], 0.3)
+                self._decreaseBelief("Trust", goal['by'], 0.3)
 
         # handle visible doors and update trust
         for door in observations['doors']:
             for d in self._world_state['opened_doors']:
                 if not door['is_open'] and door['room_name'] == d['room_id'] and not d['checked']:
                     # door that was said to be opened is not open, decrease trust
-                    self._decreaseBelief(Belief.TRUST, d['by'], 0.05)
+                    self._decreaseBelief("Trust", d['by'], 0.05)
                     d['checked'] = True
                 if door['is_open'] and door['room_name'] == d['room_id'] and not d['checked']:
                     # member opened door when saying it would open door, increase trust
-                    self._increaseBelief(Belief.TRUST, d['by'], 0.01)
+                    self._increaseBelief("Trust", d['by'], 0.01)
                     d['checked'] = True
 
     def filter_bw4t_observations(self, state):
@@ -374,16 +365,19 @@ class BaseAgent(BaseLineAgent):
         # handle observations, what blocks you currently see, teammates and their actual states, doors etc
         observations = self._processObservations(state)
         self._handleObservations(observations)
+        if not self._beliefs:
+            self._load_trust()
         # Update trust beliefs for team members
         if not self._beliefs:
             for member in state['World']['team_members']:
                 self._beliefs[member] = {
-                    Belief.TRUST: 0.5,
-                    Belief.COMPETENCE: 0.5,
-                    Belief.WILLINGNESS: 0.5
+                    "Trust": 0.5,
+                    "Competence": 0.5,
+                    "Willingness": 0.5
                 }
 
         self._trustBelief(self._teamMembers, receivedMessages)
+        self._save_trust()
 
         closedDoors = [door for door in state.values()
                        if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door['is_open']]
@@ -853,3 +847,16 @@ class BaseAgent(BaseLineAgent):
         for room in rooms:
             if room['location'] == location:
                 return room['room_name']
+
+    def _save_trust(self):
+        with open(str(self.agent_name) + ".json", "w+") as write_file:
+            json.dump(self._beliefs, write_file, indent=4)
+
+    def _load_trust(self):
+        try:
+            with open(str(self.agent_name) + ".json") as read_file:
+                self._beliefs = json.load(read_file)
+        except IOError:
+            return
+
+
