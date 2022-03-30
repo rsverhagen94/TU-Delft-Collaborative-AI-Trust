@@ -50,6 +50,7 @@ class Belief(enum.Enum):
     WILLINGNESS = 2
 
 # TODO: fix missing information for block visualization (like for colour blind) or additional (useless) information, cuz who knows what whacky stuff other agents do
+
 class BaseAgent(BaseLineAgent):
 
     def __init__(self, settings: Dict[str, object]):
@@ -102,10 +103,11 @@ class BaseAgent(BaseLineAgent):
 
         self.__next_phase = []
 
-    def _processMessages(self, teamMembers):
+    def _processMessages(self, teamMembers, state):
         messages = super()._processMessages(teamMembers)
         self.received_messages.clear()
         current_world_state = self._world_state
+        print(current_world_state['searched_rooms'])
 
         for member in messages.keys():
             if member not in current_world_state['teammembers']:
@@ -133,6 +135,17 @@ class BaseAgent(BaseLineAgent):
                             exists = True
                             break
                     if not exists:
+                        # If block found that is not in found block add it, if the room the block was found in was already searched,
+                        # decrease competence of agent that searched the room but did not find the block
+                        # TODO think about whether we want the room to be removed from searched rooms as it was not fully searched
+                        # TODO uncomment once searched rooms is fixed
+                        # room = self._get_room_from_location(block_loc, state)
+                        # for r in current_world_state['searched_rooms']:
+                        #     if r['by'] is not member and r['room_id'] == room:
+                        #         self._decreaseBelief(Belief.COMPETENCE, r['by'], 0.1)
+                        # member that is searching the room has found a block -> increase competence
+                        #     if r['by'] is member and r['room_id'] == room:
+                        #         self._increaseBelief(Belief.COMPETENCE, r['by'], 0.05)
                         current_world_state['found_blocks'].append(block)
 
                 elif 'Picking up goal block ' in msg:
@@ -356,7 +369,7 @@ class BaseAgent(BaseLineAgent):
             self.init_goals(state)
 
         # Process messages from team members
-        receivedMessages = self._processMessages(self._world_state['teammembers'].keys())
+        receivedMessages = self._processMessages(self._world_state['teammembers'].keys(), state)
         self._handleMessages(state)
         # handle observations, what blocks you currently see, teammates and their actual states, doors etc
         observations = self._processObservations(state)
@@ -833,3 +846,10 @@ class BaseAgent(BaseLineAgent):
         missing_goals = sorted([goal for goal in self._world_state['goals']
                             if not goal['satisfied']], key=lambda g: g['index'])
         return missing_goals
+
+    def _get_room_from_location(self, location, state):
+        rooms = [room for room in state.values()
+                 if 'room_name' in room and 'class_inheritance' in room and 'AreaTile' in room['class_inheritance']]
+        for room in rooms:
+            if room['location'] == location:
+                return room['room_name']
