@@ -109,6 +109,9 @@ class BaseAgent(BaseLineAgent):
                 if 'Moving to ' in msg:
                     room_id = msg.split(' ')[-1]
                     current_world_state['teammembers'][member]['state'] = {'type': Status.MOVING_TO_ROOM, 'room_id': room_id}
+
+                if 'Searching through ' in msg:
+                    room_id = msg.split(' ')[-1]
                     current_world_state['searched_rooms'].append({'room_id': room_id, 'by': member})
 
                 elif 'Opening door of ' in msg:
@@ -128,15 +131,13 @@ class BaseAgent(BaseLineAgent):
                     if not exists:
                         # If block found that is not in found block add it, if the room the block was found in was already searched,
                         # decrease competence of agent that searched the room but did not find the block
-                        # TODO think about whether we want the room to be removed from searched rooms as it was not fully searched
-                        # TODO uncomment once searched rooms is fixed
-                        # room = self._get_room_from_location(block_loc, state)
-                        # for r in current_world_state['searched_rooms']:
-                        #     if r['by'] is not member and r['room_id'] == room:
-                        #         self._decreaseBelief(Belief.COMPETENCE, r['by'], 0.1)
+                        room = self._get_room_from_location(block_loc, state)
+                        for r in current_world_state['searched_rooms']:
+                            if r['by'] is not member and r['room_id'] == room:
+                                self._decreaseBelief("Competence", r['by'], 0.1)
                         # member that is searching the room has found a block -> increase competence
-                        #     if r['by'] is member and r['room_id'] == room:
-                        #         self._increaseBelief(Belief.COMPETENCE, r['by'], 0.05)
+                            if r['by'] is member and r['room_id'] == room:
+                                self._increaseBelief("Competence", r['by'], 0.05)
                         current_world_state['found_blocks'].append(block)
 
                 elif 'Picking up goal block ' in msg:
@@ -169,7 +170,6 @@ class BaseAgent(BaseLineAgent):
                         if block_loc == goal['location'] and block_vis == goal['visualization']:
                             goal['satisfied'] = True
                             goal['by'] = member
-
         return messages
 
     def _trustBelief(self, member, received):
