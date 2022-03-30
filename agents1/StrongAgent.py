@@ -424,17 +424,19 @@ class StrongAgent(BW4TBrain):
         print(df)
         df.to_csv("Trust.csv")
 
-    def _write_to_trust_table(self, truster_index, trustee, new_trust):
-        df = pd.read_csv('Trust.csv')
-        df.loc[truster_index, trustee] = new_trust
+    def _write_to_trust_table(self, trustor, trustee, new_trust):
+        df = pd.read_csv('Trust.csv', index_col=0)
+        df.loc[trustor, trustee] = new_trust
         print(df)
         df.to_csv('Trust.csv')
 
     def increaseTrust(self, trustee):
         self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.1, 0, 1)
+        self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
 
     def decreaseTrust(self, trustee):
         self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.1, 0, 1)
+        self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
 
     def _processMessages(self):
         '''
