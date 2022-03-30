@@ -55,6 +55,7 @@ class StrongAgent(BW4TBrain):
         # For each team member store trust score
         self.trustBeliefs = {}
 
+
         # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
         self.grab = False
         self.drop = False
@@ -111,6 +112,14 @@ class StrongAgent(BW4TBrain):
             self._init_trust_table(state['World']['team_members'])
             self.all_desired_objects = self.desired_objects.copy()
             sorted(self.all_desired_objects, key=lambda obj: obj[1], reverse=True)
+
+            room_doors = {}
+            for room in self.all_rooms:
+                if room != "world_bounds":
+                    door = state.get_room_doors(room)
+                    room_doors[room] = door
+
+            print("ALL ROOOMS", room_doors)
 
         while True:
 
@@ -265,15 +274,7 @@ class StrongAgent(BW4TBrain):
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                         'is_open']]
 
-                if len(self.memory) > 0 and ((self.desired_objects[0][0]["shape"] ==
-                                              self.memory[0]["visualization"]["shape"]
-                                              and self.desired_objects[0][0]["colour"] ==
-                                              self.memory[0]["visualization"]["colour"]) or
-                                             (len(self.memory) > 1 and
-                                              self.desired_objects[0][1]["shape"] ==
-                                              self.memory[0]["visualization"]["shape"]
-                                              and self.memory[0]["visualization"]["colour"] ==
-                                              self.desired_objects[0][1]["colour"])):
+                if len(self.memory) > 0:
 
                     # print("MEMORY", self.memory)
 
