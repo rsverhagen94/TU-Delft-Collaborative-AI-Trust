@@ -1,4 +1,5 @@
 import copy
+import random
 from typing import Dict
 import json
 import enum
@@ -58,6 +59,9 @@ class BaseAgent(BaseLineAgent):
         self._current_room = None
         self._door = None
         self._carrying_capacity = 1
+        self._is_lazy = False
+        self._be_lazy = False
+        self._be_lazy_after_moves = 0
         self.gf_start = None
         self._current_state = {'type': None}
         self._world_state = {
@@ -83,6 +87,7 @@ class BaseAgent(BaseLineAgent):
         self.gf_start = None
         self._current_state = {'type': None}
         self._carrying_capacity = 1
+        self._is_lazy = False
         self._beliefs = {}
         self._test = False
 
@@ -405,6 +410,10 @@ class BaseAgent(BaseLineAgent):
                 self._phase = Phase.PLAN_SEARCH_ROOM
 
             if Phase.FOLLOW_PATH_TO_BLOCK == self._phase:
+                if self._is_lazy and self._check_if_lazy():
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._navigator.reset_full()
+                    continue
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
@@ -413,6 +422,11 @@ class BaseAgent(BaseLineAgent):
                     self._phase = Phase.PICKUP_BLOCK
 
             if Phase.FOLLOW_PATH_TO_GOAL == self._phase:
+                if self._is_lazy and self._check_if_lazy():
+                    self._phase = Phase.DROP_BLOCK
+                    self.__next_phase.append(Phase.PLAN_PATH_TO_CLOSED_DOOR)
+                    self._navigator.reset_full()
+                    continue
                 self._state_tracker.update(state)
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
@@ -424,6 +438,10 @@ class BaseAgent(BaseLineAgent):
                         self.__next_phase.append(Phase.PLAN_VERIFY_GOALS)
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
+                if self._is_lazy and self._check_if_lazy():
+                    self._phase = Phase.PLAN_NEXT_ACTION
+                    self._navigator.reset_full()
+                    continue
                 self._state_tracker.update(state)
                 # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
@@ -438,6 +456,10 @@ class BaseAgent(BaseLineAgent):
                 self.plan_search_room(agent_name, state)
 
             if Phase.SEARCH_ROOM == self._phase:
+                if self._is_lazy and self._check_if_lazy():
+                    self._phase = Phase.PLAN_NEXT_ACTION
+                    self._navigator.reset_full()
+                    continue
                 self._state_tracker.update(state)
 
                 next_goal_index = len(state.get_self()['is_carrying'])
@@ -565,9 +587,14 @@ class BaseAgent(BaseLineAgent):
             self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         else:
             self._navigator.add_waypoints([move_to_room['location']])
+            if self._is_lazy:
+                self._set_lazy(self.dist(self._you, move_to_room))
             self._phase = Phase.FOLLOW_PATH_TO_ROOM
 
     def plan_path_to_closed_door(self, agent_name, closedDoors, state):
+        if not closedDoors:
+            self._phase = Phase.PLAN_PATH_TO_ROOM
+            return
         if self._door == None:
             self._door = min(closedDoors, key=lambda d: self.dist(self._you, d, state=state))
         else:
@@ -586,6 +613,8 @@ class BaseAgent(BaseLineAgent):
         else:
             self._navigator.reset_full()
             self._navigator.add_waypoints([possible_target['location']])
+            if self._is_lazy:
+                self._set_lazy(self.dist(self._you, possible_target))
             self._current_state = {'type': Status.PICKING_UP_BLOCK, 'block': {'visualization': possible_target['visualization'], 'location': possible_target['location']}}
             self._phase = Phase.FOLLOW_PATH_TO_BLOCK
 
@@ -607,6 +636,8 @@ class BaseAgent(BaseLineAgent):
             else:
                 self._navigator.reset_full()
                 self._navigator.add_waypoint(goal['location'])
+                if self._is_lazy:
+                    self._set_lazy(self.dist(self._you, goal))
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
 
     def open_door(self, agent_name):
@@ -624,6 +655,8 @@ class BaseAgent(BaseLineAgent):
                       and 'AreaTile' in tile['class_inheritance'] and tile['is_traversable']]
         self._navigator.add_waypoints(map(lambda e: e['location'], room_tiles))
         self._sendMessage('Searching through {}'.format(self._current_room['room_name']), agent_name)
+        if self._is_lazy:
+            self._set_lazy(len(self._navigator.get_all_waypoints()))
         self._phase = Phase.SEARCH_ROOM
 
     def pickup_block(self, agent_name, observations):
@@ -687,6 +720,22 @@ class BaseAgent(BaseLineAgent):
     #     self._navigator.reset_full()
     #     self._navigator.add_waypoint(next_location)
     #     self._phase = Phase.MOVE_OFF_GOAL
+
+    def _check_if_lazy(self):
+        if self._be_lazy:
+            if self._be_lazy_after_moves == 0:
+                self._be_lazy = False
+                return True
+            else:
+                self._be_lazy_after_moves -= 1
+                return False
+
+    def _set_lazy(self, amountOfMoves):
+        self._be_lazy = False
+        self._be_lazy_after_moves = 0
+        if random.random() > 0.5:
+            self._be_lazy = True
+            self._be_lazy_after_moves = random.randint(0, amountOfMoves)
 
     def init_goals(self, state):
         blocks = copy.deepcopy([{'visualization':tile['visualization'], 'location':tile['location']} for tile in state.values()
