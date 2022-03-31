@@ -44,23 +44,13 @@ class BaseLineAgent(BW4TBrain):
                                     action_set=self.action_set, algorithm=Navigator.A_STAR_ALGORITHM)
 
     def filter_bw4t_observations(self, state):
-        return state
-
-    def decide_on_bw4t_action(self, state: State):
-        self._age += 1
         agent_name = state[self.agent_id]['obj_id']
-        # Add team members
+
         if len(self._teamMembers) == 0:
             for member in state['World']['team_members']:
                 if member != agent_name and member not in self._teamMembers:
                     self._teamMembers.append(member)
                     self._trustBeliefs[member] = {'rating': 0.5, 'age': self._age}
-
-        receivedMessages = self._processMessages(self._teamMembers)
-
-        for member in self._teamMembers:
-            if self._teamObservedStatus[member].age >= 5:
-                self._teamObservedStatus[member] = None
 
         for item in state:
             if item.isAgent:
@@ -69,14 +59,24 @@ class BaseLineAgent(BW4TBrain):
                 self._sendMessage('status of ' + item.name + ': location is '
                                   + item.location + 'and is carrying ' + item.is_carrying, agent_name)
 
+        receivedMessages = self._processMessages(self._teamMembers)
 
-        # Process messages from team members
+        for member in self._teamMembers:
+            if self._teamObservedStatus[member].age >= 5:
+                self._teamObservedStatus[member] = None
+
         for member in self._teamMembers:
             for message in receivedMessages[member]:
                 self._parseMessage(message.content, member)
 
         # Update trust beliefs for team members
         self._trustBlief(agent_name, state)
+        return state
+
+    def decide_on_bw4t_action(self, state: State):
+        self._age += 1
+        agent_name = state[self.agent_id]['obj_id']
+        # Add team members
 
         while True:
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
