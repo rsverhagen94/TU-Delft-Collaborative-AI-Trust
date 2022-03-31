@@ -48,6 +48,7 @@ class StrongAgent(BW4TBrain):
         self._goalsWrong = []
         self._checkGoals = []
         self._possibleGoalBLocks = []
+        self._notExplored = []
 
     def filter_bw4t_observations(self, state):
         return state
@@ -56,6 +57,8 @@ class StrongAgent(BW4TBrain):
         if not self._goalsInitialized:
             self._goalBlocks = state.get_with_property({'is_goal_block': True})
             self._goalsInitialized = True
+            self._notExplored = [door for door in state.values()
+                               if 'class_inheritance' in door and 'Door' in door['class_inheritance']]
 
         agent_name = state[self.agent_id]['obj_id']
         # Add team members
@@ -74,8 +77,11 @@ class StrongAgent(BW4TBrain):
                                if 'class_inheritance' in door and 'Door' in door['class_inheritance']]
                 if len(rooms) == 0:
                     return None, {}
-                # Randomly pick a door
-                self._door = random.choice(rooms)
+                # If not every room has been explored, pick one randomly from the non explored, else pick randomly pick a door
+                if len(self._notExplored) != 0:
+                    self._door = random.choice(self._notExplored)
+                else:
+                    self._door = random.choice(rooms)
                 doorLoc = self._door['location']
                 # Location in front of door is south from door
                 doorLoc = doorLoc[0], doorLoc[1] + 1
@@ -106,6 +112,7 @@ class StrongAgent(BW4TBrain):
                 return None, {}
 
             if Phase.ENTERING_ROOM == self._phase:
+                self._notExplored.remove(self._door)
                 self._sendMessage('Searching through ' + self._door['room_name'], agent_name)
                 self._navigator.reset_full()
                 objects = state.get_room_objects(self._door['room_name'])
@@ -121,7 +128,7 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         for g in self._goalBlocks:
-                            if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour'] and o['visualization']['size'] == g['visualization']['size'] and len(o['carried_by']) == 0:
+                            if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour'] and len(o['carried_by']) == 0:
                                 self._sendMessage('Found goal block {\"size\": ' + str(
                                     o['visualization']['size']) + ', \"shape\": ' + str(
                                     o['visualization']['shape']) + ', \"colour\": ' + str(
@@ -177,6 +184,8 @@ class StrongAgent(BW4TBrain):
                             return None, {}
 
                 self._goalBlocks.remove(self._carrying)
+                self._sendMessage('Removing block' + str(self._carrying) + ' from list: ' + str(self._goalBlocks),
+                                  agent_name)
 
                 if len(self._goalBlocks) >= 1:
                     self._sendMessage('Updating goal list with ' + str(len(self._goalBlocks)), agent_name)
@@ -236,7 +245,7 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         if o['location'] == self.state.get_self()['location']:
-                            if o['visualization']['shape'] != self._goalBlocks[0]['visualization']['shape'] or o['visualization']['colour'] != self._goalBlocks[0]['visualization']['colour'] or o['visualization']['size'] != self._goalBlocks[0]['visualization']['size']:
+                            if o['visualization']['shape'] != self._goalBlocks[0]['visualization']['shape'] or o['visualization']['colour'] != self._goalBlocks[0]['visualization']['colour']:
                                 self._phase = Phase.PUT_AWAY_WRONG_BLOCK
                                 self._navigator.reset_full()
                                 self._navigator.add_waypoints([[self._goalBlocks[0]['location'][0], self._goalBlocks[0]['location'][1] - 3]])
@@ -290,6 +299,13 @@ class StrongAgent(BW4TBrain):
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
+                for g in self._goalBlocks:
+                    self._sendMessage('Goal block {\"size\": ' + str(
+                        g['visualization']['size']) + ', \"shape\": ' + str(
+                        g['visualization']['shape']) + ', \"colour\": ' + str(
+                        g['visualization']['colour']) + '} at location ' + str(
+                        self.state.get_self()['location']),
+                                      agent_name)
                 if len(self._goalBlocks) == 0:
                     self._goalBlocks = state.get_with_property({'is_goal_block': True})
                     self._phase = Phase.CHECK_GOALS
@@ -332,7 +348,7 @@ class StrongAgent(BW4TBrain):
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
                 if objects is not None:
                     for o in objects:
-                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization']['shape'] == self._possibleGoalBLocks[0]['visualization']['shape'] and o['visualization']['colour'] == self._possibleGoalBLocks[0]['visualization']['colour'] and o['visualization']['size'] == self._possibleGoalBLocks[0]['visualization']['size']:
+                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization'] == self._possibleGoalBLocks[0]['visualization']:
                             for g in self._goalBlocks:
                                 if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour']:
                                     self._sendMessage('Found goal block {\"size\": ' + str(
