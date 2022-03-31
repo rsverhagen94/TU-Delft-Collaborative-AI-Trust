@@ -74,31 +74,33 @@ class StrongAgent(BW4TBrain):
                     self._teamMembers.append(member)
                     self._trustBeliefs[member] = {'rating': 0.5, 'age': self._age}
 
-        for item in state.get_closest_agents():
-            name = item['name']
-            location = item['location']
-            is_carrying = item['is_carrying']
-            self._teamObservedStatus[name] = {'location': location, 'is_carrying': is_carrying,
-                                              'age': self._age}
-            self._sendMessage('status of ' + name + ': location is '
-                              + str(location) + 'and is carrying ' + str(is_carrying), agent_name)
+        closest_agents = state.get_closest_agents()
+        if closest_agents is not None:
+            for item in closest_agents:
+                name = item['name']
+                location = item['location']
+                is_carrying = item['is_carrying']
+                self._teamObservedStatus[name] = {'location': location, 'is_carrying': is_carrying,
+                                                  'age': self._age}
+                self._sendMessage('status of ' + name + ': location is '
+                                  + str(location) + 'and is carrying ' + str(is_carrying), agent_name)
 
         receivedMessages = self._processMessages(self._teamMembers)
 
         for member in self._teamMembers:
-            if self._teamObservedStatus[member]['age'] >= 5:
+            if self._teamObservedStatus[member] is not None and self._teamObservedStatus[member]['age'] >= 5:
                 self._teamObservedStatus[member] = None
 
         for member in self._teamMembers:
             for message in receivedMessages[member]:
-                self._parseMessage(message.content, member)
+                self._parseMessage(message, member)
 
         # Update trust beliefs for team members
         self._trustBlief(agent_name, state)
+        print(str(self._trustBeliefs))
         return state
 
     def decide_on_bw4t_action(self, state: State):
-        print('reached')
         if not self._goalsInitialized:
             self._goalBlocks = state.get_with_property({'is_goal_block': True})
             self._goalsInitialized = True
@@ -424,15 +426,18 @@ class StrongAgent(BW4TBrain):
 
         # You can change the default value to your preference
 
+
         for member in self._teamMembers:
-            if self._teamStatus[member].action == 'searching':
+            if member not in self._teamStatus:
+                continue
+            if self._teamStatus[member]['action'] == 'searching':
                 if self._teamObservedStatus[member] is not None:
                     if findRoom(self._teamObservedStatus[member].location, state) != findRoom(
                             self._teamStatus[member].location, state):
                         self._trustBeliefs[member] -= 0.1 * 1 / self._age
                     else:
                         self._trustBeliefs[member] += 0.1 * 1 / self._age
-            if self._teamStatus[member].action == 'carrying':
+            if self._teamStatus[member]['action'] == 'carrying':
                 if self._teamObservedStatus[member] is not None:
                     if self._teamObservedStatus[member].is_carrying != self._teamStatus[member].block:
                         self._trustBeliefs[member] -= 0.1 * 1 / self._age
@@ -440,7 +445,6 @@ class StrongAgent(BW4TBrain):
                         self._trustBeliefs[member] += 0.1 * 1 / self._age
 
     def _parseMessage(self, message, member):
-        print(str(self._teamStatus))
         string_list = message.split(" ")
         if string_list[0] == "Opening" and string_list[1] == "door":
             room_number = string_list[3].split("_")[1]
@@ -451,15 +455,24 @@ class StrongAgent(BW4TBrain):
         if string_list[0] == "Found" and string_list[1] == "goal":
             block = message.split('{')[1]
             block = '{' + block.split('}')[0] + '}'
+            block = block.replace("'", '"')
+            block = block.replace("True", "true")
+            block = block.replace("False", "false")
             block = json.loads(block)
             self._teamStatus[member] = {'action': 'finding', 'block': block, 'age': self._age}
         if string_list[0] == "Picking" and string_list[1] == "up":
             block = message.split('{')[1]
             block = '{' + block.split('}')[0] + '}'
+            block = block.replace("'", '"')
+            block = block.replace("True", "true")
+            block = block.replace("False", "false")
             block = json.loads(block)
             self._teamStatus[member] = {'action': 'carrying', 'block': block, 'age': self._age}
         if string_list[0] == "Dropping" and string_list[1] == "goal":
             block = message.split('{')[1]
             block = '{' + block.split('}')[0] + '}'
+            block = block.replace("'", '"')
+            block = block.replace("True", "true")
+            block = block.replace("False", "false")
             block = json.loads(block)
             self._teamStatus[member] = {'action': 'dropping', 'block': block, 'age': self._age}
