@@ -121,9 +121,15 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         for g in self._goalBlocks:
-                            if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour'] and len(o['carried_by']) == 0:
-                                self._sendMessage('Found goal block ' + str(o['visualization']) + ' at location ' + str(o['location']), agent_name)
-                                self._sendMessage('Picking up goal block ' + str(o['visualization']) + ' at location ' + str(
+                            if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour'] and o['visualization']['size'] == g['visualization']['size'] and len(o['carried_by']) == 0:
+                                self._sendMessage('Found goal block {\"size\": ' + str(
+                                    o['visualization']['size']) + ', \"shape\": ' + str(
+                                    o['visualization']['shape']) + ', \"colour\": ' + str(
+                                    o['visualization']['colour']) + '} at location ' + str(o['location']), agent_name)
+                                self._sendMessage('Picking up goal block {\"size\": ' + str(
+                                    o['visualization']['size']) + ', \"shape\": ' + str(
+                                    o['visualization']['shape']) + ', \"colour\": ' + str(
+                                    o['visualization']['colour']) + '} at location ' + str(
                                     o['location']), agent_name)
                                 self._phase = Phase.FOLLOW_PATH_TO_DROP
                                 self._navigator.reset_full()
@@ -184,7 +190,10 @@ class StrongAgent(BW4TBrain):
                     self._goalBlocks = state.get_with_property({'is_goal_block': True})
                     self._phase = Phase.CHECK_GOALS
 
-                self._sendMessage('Dropped goal block ' + str(self._carryingO['visualization']) + ' at location ' + str(self.state.get_self()['location']),
+                self._sendMessage('Dropped goal block {\"size\": ' + str(
+                                        self._carryingO['visualization']['size']) + ', \"shape\": ' + str(
+                                        self._carryingO['visualization']['shape']) + ', \"colour\": ' + str(
+                                        self._carryingO['visualization']['colour']) + '} at location ' + str(self.state.get_self()['location']),
                                   agent_name)
 
                 self._carrying = None
@@ -227,15 +236,18 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         if o['location'] == self.state.get_self()['location']:
-                            if o['visualization']['shape'] != self._goalBlocks[0]['visualization']['shape'] or o['visualization']['colour'] != self._goalBlocks[0]['visualization']['colour']:
+                            if o['visualization']['shape'] != self._goalBlocks[0]['visualization']['shape'] or o['visualization']['colour'] != self._goalBlocks[0]['visualization']['colour'] or o['visualization']['size'] != self._goalBlocks[0]['visualization']['size']:
                                 self._phase = Phase.PUT_AWAY_WRONG_BLOCK
                                 self._navigator.reset_full()
                                 self._navigator.add_waypoints([[self._goalBlocks[0]['location'][0], self._goalBlocks[0]['location'][1] - 3]])
                             else:
+                                self._carryingO = o
                                 self._phase = Phase.MOVE_GOAL_BLOCK
-                            self._sendMessage(
-                                'Picking up goal block ' + str(o['visualization']) + ' at location ' + str(
-                                    o['location']), agent_name)
+                            self._sendMessage('Picking up goal block {\"size\": ' + str(
+                                o['visualization']['size']) + ', \"shape\": ' + str(
+                                o['visualization']['shape']) + ', \"colour\": ' + str(
+                                o['visualization']['colour']) + '} at location ' + str(
+                                o['location']), agent_name)
                             action = GrabObject.__name__
                             self._carryingO = o
                             action_kwargs = {}
@@ -264,9 +276,13 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.CHECK_GOALS
                 self._goalBlocks.remove(self._goalBlocks[0])
 
-                self._sendMessage('Dropped goal block ' + str(self._carryingO['visualization']) + ' at location ' + str(
+                self._sendMessage('Dropped goal block {\"size\": ' + str(
+                                        self._carryingO['visualization']['size']) + ', \"shape\": ' + str(
+                                        self._carryingO['visualization']['shape']) + ', \"colour\": ' + str(
+                                        self._carryingO['visualization']['colour']) + '} at location ' + str(
                     self.state.get_self()['location']),
                                   agent_name)
+                self._carryingO = None
                 return DropObject.__name__, {}
 
             if Phase.UPDATE_GOAL_LIST == self._phase:
@@ -316,15 +332,19 @@ class StrongAgent(BW4TBrain):
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
                 if objects is not None:
                     for o in objects:
-                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization'] == self._possibleGoalBLocks[0]['visualization']:
+                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization']['shape'] == self._possibleGoalBLocks[0]['visualization']['shape'] and o['visualization']['colour'] == self._possibleGoalBLocks[0]['visualization']['colour'] and o['visualization']['size'] == self._possibleGoalBLocks[0]['visualization']['size']:
                             for g in self._goalBlocks:
                                 if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour']:
-                                    self._sendMessage(
-                                        'Found goal block ' + str(o['visualization']) + ' at location ' + str(
-                                            o['location']), agent_name)
-                                    self._sendMessage(
-                                        'Picking up goal block ' + str(o['visualization']) + ' at location ' + str(
-                                            o['location']), agent_name)
+                                    self._sendMessage('Found goal block {\"size\": ' + str(
+                                        o['visualization']['size']) + ', \"shape\": ' + str(
+                                        o['visualization']['shape']) + ', \"colour\": ' + str(
+                                        o['visualization']['colour']) + '} at location ' + str(o['location']),
+                                                      agent_name)
+                                    self._sendMessage('Picking up goal block {\"size\": ' + str(
+                                        o['visualization']['size']) + ', \"shape\": ' + str(
+                                        o['visualization']['shape']) + ', \"colour\": ' + str(
+                                        o['visualization']['colour']) + '} at location ' + str(
+                                        o['location']), agent_name)
                                     self._phase = Phase.FOLLOW_PATH_TO_DROP
                                     self._navigator.reset_full()
                                     self._navigator.add_waypoints([g['location']])
