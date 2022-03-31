@@ -185,8 +185,10 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
                 if len(self._goalsWrong) != 0:
                     self._phase = Phase.PLAN_PATH_TO_ROOM
+                    return None, {}
                 if len(self._goalBlocks) == 0:
                     self._phase = Phase.FOLLOW_PATH_TO_GOAL
+                    return None, {}
                 goal = self._goalBlocks[0]
                 self._navigator.reset_full()
                 self._navigator.add_waypoints([goal['location']])
