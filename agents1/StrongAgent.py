@@ -78,9 +78,6 @@ class StrongAgent(BW4TBrain):
         # Process messages from team members
         self._processMessages()
 
-        # Update trust beliefs for team members
-        self._trustBelief(self._teamMembers, self.receivedMessages)
-
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
@@ -227,9 +224,6 @@ class StrongAgent(BW4TBrain):
             # Follow path to the drop off location
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
-                # Check if the current location of the agent is the correct drop off location
-
-                # print("WAYPOINTS", self._navigator.get_all_waypoints())
 
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
@@ -270,16 +264,12 @@ class StrongAgent(BW4TBrain):
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
-                #print("ALL des obj", self.all_desired_objects)
                 print("DROP", self.dropped_off_count)
                 if len(self.desired_objects) == 0 and self.dropped_off_count == len(self.all_desired_objects):
                     print(self.dropped_off_count)
                     self._phase = Phase.GO_TO_REORDER_ITEMS
                     return None, {}
-                # closedDoors = [door for door in state.values()
-                #                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
-                #         'is_open']]
-                # print('closed doors', closedDoors)
+
                 if len(self.memory) > 0:
 
                     # print("MEMORY", self.memory)
@@ -351,7 +341,6 @@ class StrongAgent(BW4TBrain):
                 self._navigator.add_waypoints(locations)
 
                 self._phase = Phase.REORDER_ITEMS
-                # self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.REORDER_ITEMS == self._phase:
                 if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
@@ -447,43 +436,20 @@ class StrongAgent(BW4TBrain):
                     self.receivedMessages[member].append((self.ticks, mssg.content, mssg.from_id))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
                     self.tbv.append((self.ticks, mssg.content, mssg.from_id))
-                    # is_true = self.checkMessageTrue(self.ticks, mssg.content, mssg.from_id)
-                    # print('mssg', mssg.content, '\n', is_true)
-        # print('tbv', self.tbv)
+                    self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
             is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
-            # print(mssg, is_true)
-            # print(self.seenObjects)
             if is_true is not None:
                 if is_true:
                     self.increaseTrust(from_id)
-                    print('truth', self.trustBeliefs[from_id])
                 else:
                     self.decreaseTrust(from_id)
-                    print('lie', self.trustBeliefs[from_id])
                 self.tbv.remove((ticks, mssg, from_id))
-            # print('no info', self.trustBeliefs[from_id])
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
             self.trustBeliefs[member] = 0.5
-
-    def _trustBelief(self, member, received):
-        '''
-        Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
-        '''
-        # You can change the default value to your preference
-        default = 0.5
-        trustBeliefs = {}
-        for member in received.keys():
-            trustBeliefs[member] = default
-        for member in received.keys():
-            for message in received[member]:
-                if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
-                    break
-        return trustBeliefs
 
     def addToMemory(self, vis, loc, drop):
         if len(self.memory) == 0:
@@ -502,26 +468,18 @@ class StrongAgent(BW4TBrain):
 
         self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
                              reverse=True)
-        # print("MEMORY", self.memory)
 
-    def checkMessageTrue(self, ticks, mssg, sender):
+    def acceptMessageIfSenderTrustworthy(self, mssg, sender):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
             room_to = splitMssg[2]
             if self.trustBeliefs[sender] >= 0.4:
                 for room, door in self.rooms_to_visit:
-                    # print('I am here', room, room_to)
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
                         return True
             return True
-
-        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
-            room = splitMssg[2]
-
-        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
-            room = splitMssg[2]
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
@@ -529,16 +487,9 @@ class StrongAgent(BW4TBrain):
                 for obj_vis, dropoff_loc in self.all_desired_objects:
                     if self.compareObjects(vis, obj_vis):
                         self.addToMemory(vis, loc, dropoff_loc)
-            for obj in self.seenObjects:
-                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
-                    return True
-                elif str(obj[1]) == loc:
-                    return False
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
-            vis, loc = self.getVisLocFromMessage(mssg)
             if self.trustBeliefs[sender] >= 0.6:
-                # print("KKKKKKK")
                 self.dropped_off_count += 1
                 return True
 
@@ -551,8 +502,31 @@ class StrongAgent(BW4TBrain):
                 for obj in self.desired_objects:
                     if self.compareObjects(obj[0], vis):
                         self.desired_objects.remove(obj)
-                        # print('removed from desired')
-                        # print('desired', self.desired_objects)
+
+    def checkMessageTrue(self, ticks, mssg, sender):
+        splitMssg = mssg.split(' ')
+        if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
+            pass
+
+        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            pass
+
+        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
+                    return True
+                elif str(obj[1]) == loc:
+                    return False
+
+        if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
+            pass
+
+        if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
+            pass
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'block':
             vis, loc = self.getVisLocFromMessage(mssg)
@@ -561,6 +535,7 @@ class StrongAgent(BW4TBrain):
                     return True
                 elif str(obj[1]) == loc:
                     return False
+
         return None
 
     def getVisLocFromMessage(self, mssg):
@@ -577,8 +552,9 @@ class StrongAgent(BW4TBrain):
     def compareObjects(self, obj1, obj2):
         keys = ('shape', 'colour')
         for key in keys:
-            if obj1[key] != obj2[key]:
-                return False
+            if key in obj1 and key in obj2:
+                if obj1[key] != obj2[key]:
+                    return False
         return True
 
     def addToSeenObjects(self, obj):
