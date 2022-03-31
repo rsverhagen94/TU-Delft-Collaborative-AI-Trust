@@ -25,7 +25,8 @@ class Phase(enum.Enum):
     PUT_AWAY_WRONG_BLOCK = 12,
     WAIT_FOR_FINISH = 13,
     MOVE_GOAL_BLOCK = 14,
-    UPDATE_GOAL_LIST = 15
+    UPDATE_GOAL_LIST = 15,
+    MOVING_TO_KNOWN_BLOCK = 16
 
 
 class StrongAgent(BW4TBrain):
@@ -135,7 +136,13 @@ class StrongAgent(BW4TBrain):
                                 return action, action_kwargs
                 if action!=None:
                     return action, {}
-                self._phase = Phase.PLAN_PATH_TO_ROOM
+                if len(self._possibleGoalBLocks) == 0:
+                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                else:
+                    block = self._possibleGoalBLocks[0]
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([block['location']])
+                    self._phase = Phase.MOVING_TO_KNOWN_BLOCK
 
             if Phase.FOLLOW_PATH_TO_DROP == self._phase:
                 self._state_tracker.update(state)
@@ -145,7 +152,13 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.DROP_OBJECT
 
             if Phase.DROP_OBJECT == self._phase:
-                self._phase = Phase.PLAN_PATH_TO_ROOM
+                if len(self._possibleGoalBLocks) == 0:
+                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                else:
+                    block = self._possibleGoalBLocks[0]
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([block['location']])
+                    self._phase = Phase.MOVING_TO_KNOWN_BLOCK
 
                 # If there already is a block in this location, move to a different location and drop the block there.
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
@@ -181,10 +194,22 @@ class StrongAgent(BW4TBrain):
             if Phase.CHECK_GOALS == self._phase:
                 self._phase = Phase.FOLLOW_PATH_TO_GOAL
                 if len(self._goalsWrong) != 0:
-                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                    if len(self._possibleGoalBLocks) == 0:
+                        self._phase = Phase.PLAN_PATH_TO_ROOM
+                    else:
+                        block = self._possibleGoalBLocks[0]
+                        self._navigator.reset_full()
+                        self._navigator.add_waypoints([block['location']])
+                        self._phase = Phase.MOVING_TO_KNOWN_BLOCK
                     return None, {}
                 if len(self._goalBlocks) == 0:
-                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                    if len(self._possibleGoalBLocks) == 0:
+                        self._phase = Phase.PLAN_PATH_TO_ROOM
+                    else:
+                        block = self._possibleGoalBLocks[0]
+                        self._navigator.reset_full()
+                        self._navigator.add_waypoints([block['location']])
+                        self._phase = Phase.MOVING_TO_KNOWN_BLOCK
                     return None, {}
                 goal = self._goalBlocks[0]
                 self._navigator.reset_full()
@@ -216,7 +241,13 @@ class StrongAgent(BW4TBrain):
                             action_kwargs = {}
                             action_kwargs['object_id'] = o['obj_id']
                             return action, action_kwargs
-                self._phase = Phase.PLAN_PATH_TO_ROOM
+                if len(self._possibleGoalBLocks) == 0:
+                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                else:
+                    block = self._possibleGoalBLocks[0]
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([block['location']])
+                    self._phase = Phase.MOVING_TO_KNOWN_BLOCK
 
             if Phase.PUT_AWAY_WRONG_BLOCK == self._phase:
                 self._state_tracker.update(state)
@@ -263,12 +294,54 @@ class StrongAgent(BW4TBrain):
                                 self._phase = Phase.CHECK_GOALS
                                 return None, {}
                             elif len(self._checkGoals) == 0:
-                                self._phase = Phase.PLAN_PATH_TO_ROOM
+                                if len(self._possibleGoalBLocks) == 0:
+                                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                                else:
+                                    block = self._possibleGoalBLocks[0]
+                                    self._navigator.reset_full()
+                                    self._navigator.add_waypoints([block['location']])
+                                    self._phase = Phase.MOVING_TO_KNOWN_BLOCK
                             else:
                                 next = self._checkGoals[0]
                                 self._navigator.reset_full()
                                 self._navigator.add_waypoints([next['location']])
                 self._checkGoals.remove(goal)
+
+            # TODO: Has not been tested, since it does not parse messages yet
+            if Phase.MOVING_TO_KNOWN_BLOCK == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action != None:
+                    return action, {}
+                objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
+                if objects is not None:
+                    for o in objects:
+                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization'] == self._possibleGoalBLocks[0]['visualization']:
+                            for g in self._goalBlocks:
+                                if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour']:
+                                    self._sendMessage(
+                                        'Found goal block ' + str(o['visualization']) + ' at location ' + str(
+                                            o['location']), agent_name)
+                                    self._sendMessage(
+                                        'Picking up goal block ' + str(o['visualization']) + ' at location ' + str(
+                                            o['location']), agent_name)
+                                    self._phase = Phase.FOLLOW_PATH_TO_DROP
+                                    self._navigator.reset_full()
+                                    self._navigator.add_waypoints([g['location']])
+                                    action = GrabObject.__name__
+                                    action_kwargs = {}
+                                    action_kwargs['object_id'] = o['obj_id']
+                                    self._carrying = g
+                                    self._carryingO = o
+                                    return action, action_kwargs
+                self._possibleGoalBLocks.remove(self._possibleGoalBLocks[0])
+                if len(self._possibleGoalBLocks) == 0:
+                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                else:
+                    block = self._possibleGoalBLocks[0]
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([block['location']])
+                    self._phase = Phase.MOVING_TO_KNOWN_BLOCK
 
 
     def _sendMessage(self, mssg, sender):
