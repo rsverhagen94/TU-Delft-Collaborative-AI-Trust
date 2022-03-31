@@ -152,7 +152,6 @@ class BaseLineAgent(BW4TBrain):
                     else:
                         self._trustBeliefs[member] += 0.1 * 1 / self._age
 
-
     def _parseMessage(self, message, member):
         string_list = message.split(" ")
         if string_list[0] == "Opening" and string_list[1] == "door":

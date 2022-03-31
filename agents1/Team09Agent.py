@@ -1,3 +1,4 @@
+import json
 from typing import final, List, Dict, Final
 import enum, random
 from bw4t.BW4TBrain import BW4TBrain
@@ -8,6 +9,16 @@ from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
 from matrx.actions.action import Action
+
+Trust_Level = 0.7
+
+def findRoom(location, state):
+    room = None
+    for item in state:
+        if item.name.split('_')[0] == 'room' and item.location == location:
+            room = item.room_name.split('_')[1]
+
+    return room
 
 
 class Phase(enum.Enum):
@@ -48,11 +59,46 @@ class StrongAgent(BW4TBrain):
         self._goalsWrong = []
         self._checkGoals = []
         self._possibleGoalBLocks = []
+        self._trustBeliefs = {}
+        self._teamStatus = {}
+        self._teamObservedStatus = {}
+        self._age = 0
 
-    def filter_bw4t_observations(self, state):
+    def filter_observations(self, state):
+        self._age += 1
+        agent_name = state[self.agent_id]['obj_id']
+
+        if len(self._teamMembers) == 0:
+            for member in state['World']['team_members']:
+                if member != agent_name and member not in self._teamMembers:
+                    self._teamMembers.append(member)
+                    self._trustBeliefs[member] = {'rating': 0.5, 'age': self._age}
+
+        for item in state.get_closest_agents():
+            name = item['name']
+            location = item['location']
+            is_carrying = item['is_carrying']
+            self._teamObservedStatus[name] = {'location': location, 'is_carrying': is_carrying,
+                                              'age': self._age}
+            self._sendMessage('status of ' + name + ': location is '
+                              + str(location) + 'and is carrying ' + str(is_carrying), agent_name)
+
+        receivedMessages = self._processMessages(self._teamMembers)
+
+        for member in self._teamMembers:
+            if self._teamObservedStatus[member]['age'] >= 5:
+                self._teamObservedStatus[member] = None
+
+        for member in self._teamMembers:
+            for message in receivedMessages[member]:
+                self._parseMessage(message.content, member)
+
+        # Update trust beliefs for team members
+        self._trustBlief(agent_name, state)
         return state
 
     def decide_on_bw4t_action(self, state: State):
+        print('reached')
         if not self._goalsInitialized:
             self._goalBlocks = state.get_with_property({'is_goal_block': True})
             self._goalsInitialized = True
@@ -65,13 +111,12 @@ class StrongAgent(BW4TBrain):
                 # Process messages from team members
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
-        self._trustBlief(self._teamMembers, receivedMessages)
 
         while True:
             if Phase.PLAN_PATH_TO_ROOM == self._phase:
                 self._navigator.reset_full()
                 rooms = [door for door in state.values()
-                               if 'class_inheritance' in door and 'Door' in door['class_inheritance']]
+                         if 'class_inheritance' in door and 'Door' in door['class_inheritance']]
                 if len(rooms) == 0:
                     return None, {}
                 # Randomly pick a door
@@ -93,7 +138,7 @@ class StrongAgent(BW4TBrain):
                 if self._door['is_open']:
                     self._phase = Phase.ENTERING_ROOM
                 else:
-                     self._phase = Phase.OPEN_DOOR
+                    self._phase = Phase.OPEN_DOOR
 
             if Phase.OPEN_DOOR == self._phase:
                 self._phase = Phase.WAIT_FOR_DOOR
@@ -121,10 +166,13 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         for g in self._goalBlocks:
-                            if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour'] and len(o['carried_by']) == 0:
-                                self._sendMessage('Found goal block ' + str(o['visualization']) + ' at location ' + str(o['location']), agent_name)
-                                self._sendMessage('Picking up goal block ' + str(o['visualization']) + ' at location ' + str(
+                            if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization'][
+                                'colour'] == g['visualization']['colour'] and len(o['carried_by']) == 0:
+                                self._sendMessage('Found goal block ' + str(o['visualization']) + ' at location ' + str(
                                     o['location']), agent_name)
+                                self._sendMessage(
+                                    'Picking up goal block ' + str(o['visualization']) + ' at location ' + str(
+                                        o['location']), agent_name)
                                 self._phase = Phase.FOLLOW_PATH_TO_DROP
                                 self._navigator.reset_full()
                                 self._navigator.add_waypoints([g['location']])
@@ -134,7 +182,7 @@ class StrongAgent(BW4TBrain):
                                 self._carrying = g
                                 self._carryingO = o
                                 return action, action_kwargs
-                if action!=None:
+                if action != None:
                     return action, {}
                 if len(self._possibleGoalBLocks) == 0:
                     self._phase = Phase.PLAN_PATH_TO_ROOM
@@ -184,7 +232,8 @@ class StrongAgent(BW4TBrain):
                     self._goalBlocks = state.get_with_property({'is_goal_block': True})
                     self._phase = Phase.CHECK_GOALS
 
-                self._sendMessage('Dropped goal block ' + str(self._carryingO['visualization']) + ' at location ' + str(self.state.get_self()['location']),
+                self._sendMessage('Dropped goal block ' + str(self._carryingO['visualization']) + ' at location ' + str(
+                    self.state.get_self()['location']),
                                   agent_name)
 
                 self._carrying = None
@@ -227,10 +276,12 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         if o['location'] == self.state.get_self()['location']:
-                            if o['visualization']['shape'] != self._goalBlocks[0]['visualization']['shape'] or o['visualization']['colour'] != self._goalBlocks[0]['visualization']['colour']:
+                            if o['visualization']['shape'] != self._goalBlocks[0]['visualization']['shape'] or \
+                                    o['visualization']['colour'] != self._goalBlocks[0]['visualization']['colour']:
                                 self._phase = Phase.PUT_AWAY_WRONG_BLOCK
                                 self._navigator.reset_full()
-                                self._navigator.add_waypoints([[self._goalBlocks[0]['location'][0], self._goalBlocks[0]['location'][1] - 3]])
+                                self._navigator.add_waypoints(
+                                    [[self._goalBlocks[0]['location'][0], self._goalBlocks[0]['location'][1] - 3]])
                             else:
                                 self._phase = Phase.MOVE_GOAL_BLOCK
                             self._sendMessage(
@@ -316,9 +367,11 @@ class StrongAgent(BW4TBrain):
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
                 if objects is not None:
                     for o in objects:
-                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization'] == self._possibleGoalBLocks[0]['visualization']:
+                        if o['location'] == self._possibleGoalBLocks[0]['location'] and o['visualization'] == \
+                                self._possibleGoalBLocks[0]['visualization']:
                             for g in self._goalBlocks:
-                                if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == g['visualization']['colour']:
+                                if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization'][
+                                    'colour'] == g['visualization']['colour']:
                                     self._sendMessage(
                                         'Found goal block ' + str(o['visualization']) + ' at location ' + str(
                                             o['location']), agent_name)
@@ -343,7 +396,6 @@ class StrongAgent(BW4TBrain):
                     self._navigator.add_waypoints([block['location']])
                     self._phase = Phase.MOVING_TO_KNOWN_BLOCK
 
-
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -365,18 +417,49 @@ class StrongAgent(BW4TBrain):
                     receivedMessages[member].append(mssg.content)
         return receivedMessages
 
-    def _trustBlief(self, member, received):
+    def _trustBlief(self, name, state):
         '''
         Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
         '''
+
         # You can change the default value to your preference
-        default = 0.5
-        trustBeliefs = {}
-        for member in received.keys():
-            trustBeliefs[member] = default
-        for member in received.keys():
-            for message in received[member]:
-                if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
-                    break
-        return trustBeliefs
+
+        for member in self._teamMembers:
+            if self._teamStatus[member].action == 'searching':
+                if self._teamObservedStatus[member] is not None:
+                    if findRoom(self._teamObservedStatus[member].location, state) != findRoom(
+                            self._teamStatus[member].location, state):
+                        self._trustBeliefs[member] -= 0.1 * 1 / self._age
+                    else:
+                        self._trustBeliefs[member] += 0.1 * 1 / self._age
+            if self._teamStatus[member].action == 'carrying':
+                if self._teamObservedStatus[member] is not None:
+                    if self._teamObservedStatus[member].is_carrying != self._teamStatus[member].block:
+                        self._trustBeliefs[member] -= 0.1 * 1 / self._age
+                    else:
+                        self._trustBeliefs[member] += 0.1 * 1 / self._age
+
+    def _parseMessage(self, message, member):
+        print(str(self._teamStatus))
+        string_list = message.split(" ")
+        if string_list[0] == "Opening" and string_list[1] == "door":
+            room_number = string_list[3].split("_")[1]
+            self._teamStatus[member] = {'action': 'opening', 'room': room_number, 'age': self._age}
+        if string_list[0] == "Searching" and string_list[1] == "through":
+            room_number = string_list[2].split("_")[1]
+            self._teamStatus[member] = {'action': 'searching', 'room': room_number, 'age': self._age}
+        if string_list[0] == "Found" and string_list[1] == "goal":
+            block = message.split('{')[1]
+            block = '{' + block.split('}')[0] + '}'
+            block = json.loads(block)
+            self._teamStatus[member] = {'action': 'finding', 'block': block, 'age': self._age}
+        if string_list[0] == "Picking" and string_list[1] == "up":
+            block = message.split('{')[1]
+            block = '{' + block.split('}')[0] + '}'
+            block = json.loads(block)
+            self._teamStatus[member] = {'action': 'carrying', 'block': block, 'age': self._age}
+        if string_list[0] == "Dropping" and string_list[1] == "goal":
+            block = message.split('{')[1]
+            block = '{' + block.split('}')[0] + '}'
+            block = json.loads(block)
+            self._teamStatus[member] = {'action': 'dropping', 'block': block, 'age': self._age}
