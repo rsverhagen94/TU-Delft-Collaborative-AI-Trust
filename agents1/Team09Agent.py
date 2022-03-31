@@ -187,7 +187,7 @@ class StrongAgent(BW4TBrain):
                     self._phase = Phase.PLAN_PATH_TO_ROOM
                     return None, {}
                 if len(self._goalBlocks) == 0:
-                    self._phase = Phase.FOLLOW_PATH_TO_GOAL
+                    self._phase = Phase.PLAN_PATH_TO_ROOM
                     return None, {}
                 goal = self._goalBlocks[0]
                 self._navigator.reset_full()
