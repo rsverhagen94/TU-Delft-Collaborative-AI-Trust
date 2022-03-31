@@ -459,7 +459,8 @@ class StrongAgent(BW4TBrain):
         # print('tbv', self.tbv)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
-            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
+                      self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
             # print(mssg, is_true)
             # print(self.seenObjects)
             if is_true is not None:
@@ -521,6 +522,7 @@ class StrongAgent(BW4TBrain):
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
+                        self.closed_doors.remove(door)
                         return True
             return True
 
@@ -595,27 +597,30 @@ class StrongAgent(BW4TBrain):
     def verify_action_sequence(self, mssgs, sender, closed_doors):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
 
-        prev = prev_mssg.split('')
-
-        # check if all door are open when a message for opening a door is received
-        # closed_doors = [door for door in state.values()
-        #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
-        #         'is_open']]
-        if (prev[0] == 'Opening' or mssg.split('')[0] == 'Opening') and len(closed_doors) == 0:
-            return False
-
-        # check moving to room, opening door sequence
-        if prev[0] == 'Moving':
-            curr = mssg.split('')
-
-            # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-            # TODO check whether door is not open
-            if curr[0] != 'Opening':
+        if prev_mssg is not None:
+            prev = prev_mssg.split('')
+            # check if all door are open when a message for opening a door is received
+            # closed_doors = [door for door in state.values()
+            #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+            #         'is_open']]
+            if (prev[0] == 'Opening' or mssg.split('')[0] == 'Opening') and len(closed_doors) == 0:
                 return False
 
-            # decrease trust score if an agent says that he is going to one room, but opening the door of another
-            if curr[0] == 'Opening' and prev[2] != curr[2]:
-                return False
+            # check moving to room, opening door sequence
+            if prev[0] == 'Moving':
+                curr = mssg.split('')
+
+                # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
+                # TODO check whether door is not open
+                if curr[0] != 'Opening' and curr[2] not in closed_doors:
+                    return False
+
+                # decrease trust score if an agent says that he is going to one room, but opening the door of another
+                if curr[0] == 'Opening' and prev[2] != curr[2]:
+                    return False
+
+            return True
+        return False
 
     def find_mssg(self, mssgs, from_id):
         counter = 0
