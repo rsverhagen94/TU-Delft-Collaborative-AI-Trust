@@ -12,11 +12,12 @@ from matrx.actions.action import Action
 
 Trust_Level = 0.7
 
+
 def findRoom(location, state):
     room = None
-    for item in state:
-        if item.name.split('_')[0] == 'room' and item.location == location:
-            room = item.room_name.split('_')[1]
+    for item in state.get_with_property({'room_name'}):
+        if item['location'] == location:
+            room = item['room_name'].split('_')[1]
 
     return room
 
@@ -66,10 +67,12 @@ class StrongAgent(BW4TBrain):
 
     def filter_observations(self, state):
         self._age += 1
+        print(self._age)
         agent_name = state[self.agent_id]['obj_id']
 
         if len(self._teamMembers) == 0:
             for member in state['World']['team_members']:
+                print(member)
                 if member != agent_name and member not in self._teamMembers:
                     self._teamMembers.append(member)
                     self._trustBeliefs[member] = {'rating': 0.5, 'age': self._age}
@@ -88,8 +91,9 @@ class StrongAgent(BW4TBrain):
         receivedMessages = self._processMessages(self._teamMembers)
 
         for member in self._teamMembers:
-            if self._teamObservedStatus[member] is not None and self._teamObservedStatus[member]['age'] >= 5:
-                self._teamObservedStatus[member] = None
+            if member in self._teamObservedStatus and self._teamObservedStatus[member] is not None:
+                if self._age - self._teamObservedStatus[member]['age'] >= 5:
+                    self._teamObservedStatus[member] = None
 
         for member in self._teamMembers:
             for message in receivedMessages[member]:
@@ -97,7 +101,7 @@ class StrongAgent(BW4TBrain):
 
         # Update trust beliefs for team members
         self._trustBlief(agent_name, state)
-        print(str(self._trustBeliefs))
+        #print(str(self._trustBeliefs))
         return state
 
     def decide_on_bw4t_action(self, state: State):
@@ -426,23 +430,24 @@ class StrongAgent(BW4TBrain):
 
         # You can change the default value to your preference
 
-
         for member in self._teamMembers:
-            if member not in self._teamStatus:
+            if member not in self._teamStatus or member not in self._teamObservedStatus:
                 continue
+            self._trustBeliefs[member]['age'] = self._age
             if self._teamStatus[member]['action'] == 'searching':
                 if self._teamObservedStatus[member] is not None:
-                    if findRoom(self._teamObservedStatus[member].location, state) != findRoom(
-                            self._teamStatus[member].location, state):
-                        self._trustBeliefs[member] -= 0.1 * 1 / self._age
+                    if findRoom(self._teamObservedStatus[member]['location'], state) != self._teamStatus[member]['room']:
+                        self._trustBeliefs[member]['rating'] -= 0.1 #* 1 / self._age
                     else:
-                        self._trustBeliefs[member] += 0.1 * 1 / self._age
+                        self._trustBeliefs[member]['rating'] += 0.1 #* 1 / self._age
+                    print(self._trustBeliefs[member])
             if self._teamStatus[member]['action'] == 'carrying':
                 if self._teamObservedStatus[member] is not None:
-                    if self._teamObservedStatus[member].is_carrying != self._teamStatus[member].block:
-                        self._trustBeliefs[member] -= 0.1 * 1 / self._age
+                    if self._teamObservedStatus[member]['is_carrying'] != self._teamStatus[member]['block']:
+                        self._trustBeliefs[member]['rating'] -= 0.1 #* 1 / self._age
                     else:
-                        self._trustBeliefs[member] += 0.1 * 1 / self._age
+                        self._trustBeliefs[member]['rating'] += 0.1 #* 1 / self._age
+                    print(self._trustBeliefs[member])
 
     def _parseMessage(self, message, member):
         string_list = message.split(" ")

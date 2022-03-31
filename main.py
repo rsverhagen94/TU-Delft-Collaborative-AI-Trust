@@ -12,8 +12,20 @@ press the start button in god mode to start the session.
 
 if __name__ == "__main__":
     agents = [
-        {'name':'agent1', 'botclass':StrongAgent, 'settings':{'slowdown':10}},
-        {'name':'agent2', 'botclass':StrongAgent, 'settings':{}},
+        {'name':'agent1', 'botclass': StrongAgent, 'settings': {'slowdown':10}},
+        {'name':'agent2', 'botclass': StrongAgent, 'settings': {}},
+        {'name': 'agent3', 'botclass': StrongAgent, 'settings': {'slowdown': 10}},
+        {'name': 'agent4', 'botclass': StrongAgent, 'settings': {}},
+        {'name': 'agent5', 'botclass': StrongAgent, 'settings': {'slowdown': 10}},
+        {'name': 'agent6', 'botclass': StrongAgent, 'settings': {}},
+        {'name': 'agent7', 'botclass': StrongAgent, 'settings': {'slowdown': 10}},
+        {'name': 'agent8', 'botclass': StrongAgent, 'settings': {}},
+        {'name': 'agent9', 'botclass': StrongAgent, 'settings': {'slowdown': 10}},
+        {'name': 'agent10', 'botclass': StrongAgent, 'settings': {}},
+        {'name': 'agent11', 'botclass': StrongAgent, 'settings': {'slowdown': 10}},
+        {'name': 'agent12', 'botclass': StrongAgent, 'settings': {}},
+        {'name': 'agent13', 'botclass': StrongAgent, 'settings': {'slowdown': 10}},
+        {'name': 'agent14', 'botclass': StrongAgent, 'settings': {}},
         ]
 
     print("Started world...")
