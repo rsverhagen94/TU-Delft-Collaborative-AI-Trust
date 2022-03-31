@@ -78,6 +78,8 @@ class StrongAgent(BW4TBrain):
         # Process messages from team members
         self._processMessages()
 
+        self.believeAgent()
+
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
@@ -435,7 +437,7 @@ class StrongAgent(BW4TBrain):
         for mssg in self.received_messages[self.totalMessagesReceived:]:
             for member in self._teamMembers:
                 if mssg.from_id == member:
-                    self.receivedMessages[member].append((self.ticks, mssg.content, mssg.from_id))
+                    self.receivedMessages[member].append((self.ticks, mssg.content, False))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
                     self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
@@ -448,6 +450,16 @@ class StrongAgent(BW4TBrain):
                 else:
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
+
+    def believeAgent(self):
+        for agent in self.receivedMessages:
+            if self.trustBeliefs[agent] >= 0.9:
+                for i in range(len(self.receivedMessages[agent])):
+                    mssg = self.receivedMessages[agent][i]
+                    if not mssg[2]:
+                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                        # mssg[2] = True
+                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -475,25 +487,22 @@ class StrongAgent(BW4TBrain):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
             room_to = splitMssg[2]
-            if self.trustBeliefs[sender] >= 0.4:
+            if self.trustBeliefs[sender] >= 0.5:
                 for room, door in self.rooms_to_visit:
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
-                        return True
-            return True
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.6:
+            if self.trustBeliefs[sender] >= 0.5:
                 for obj_vis, dropoff_loc in self.all_desired_objects:
                     if self.compareObjects(vis, obj_vis):
                         self.addToMemory(vis, loc, dropoff_loc)
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
-            if self.trustBeliefs[sender] >= 0.6:
+            if self.trustBeliefs[sender] >= 0.5:
                 self.dropped_off_count += 1
-                return True
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
