@@ -226,7 +226,6 @@ class StrongAgent(BW4TBrain):
                 if action != None:
                     return action, {}
                 self._goalsWrong.append(self._goalBlocks[0])
-                self._goalBlocks.remove(self._goalBlocks[0])
 
                 self._phase = Phase.CHECK_GOALS
 
