@@ -62,6 +62,7 @@ class StrongAgent(BW4TBrain):
         self._door = None
         self.dropped_off_count = 0
         self.obj_id = None
+        self.closed_doors = []
 
     def initialize(self):
         super().initialize()
@@ -119,6 +120,10 @@ class StrongAgent(BW4TBrain):
                     self.rooms_to_visit.append((room, door[0]))
 
             print("ALL ROOOMS", self.rooms_to_visit)
+
+            self.closed_doors = [door for door in state.values()
+                            if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+                    'is_open']]
 
         while True:
 
@@ -571,3 +576,43 @@ class StrongAgent(BW4TBrain):
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
+
+    def verify_action_sequence(self, mssgs, sender, closed_doors):
+        mssg, prev_mssg = self.find_mssg(mssgs, sender)
+
+        prev = prev_mssg.split('')
+
+        # check if all door are open when a message for opening a door is received
+        # closed_doors = [door for door in state.values()
+        #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+        #         'is_open']]
+        if (prev[0] == 'Opening' or mssg.split('')[0] == 'Opening') and len(closed_doors) == 0:
+            return False
+
+        # check moving to room, opening door sequence
+        if prev[0] == 'Moving':
+            curr = mssg.split('')
+
+            # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
+            # TODO check whether door is not open
+            if curr[0] != 'Opening':
+                return False
+
+            # decrease trust score if an agent says that he is going to one room, but opening the door of another
+            if curr[0] == 'Opening' and prev[2] != curr[2]:
+                return False
+
+    def find_mssg(self, mssgs, from_id):
+        counter = 0
+        mssg = None
+        prev_mssg = None
+        for mssg in mssgs:
+            if mssg[2] == from_id:
+                if (counter == 0):
+                    mssg = mssg[1]
+                    counter = counter + 1
+                else:
+                    prev_mssg = mssg[1]
+                    break
+
+        return mssg, prev_mssg
