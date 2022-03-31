@@ -24,7 +24,8 @@ class Phase(enum.Enum):
     PICK_UP_GOAL_BLOCK = 11,
     PUT_AWAY_WRONG_BLOCK = 12,
     WAIT_FOR_FINISH = 13,
-    MOVE_GOAL_BLOCK = 14
+    MOVE_GOAL_BLOCK = 14,
+    UPDATE_GOAL_LIST = 15
 
 
 class StrongAgent(BW4TBrain):
@@ -43,7 +44,9 @@ class StrongAgent(BW4TBrain):
         self._goalsInitialized = False
         self._carrying = None
         self._carryingO = None
-        self._goalsWrong = {}
+        self._goalsWrong = []
+        self._checkGoals = []
+        self._possibleGoalBLocks = []
 
     def filter_bw4t_observations(self, state):
         return state
@@ -143,7 +146,6 @@ class StrongAgent(BW4TBrain):
 
             if Phase.DROP_OBJECT == self._phase:
                 self._phase = Phase.PLAN_PATH_TO_ROOM
-                self._goalBlocks.remove(self._carrying)
 
                 # If there already is a block in this location, move to a different location and drop the block there.
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
@@ -152,7 +154,21 @@ class StrongAgent(BW4TBrain):
                         if o['location'] == self.state.get_self()['location']:
                             self._phase = Phase.FOLLOW_PATH_TO_DROP
                             self._navigator.reset_full()
-                            self._navigator.add_waypoints([self.state.get_self()['location'][0] - 1, self.state.get_self()['location'][1]])
+                            self._sendMessage(
+                                'location ' + str(self._carryingO['location']), agent_name)
+                            self._navigator.add_waypoints([self._carryingO['location']])
+                            self._phase = Phase.FOLLOW_PATH_TO_DROP
+                            return None, {}
+
+                self._goalBlocks.remove(self._carrying)
+
+                if len(self._goalBlocks) >= 1:
+                    self._phase = Phase.UPDATE_GOAL_LIST
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([self._goalBlocks[0]['location']])
+                    self._checkGoals = []
+                    for g in self._goalBlocks:
+                        self._checkGoals.append(g)
 
                 if len(self._goalBlocks) == 0:
                     self._goalBlocks = state.get_with_property({'is_goal_block': True})
@@ -170,7 +186,7 @@ class StrongAgent(BW4TBrain):
                 if len(self._goalsWrong) != 0:
                     self._phase = Phase.PLAN_PATH_TO_ROOM
                 if len(self._goalBlocks) == 0:
-                    self._phase = Phase.MOVE_GOAL_BLOCK
+                    self._phase = Phase.CHECK_GOALS
                     self._goalBlocks = state.get_with_property({'is_goal_block': True})
                 goal = self._goalBlocks[0]
                 self._navigator.reset_full()
@@ -224,6 +240,33 @@ class StrongAgent(BW4TBrain):
                                   agent_name)
                 return DropObject.__name__, {}
 
+            if Phase.UPDATE_GOAL_LIST == self._phase:
+                self._state_tracker.update(state)
+                action = self._navigator.get_move_action(self._state_tracker)
+                if action != None:
+                    return action, {}
+                if len(self._goalBlocks) == 0:
+                    self._phase = Phase.CHECK_GOALS
+                    return None, {}
+                # If there is a block on the goal, update the goallist
+                if len(self._checkGoals) == 0:
+                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                    return None, {}
+                goal = self._checkGoals[0]
+                self._checkGoals.remove(goal)
+                objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
+                if objects is not None:
+                    for o in objects:
+                        if o['location'] == goal['location']:
+                            self._goalBlocks.remove(goal)
+                            if len(self._goalBlocks) == 0:
+                                self._phase = Phase.CHECK_GOALS
+                            elif len(self._checkGoals) == 0:
+                                self._phase = Phase.PLAN_PATH_TO_ROOM
+                            else:
+                                next = self._checkGoals[0]
+                                self._navigator.reset_full()
+                                self._navigator.add_waypoints([next['location']])
 
 
     def _sendMessage(self, mssg, sender):
