@@ -152,10 +152,7 @@ class StrongAgent(BW4TBrain):
                 if objects is not None:
                     for o in objects:
                         if o['location'] == self.state.get_self()['location']:
-                            self._phase = Phase.FOLLOW_PATH_TO_DROP
                             self._navigator.reset_full()
-                            self._sendMessage(
-                                'location ' + str(self._carryingO['location']), agent_name)
                             self._navigator.add_waypoints([self._carryingO['location']])
                             self._phase = Phase.FOLLOW_PATH_TO_DROP
                             return None, {}
@@ -163,14 +160,14 @@ class StrongAgent(BW4TBrain):
                 self._goalBlocks.remove(self._carrying)
 
                 if len(self._goalBlocks) >= 1:
+                    self._sendMessage('Updating goal list with ' + str(len(self._goalBlocks)), agent_name)
                     self._phase = Phase.UPDATE_GOAL_LIST
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self._goalBlocks[0]['location']])
                     self._checkGoals = []
                     for g in self._goalBlocks:
                         self._checkGoals.append(g)
-
-                if len(self._goalBlocks) == 0:
+                elif len(self._goalBlocks) == 0:
                     self._goalBlocks = state.get_with_property({'is_goal_block': True})
                     self._phase = Phase.CHECK_GOALS
 
@@ -219,6 +216,7 @@ class StrongAgent(BW4TBrain):
                             action_kwargs = {}
                             action_kwargs['object_id'] = o['obj_id']
                             return action, action_kwargs
+                self._phase = Phase.PLAN_PATH_TO_ROOM
 
             if Phase.PUT_AWAY_WRONG_BLOCK == self._phase:
                 self._state_tracker.update(state)
@@ -251,7 +249,8 @@ class StrongAgent(BW4TBrain):
                     return None, {}
                 # If there is a block on the goal, update the goallist
                 if len(self._checkGoals) == 0:
-                    self._phase = Phase.PLAN_PATH_TO_ROOM
+                    self._goalBlocks = state.get_with_property({'is_goal_block': True})
+                    self._phase = Phase.CHECK_GOALS
                     return None, {}
                 goal = self._checkGoals[0]
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
