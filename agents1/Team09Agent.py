@@ -186,8 +186,7 @@ class StrongAgent(BW4TBrain):
                 if len(self._goalsWrong) != 0:
                     self._phase = Phase.PLAN_PATH_TO_ROOM
                 if len(self._goalBlocks) == 0:
-                    self._phase = Phase.CHECK_GOALS
-                    self._goalBlocks = state.get_with_property({'is_goal_block': True})
+                    self._phase = Phase.FOLLOW_PATH_TO_GOAL
                 goal = self._goalBlocks[0]
                 self._navigator.reset_full()
                 self._navigator.add_waypoints([goal['location']])
@@ -246,6 +245,7 @@ class StrongAgent(BW4TBrain):
                 if action != None:
                     return action, {}
                 if len(self._goalBlocks) == 0:
+                    self._goalBlocks = state.get_with_property({'is_goal_block': True})
                     self._phase = Phase.CHECK_GOALS
                     return None, {}
                 # If there is a block on the goal, update the goallist
@@ -253,20 +253,22 @@ class StrongAgent(BW4TBrain):
                     self._phase = Phase.PLAN_PATH_TO_ROOM
                     return None, {}
                 goal = self._checkGoals[0]
-                self._checkGoals.remove(goal)
                 objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
                 if objects is not None:
                     for o in objects:
                         if o['location'] == goal['location']:
                             self._goalBlocks.remove(goal)
                             if len(self._goalBlocks) == 0:
+                                self._goalBlocks = state.get_with_property({'is_goal_block': True})
                                 self._phase = Phase.CHECK_GOALS
+                                return None, {}
                             elif len(self._checkGoals) == 0:
                                 self._phase = Phase.PLAN_PATH_TO_ROOM
                             else:
                                 next = self._checkGoals[0]
                                 self._navigator.reset_full()
                                 self._navigator.add_waypoints([next['location']])
+                self._checkGoals.remove(goal)
 
 
     def _sendMessage(self, mssg, sender):
