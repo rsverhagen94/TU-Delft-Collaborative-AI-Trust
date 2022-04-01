@@ -71,6 +71,23 @@ class StrongAgent(BW4TBrain):
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
 
+        objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
+        if objects is not None:
+            for o in objects:
+                count = 0
+                for g in self._goalBlocks:
+                    if o['location'] == g['location']:
+                        count += 1
+                if count == 0:
+                    for g in self._goalBlocks:
+                        if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization']['colour'] == \
+                                g['visualization']['colour'] and len(o['carried_by']) == 0:
+                            self._possibleGoalBLocks.append(o)
+                            self._sendMessage('Found goal block {\"size\": ' + str(
+                                o['visualization']['size']) + ', \"shape\": ' + str(
+                                o['visualization']['shape']) + ', \"colour\": ' + str(
+                                o['visualization']['colour']) + '} at location ' + str(o['location']), agent_name)
+
         while True:
             if Phase.PLAN_PATH_TO_ROOM == self._phase:
                 self._navigator.reset_full()
@@ -459,6 +476,24 @@ class LiarAgent(BW4TBrain):
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
+
+        objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
+        if objects is not None:
+            for o in objects:
+                count = 0
+                for g in self._goalBlocks:
+                    if o['location'] == g['location']:
+                        count += 1
+                if count == 0:
+                    for g in self._goalBlocks:
+                        if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization'][
+                            'colour'] == \
+                                g['visualization']['colour'] and len(o['carried_by']) == 0:
+                            self._possibleGoalBLocks.append(o)
+                            self._sendMessage('Found goal block {\"size\": ' + str(
+                                o['visualization']['size']) + ', \"shape\": ' + str(
+                                o['visualization']['shape']) + ', \"colour\": ' + str(
+                                o['visualization']['colour']) + '} at location ' + str(o['location']), agent_name)
 
         while True:
             if Phase.PLAN_PATH_TO_ROOM == self._phase:
@@ -895,6 +930,25 @@ class LazyAgent(BW4TBrain):
         receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
         self._trustBlief(self._teamMembers, receivedMessages)
+
+        objects = state.get_closest_with_property({'class_inheritance': ['CollectableBlock']})
+        if objects is not None:
+            for o in objects:
+                count = 0
+                for g in self._goalBlocks:
+                    if o['location'] == g['location']:
+                        count += 1
+                if count == 0:
+                    for g in self._goalBlocks:
+                        if o['visualization']['shape'] == g['visualization']['shape'] and o['visualization'][
+                            'colour'] == \
+                                g['visualization']['colour'] and len(o['carried_by']) == 0:
+                            self._possibleGoalBLocks.append(o)
+                            self._sendMessage('Found goal block {\"size\": ' + str(
+                                o['visualization']['size']) + ', \"shape\": ' + str(
+                                o['visualization']['shape']) + ', \"colour\": ' + str(
+                                o['visualization']['colour']) + '} at location ' + str(o['location']), agent_name)
+
 
         while True:
             if Phase.PLAN_PATH_TO_ROOM == self._phase:
