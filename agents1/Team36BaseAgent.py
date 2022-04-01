@@ -143,7 +143,7 @@ class BaseAgent(BaseLineAgent):
                                 self._decreaseBelief("Competence", r['by'], 0.1)
                         # member that is searching the room has found a block -> increase competence
                             if r['by'] is member and r['room_id'] == room:
-                                self._increaseBelief("Competence", r['by'], 0.05)
+                                self._increaseBelief("Willingness", r['by'], 0.02)
                         current_world_state['found_blocks'].append(block)
 
                 elif 'Picking up goal block ' in msg:
@@ -733,6 +733,11 @@ class BaseAgent(BaseLineAgent):
                         'Picking up goal block {} at location {}'.format(json.dumps(block['visualization']),
                                                                          block['location']),
                         agent_name)
+                for b in self._world_state['found_blocks']:
+                    if b['visualization'] == block['visualization'] and b['location'] == block['location']:
+                        self._world_state['found_blocks'].remove(b)
+                        if b['by'] != self.agent_name:
+                            self._increaseBelief("Competence", b['by'], 0.1)
                 return GrabObject.__name__, {'object_id': block['obj_id']}
 
     def drop_block(self, agent_name, state, block_id):
