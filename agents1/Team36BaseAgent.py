@@ -155,6 +155,9 @@ class BaseAgent(BaseLineAgent):
                         if block_vis == block['visualization'] and block_loc == block['location']:
                             current_world_state['found_blocks'].remove(block)
                             break
+                    for goal in [g for g in current_world_state['goals'] if g['visualization'] == block_vis and g['location'] == block_loc]:
+                        goal['satisfied'] = False
+                        goal['verified'] = False
                     # add info to teammember
                     # current_world_state['teammembers'][member]['state'] = {'type': State.PICKING_UP_BLOCK, 'block': {'visualization': block_vis, 'location': block_loc}}
                     current_world_state['teammembers'][member]['carrying'].append(block_vis)
@@ -729,15 +732,17 @@ class BaseAgent(BaseLineAgent):
         for block in observations['blocks']:
             if block['obj_id'] == block_id:
                 # if block was on a sat target, unsat target
-                sat_goal = [g for g in self._world_state['goals'] if g['location'] == block['location']]
+                goals_with_same_vis = [g for g in self._world_state['goals'] if g['visualization'] == block['visualization']]
+                sat_goal = [g for g in goals_with_same_vis if g['location'] == block['location']]
                 for g in sat_goal:
                     g['satisfied'] = False
                     g['verified'] = False
 
-                self._sendMessage(
-                    'Picking up goal block {} at location {}'.format(json.dumps(block['visualization']),
-                                                                     block['location']),
-                    agent_name)
+                if len(goals_with_same_vis) > 0:
+                    self._sendMessage(
+                        'Picking up goal block {} at location {}'.format(json.dumps(block['visualization']),
+                                                                         block['location']),
+                        agent_name)
                 return GrabObject.__name__, {'object_id': block['obj_id']}
 
     def drop_block(self, agent_name, state, block_id):
