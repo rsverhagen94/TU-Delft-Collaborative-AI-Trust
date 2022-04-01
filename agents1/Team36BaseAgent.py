@@ -321,21 +321,21 @@ class BaseAgent(BaseLineAgent):
 
         # handle goal verification (only done if standing on a goal, since sense capabilities is a bit iffy)
         goals_to_verify_at_cur_location = [goal for goal in self._world_state['goals']
-                                    if goal['satisfied']
-                                        and not goal['verified']
+                                    if not goal['verified']
                                         and goal['location'] == self._you['location']]
         if len(goals_to_verify_at_cur_location) > 0:
             goal = goals_to_verify_at_cur_location[0]
             correct_blocks_on_goal = [b for b in observations['blocks']
                                         if b['location'] == goal['location']
                                             and b['visualization'] == goal['visualization']]
-            if len(correct_blocks_on_goal) > 0:
-                # this goal has a correct block
+            if len(correct_blocks_on_goal) > 0 == goal['satisfied']:
+                # this goal has a correct 'satisfied' parameter
                 goal['verified'] = True
                 self._increaseBelief("Trust", goal['by'], 0.2)
             else:
-                # this goal was not satisfied, update trust of goal['by']
-                goal['satisfied'] = False
+                # this goal did not have a correct 'satisfied' param, updating and update trust of goal['by']
+                goal['satisfied'] = len(correct_blocks_on_goal) > 0
+                goal['verified'] = True
                 self._decreaseBelief("Trust", goal['by'], 0.3)
 
         # handle visible doors and update trust
@@ -616,7 +616,7 @@ class BaseAgent(BaseLineAgent):
                     
         elif len(state[self.agent_id]['is_carrying']) > 0:
             sat_goals = sorted([goal for goal in self._world_state['goals'] if goal['satisfied']], key=lambda g: g['index'])
-            if len([goal for goal in sat_goals if not goal['verified']]) > 0:
+            if len([goal for goal in self._world_state['goals'] if not goal['verified']]) > 0:
                 # if there exist unverified but satisfied goals, verify those
                 self._phase = Phase.PLAN_VERIFY_GOALS
             elif len(sat_goals) > 0 and not self.previousGoalsSatisfied(sat_goals[-1]['index']):
@@ -857,7 +857,7 @@ class BaseAgent(BaseLineAgent):
         for i in range(len(blocks)):
             blocks[i]['index'] = i
             blocks[i]['satisfied'] = False
-            blocks[i]['verified'] = False
+            blocks[i]['verified'] = True     # at the start of a game all goals are standard not satisfied, so we can assume this is verified
             blocks[i]['by'] = None
             self._world_state['goals'].append(blocks[i])
 
