@@ -143,7 +143,7 @@ class BaseAgent(BaseLineAgent):
                                 self._decreaseBelief("Competence", r['by'], 0.1)
                         # member that is searching the room has found a block -> increase competence
                             if r['by'] is member and r['room_id'] == room:
-                                self._increaseBelief("Willingness", r['by'], 0.02)
+                                self._increaseBelief("Competence", r['by'], 0.02)
                         current_world_state['found_blocks'].append(block)
 
                 elif 'Picking up goal block ' in msg:
@@ -170,6 +170,7 @@ class BaseAgent(BaseLineAgent):
                         {'visualization': block_vis, 'location': block_loc, 'by': member})
                     # remove info from teammembers that a member is carrying a block
                     try:
+                        self._increaseBelief("Willingness", member, 0.05)
                         current_world_state['teammembers'][member]['carrying'].remove(block_vis)
                     except ValueError:
                         # member was not carrying block they said they dropped, thus is probably lying
@@ -303,11 +304,11 @@ class BaseAgent(BaseLineAgent):
             for b in observations['blocks']:
                 if b['visualization'] == block['visualization'] and b['location'] == block['location']:
                     verified = True
-                    self._increaseBelief("Competence", block['by'], 0.05)
+                    self._increaseBelief("Willingness", block['by'], 0.05)
                     break
             if not verified:
                 self._world_state['found_blocks'].remove(block)
-                self._decreaseBelief("Competence", block['by'], 0.1)
+                self._decreaseBelief("Willingness", block['by'], 0.1)
 
         # handle goal verification (only done if standing on a goal, since sense capabilities is a bit iffy)
         goals_to_verify_at_cur_location = [goal for goal in self._world_state['goals']
@@ -322,7 +323,6 @@ class BaseAgent(BaseLineAgent):
             if len(correct_blocks_on_goal) > 0:
                 # this goal has a correct block
                 goal['verified'] = True
-                self._increaseBelief("Competence", goal['by'], 0.1)
                 self._increaseBelief("Willingness", goal['by'], 0.2)
             else:
                 # this goal was not satisfied, update trust of goal['by']
@@ -338,7 +338,7 @@ class BaseAgent(BaseLineAgent):
                     d['checked'] = True
                 if door['is_open'] and door['room_name'] == d['room_id'] and not d['checked']:
                     # member opened door when saying it would open door, increase trust
-                    self._increaseBelief("Competence", d['by'], 0.01)
+                    self._increaseBelief("Willingness", d['by'], 0.01)
                     d['checked'] = True
 
     def filter_bw4t_observations(self, state):
@@ -549,7 +549,6 @@ class BaseAgent(BaseLineAgent):
             if Phase.PLAN_FIX_SOLUTION == self._phase:
                 goals = [goal for goal in self._world_state['goals']]
                 self._navigator.reset_full()
-                self._phase = Phase.PLAN_NEXT_ACTION
                 for goal in goals:
                     self._navigator.add_waypoint(goal['location'])
                     self._phase = Phase.FIX_SOLUTION
@@ -737,7 +736,7 @@ class BaseAgent(BaseLineAgent):
                     if b['visualization'] == block['visualization'] and b['location'] == block['location']:
                         self._world_state['found_blocks'].remove(b)
                         if b['by'] != self.agent_name:
-                            self._increaseBelief("Competence", b['by'], 0.1)
+                            self._increaseBelief("Willingness", b['by'], 0.1)
                 return GrabObject.__name__, {'object_id': block['obj_id']}
 
     def drop_block(self, agent_name, state, block_id):
