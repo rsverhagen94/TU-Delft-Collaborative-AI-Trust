@@ -588,17 +588,17 @@ class StrongAgent(BW4TBrain):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
 
         if prev_mssg is not None:
-            prev = prev_mssg.split('')
+            prev = prev_mssg.split(' ')
             # check if all door are open when a message for opening a door is received
             # closed_doors = [door for door in state.values()
             #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
             #         'is_open']]
-            if (prev[0] == 'Opening' or mssg.split('')[0] == 'Opening') and len(closed_doors) == 0:
+            if (prev[0] == 'Opening' or mssg.split(' ')[0] == 'Opening') and len(closed_doors) == 0:
                 return False
 
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
-                curr = mssg.split('')
+                curr = mssg.split(' ')
 
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
                 # TODO check whether door is not open
