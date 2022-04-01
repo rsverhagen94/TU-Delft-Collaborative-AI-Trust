@@ -1,4 +1,5 @@
 import json
+import math
 from typing import final, List, Dict, Final
 import enum, random
 from bw4t.BW4TBrain import BW4TBrain
@@ -67,12 +68,10 @@ class StrongAgent(BW4TBrain):
 
     def filter_observations(self, state):
         self._age += 1
-        print(self._age)
         agent_name = state[self.agent_id]['obj_id']
 
         if len(self._teamMembers) == 0:
             for member in state['World']['team_members']:
-                print(member)
                 if member != agent_name and member not in self._teamMembers:
                     self._teamMembers.append(member)
                     self._trustBeliefs[member] = {'rating': 0.5, 'age': self._age}
@@ -82,17 +81,20 @@ class StrongAgent(BW4TBrain):
             for item in closest_agents:
                 name = item['name']
                 location = item['location']
-                is_carrying = item['is_carrying']
+                is_carrying = []
+                if len(item['is_carrying']) > 0:
+                    for block in item['is_carrying']:
+                        is_carrying.append(block['visualization'])
                 self._teamObservedStatus[name] = {'location': location, 'is_carrying': is_carrying,
                                                   'age': self._age}
-                self._sendMessage('status of ' + name + ': location is '
-                                  + str(location) + 'and is carrying ' + str(is_carrying), agent_name)
+                self._sendMessage('status of ' + name + ': location: '
+                                  + str(location) + ', is carrying: ' + str(is_carrying), agent_name)
 
         receivedMessages = self._processMessages(self._teamMembers)
 
         for member in self._teamMembers:
             if member in self._teamObservedStatus and self._teamObservedStatus[member] is not None:
-                if self._age - self._teamObservedStatus[member]['age'] >= 5:
+                if self._age - self._teamObservedStatus[member]['age'] > 5:
                     self._teamObservedStatus[member] = None
 
         for member in self._teamMembers:
@@ -101,7 +103,7 @@ class StrongAgent(BW4TBrain):
 
         # Update trust beliefs for team members
         self._trustBlief(agent_name, state)
-        #print(str(self._trustBeliefs))
+        print(str(self._trustBeliefs))
         return state
 
     def decide_on_bw4t_action(self, state: State):
@@ -430,24 +432,55 @@ class StrongAgent(BW4TBrain):
 
         # You can change the default value to your preference
 
+        theta = 0.17
+        mu = 0.5
+        increment = 0.03
+
         for member in self._teamMembers:
             if member not in self._teamStatus or member not in self._teamObservedStatus:
                 continue
             self._trustBeliefs[member]['age'] = self._age
-            if self._teamStatus[member]['action'] == 'searching':
+            rating = self._trustBeliefs[member]['rating']
+            if self._teamObservedStatus[member] is not None and self._teamStatus[member]['action'] == 'searching':
                 if self._teamObservedStatus[member] is not None:
-                    if findRoom(self._teamObservedStatus[member]['location'], state) != self._teamStatus[member]['room']:
-                        self._trustBeliefs[member]['rating'] -= 0.1 #* 1 / self._age
+                    print(member)
+                    print('is in room' + str(findRoom(self._teamObservedStatus[member]['location'], state)))
+                    print('says it is in room' + str(self._teamStatus[member]['room']))
+                    if findRoom(self._teamObservedStatus[member]['location'], state) == self._teamStatus[member][
+                            'room']:
+                        rating += \
+                            increment * (1 / (theta * math.sqrt(2 * math.pi)) *
+                                         math.exp(-0.5 * math.pow((rating - mu) / theta, 2)))
+                        print('trust increased')
                     else:
-                        self._trustBeliefs[member]['rating'] += 0.1 #* 1 / self._age
-                    print(self._trustBeliefs[member])
-            if self._teamStatus[member]['action'] == 'carrying':
-                if self._teamObservedStatus[member] is not None:
-                    if self._teamObservedStatus[member]['is_carrying'] != self._teamStatus[member]['block']:
-                        self._trustBeliefs[member]['rating'] -= 0.1 #* 1 / self._age
+                        if self._age - self._teamObservedStatus[member]['age'] > 10:
+                            rating -= \
+                                increment * (1 / (theta * math.sqrt(2 * math.pi)) *
+                                             math.exp(-0.5 * math.pow((rating - mu) / theta, 2)))
+                            print('trust decreased')
+            elif self._teamStatus[member]['action'] == 'carrying':
+                if self._teamObservedStatus[member] is not None and len(
+                        self._teamObservedStatus[member]['is_carrying']) > 0:
+                    print(member)
+                    print('is carrying' + str(self._teamObservedStatus[member]['is_carrying'][0]))
+                    print('says it is carrying' + str(self._teamStatus[member]['block']))
+                    if self._teamObservedStatus[member]['is_carrying'][0] == self._teamStatus[member]['block']:
+                        rating += \
+                            increment * (1 / (theta * math.sqrt(2 * math.pi)) *
+                                         math.exp(-0.5 * math.pow((rating - mu) / theta, 2)))
+                        print('trust increased')
+
                     else:
-                        self._trustBeliefs[member]['rating'] += 0.1 #* 1 / self._age
-                    print(self._trustBeliefs[member])
+                        rating -= \
+                            increment * (1 / (theta * math.sqrt(2 * math.pi)) *
+                                         math.exp(-0.5 * math.pow((rating - mu) / theta, 2)))
+                        print('trust decreased')
+            if rating < 0:
+                rating = 0
+            if rating > 1:
+                rating = 1
+            self._trustBeliefs[member]['rating'] = rating
+
 
     def _parseMessage(self, message, member):
         string_list = message.split(" ")
