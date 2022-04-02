@@ -213,6 +213,8 @@ class BaseAgent(BaseLineAgent):
         return True
 
     def _increaseBelief(self, type, member, amount):
+        if member == self._you['obj_id']:
+            return
         if type == "Willingness":
             if self._beliefs[member]["Willingness"] + amount < self._maxTrust:
                 self._beliefs[member]["Willingness"] += amount
@@ -225,6 +227,8 @@ class BaseAgent(BaseLineAgent):
                 self._beliefs[member]["Competence"] = self._maxTrust
 
     def _decreaseBelief(self, type, member, amount):
+        if member == self._you['obj_id']:
+            return
         if type == "Willingness":
             if self._beliefs[member]["Willingness"] - amount > 0.0:
                 self._beliefs[member]["Willingness"] -= amount
@@ -329,7 +333,8 @@ class BaseAgent(BaseLineAgent):
                 # this goal did not have a correct 'satisfied' param, updating and update trust of goal['by']
                 goal['satisfied'] = len(correct_blocks_on_goal) > 0
                 goal['verified'] = True
-                self._decreaseBelief("Willingness", goal['by'], 0.3)
+                if goal['by'] is not None:
+                    self._decreaseBelief("Willingness", goal['by'], 0.3)
 
         # handle visible doors and update trust
         for door in observations['doors']:
@@ -424,12 +429,15 @@ class BaseAgent(BaseLineAgent):
                 if action is not None:
                     return action, {}
                 else:
-                    closest_target = self.get_closest_possible_target(state)
-                    targets_in_range = list(filter(lambda b: b['visualization'] == closest_target['visualization'], observations['blocks']))
-                    if len(targets_in_range) > 0:
-                        action, param = self.pickup_block(agent_name, observations, targets_in_range[0]['obj_id'])
-                        return action, param
-                    else:
+                    try:
+                        closest_target = self.get_closest_possible_target(state)
+                        targets_in_range = list(filter(lambda b: b['visualization'] == closest_target['visualization'], observations['blocks']))
+                        if len(targets_in_range) > 0:
+                            action, param = self.pickup_block(agent_name, observations, targets_in_range[0]['obj_id'])
+                            return action, param
+                        else:
+                            self._phase = Phase.PLAN_NEXT_ACTION
+                    except:
                         self._phase = Phase.PLAN_NEXT_ACTION
 
             if Phase.FOLLOW_PATH_TO_GOAL == self._phase:
