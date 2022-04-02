@@ -360,8 +360,9 @@ class BaseAgent(BaseLineAgent):
             index = state['World']['team_members'].index(member)
             if self._world_state['agent_index'] == -1 and member == agent_name:
                 self._world_state['agent_index'] = index
-            if member != agent_name and member not in self._beliefs:
+            if member != agent_name and member not in self._world_state['teammembers']:
                 self._world_state['teammembers'][member] = {'state':{'type':None}, 'carrying': [], 'index':index}
+            if member != agent_name and member not in self._beliefs:
                 self._beliefs[member] = {
                     "Competence": 0.5,
                     "Willingness": 0.5
@@ -961,13 +962,15 @@ class BaseAgent(BaseLineAgent):
                 return room['room_name']
 
     def _save_trust(self):
-        with open(str(self.agent_name) + ".json", "w+") as write_file:
+        with open(str(self.agent_name) + ".json", "w") as write_file:
             json.dump(self._beliefs, write_file, indent=4)
+            write_file.close()
 
     def _load_trust(self):
         try:
             with open(str(self.agent_name) + ".json") as read_file:
                 self._beliefs = json.load(read_file)
+            read_file.close()
         except IOError:
             return
 
