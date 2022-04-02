@@ -160,7 +160,8 @@ class LazyAgent(BW4TBrain):
                     self._navigator.add_waypoints(sorted_by_xy)
                     self._phase = Phase.TRAVERSE_ROOM
                     self.stop_when = -1
-                    self.rooms_to_visit.remove(self.checked_room)
+                    if self.checked_room in self.rooms_to_visit:
+                        self.rooms_to_visit.remove(self.checked_room)
                 else:
                     self.stop_when = int(round(len(sorted_by_xy) * self.getRandom1()))
                     self._navigator.add_waypoints(sorted_by_xy)
