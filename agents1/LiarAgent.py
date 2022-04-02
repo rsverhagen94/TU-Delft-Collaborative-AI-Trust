@@ -7,6 +7,10 @@ from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
+import pandas as pd
+import numpy as np
+import re
+import ast
 
 
 class Phase(enum.Enum):
@@ -21,14 +25,17 @@ class Phase(enum.Enum):
     GO_TO_REORDER_ITEMS = 9
     REORDER_ITEMS = 10
     GRAB_AND_DROP = 11
+    CHECK_ITEMS = 12
 
 class PossibleActions(enum.Enum):
     MOVING_TO_ROOM = 1
     OPENING_DOOR = 2
     SEARCHING_A_ROOM = 3
-    ENCOUNTERING_A_BLOCK = 4
-    PICKING_UP_A_BLOCK = 5
-    DROPPING_A_BLOCK = 6
+    ENCOUNTERING_A_GOAL_BLOCK = 4
+    ENCOUNTERING_A_BLOCK = 5
+    PICKING_UP_A_BLOCK = 6
+    DROPPING_A_BLOCK = 7
+
 
 
 class LiarAgent(BW4TBrain):
@@ -51,12 +58,25 @@ class LiarAgent(BW4TBrain):
         self.memory = []
         self.all_rooms = []
 
+        self.ticks = 0
+        self.receivedMessages = {}
+        self.totalMessagesReceived = 0
+        # A list of messages To Be Verified
+        self.tbv = []
+        # For each team member store trust score
+        self.trustBeliefs = {}
+        self.rooms_to_visit = []
+        self.visited = []
+        self.seenObjects = []
+        self.dropped_off_count = 0
+        self.at_drop_location = {}
         # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
 
         self.grab = False
         self.drop = False
 
         self.obj_id = None
+        self.closed_doors = []
 
     def initialize(self):
         super().initialize()
@@ -68,20 +88,30 @@ class LiarAgent(BW4TBrain):
         return state
 
     def decide_on_bw4t_action(self, state: State):
-        agent_name = state[self.agent_id]['obj_id']
-        self.agent_name = agent_name
+        self.ticks = self.ticks + 1
+
+        # Process messages from team members
+        self._processMessages()
+
+        self.believeAgent()
+
         # Add team members
-        for member in state['World']['team_members']:
-            if member != agent_name and member not in self._teamMembers:
-                self._teamMembers.append(member)
-                # Process messages from team members
-        receivedMessages = self._processMessages(self._teamMembers)
+
+        # Process messages from team members
+        # receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
-        self._trustBelief(self._teamMembers, receivedMessages)
+        # self._trustBelief(self._teamMembers, receivedMessages)
 
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
+            agent_name = state[self.agent_id]['obj_id']
+            self.agent_name = agent_name
+
+            for member in state['World']['team_members']:
+                if member != agent_name and member not in self._teamMembers:
+                    self._teamMembers.append(member)
+                    self.receivedMessages[member] = []
 
             # Add all rooms in a list
             self.all_rooms = sorted(state.get_all_room_names())
@@ -97,11 +127,25 @@ class LiarAgent(BW4TBrain):
             # Add location for every desired object
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
+                self.at_drop_location[obj["location"]] = 0
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
             self.all_desired_objects = self.desired_objects.copy()
             sorted(self.all_desired_objects, key=lambda obj: obj[1], reverse=True)
 
+            self.initTrustBeliefs()
+            self._init_trust_table(state['World']['team_members'])
+
+            for room in self.all_rooms:
+                if room != "world_bounds":
+                    door = state.get_room_doors(room)
+                    self.rooms_to_visit.append((room, door[0]))
+
+            # print("ALL ROOOMS", self.rooms_to_visit)
+
+            self.closed_doors = [door for door in state.values()
+                            if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+                    'is_open']]
 
         while True:
 
@@ -109,6 +153,8 @@ class LiarAgent(BW4TBrain):
             if Phase.ENTER_ROOM == self._phase:
                 # Get the room name for the latest chosen room from the phase PLAN_PATH_TO_CLOSED_DOOR
                 room = self._door['room_name']
+
+                # TODO must change the message structure
                 # self._messageMoveRoom(room)
                 # Find all area tiles locations of the room to traverse
                 area = list(map(
@@ -123,9 +169,9 @@ class LiarAgent(BW4TBrain):
                 possible_action = self.pickAnAction(PossibleActions.SEARCHING_A_ROOM)
                 if possible_action == PossibleActions.SEARCHING_A_ROOM:
                     # be honest
-                    self._sendMessage("Searching through " + room)
+                    self._messageSearchThrough(room)
                 else:
-                    self._sendMessage(self.generateAMessageFromAction(possible_action))
+                    self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                 # Add the locations of the tiles to traverse in order to the navigator
                 self._navigator.reset_full()
@@ -152,17 +198,21 @@ class LiarAgent(BW4TBrain):
                     found_obj.append((obj["visualization"], obj["obj_id"], obj["location"]))
 
                 # Check if some of the found objects that can be collected are desired objects
+                check = False
+
                 for obj in found_obj:
+                    self.addToSeenObjects((obj[0], obj[2]))
+
                     for des, loc in self.desired_objects:
                         if obj[0]["shape"] == des["shape"] and obj[0]["colour"] == des["colour"]:
                             # In case they are desired objects for the strong agent we are interested only in the
                             # first two items from bottom to up, if they are we pick them
                             # in case they are not we save them in the memory for later use
                             possible_action = self.pickAnAction(PossibleActions.ENCOUNTERING_A_BLOCK)
-                            if possible_action == PossibleActions.ENCOUNTERING_A_BLOCK:
-                                self._sendMessage("Found goal block " + str(obj[0]) + " at location " + str(obj[2]))
+                            if possible_action == PossibleActions.ENCOUNTERING_A_GOAL_BLOCK:
+                                self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
                             else:
-                                self._sendMessage(self.generateAMessageFromAction(possible_action))
+                                self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                             if ((des, loc)) in self.desired_objects:
                                 if self.capacity == 0:
@@ -172,10 +222,9 @@ class LiarAgent(BW4TBrain):
                                     possible_action = self.pickAnAction(PossibleActions.PICKING_UP_A_BLOCK)
                                     if possible_action == PossibleActions.PICKING_UP_A_BLOCK:
                                         # be honest
-                                        self._sendMessage(
-                                            "Picking up goal block " + str(des) + " at location " + str(loc))
+                                        self._messagePickUpGoalBlock(str(obj[0]), str(obj[2]))
                                     else:
-                                        self._sendMessage(self.generateAMessageFromAction(possible_action))
+                                        self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                                     for dict1 in self.memory:
                                         if obj[0]["shape"] == dict1["visualization"]["shape"] \
@@ -185,11 +234,13 @@ class LiarAgent(BW4TBrain):
                                     return GrabObject.__name__, {'object_id': obj[1]}
                                 else:
                                     self.addToMemory(obj[0], obj[2], loc)
-
-                                # Note a small bug was found. It does not find and pick object
-                                # when the memory is pointing to the middle room (room 5).
-                                # In all other cases it work properly
-                                # Grab object if there is a capacity
+                    if not check:
+                        possible_action = self.pickAnAction(PossibleActions.ENCOUNTERING_A_BLOCK)
+                        if possible_action == PossibleActions.ENCOUNTERING_A_BLOCK:
+                            self._messageFoundBlock(str(obj[0]), str(obj[2]))
+                        else:
+                            self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
+                        check = False
 
                 # In case we are filled, deliver items, next phase
                 if self.capacity == 1:
@@ -240,7 +291,7 @@ class LiarAgent(BW4TBrain):
                             # self._sendMessage("Dropped goal block " + str(list(filter(lambda block: block[1] == agent_location, self.desired_objects))[0]) + " at location " + str(agent_location))
                             self._messageDroppedGoalBlock(str(obj_viz), str(loc))
                         else:
-                            self._sendMessage(self.generateAMessageFromAction(possible_action))
+                            self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                 # if not already dropped the object move to the next location
                 if not flag:
@@ -251,7 +302,12 @@ class LiarAgent(BW4TBrain):
                     if action != None:
                         return action, {}
                     else:
-                        self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                        locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                        self._navigator.reset_full()
+                        # Add the navigation
+                        self._navigator.add_waypoints(locations)
+                        self.dropped_off_count = 0
+                        self._phase = Phase.CHECK_ITEMS
 
                 # print("! DONE !")
 
@@ -265,48 +321,79 @@ class LiarAgent(BW4TBrain):
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                if len(self.desired_objects) == 0:
-                    self._phase = Phase.GO_TO_REORDER_ITEMS
+                # if len(self.desired_objects) == 0:
+                #     self._phase = Phase.GO_TO_REORDER_ITEMS
+
+                # self.dropped_off_count += 1
 
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
 
-                closedDoors = [door for door in state.values()
-                               if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
-                        'is_open']]
+                doc = 0
+                for key in self.at_drop_location:
+                    doc += self.at_drop_location[key]
+                if doc == len(self.all_desired_objects):
+                    # print(self.dropped_off_count)
+                    self._phase = Phase.GO_TO_REORDER_ITEMS
+                    return None, {}
+
+                # closedDoors = [door for door in state.values()
+                #                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+                #         'is_open']]
                 if len(self.memory) > 0:
 
                     # print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
 
+                    self.memory.pop(0)
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
                 # Check if all rooms open
                 else:
-                    if len(closedDoors) == 0:
-                        # If no rooms - stuck
+                    if len(self.rooms_to_visit) != 0:
+                        self._door = self.rooms_to_visit.pop(random.randint(0, len(self.rooms_to_visit) - 1))[1]
+                    elif len(self.visited) != 0:
+                        self._door = self.visited.pop()[1]
+                    else:
                         if len(self.all_rooms) == 0:
                             return None, {}
+
                         # get the first room, as they were sorted in the first iteration
                         room_name = self.all_rooms.pop(0)
+                        self.all_rooms.append(room_name)
                         # get the door of the chosen room
                         self._door = [loc for loc in state.values()
                                       if "room_name" in loc and loc['room_name'] is
                                       room_name and 'class_inheritance' in loc and
-                                      'Door' in loc['class_inheritance']]
+                                      'Door' in loc['class_inheritance']][0]
 
-                        # in case some broken room without door - stuck
                         if len(self._door) == 0:
                             return None, {}
-                        else:
-                            self._door = self._door[0]
 
-                    # randomly pick closed door
-                    else:
-                        self._door = random.choice(closedDoors)
+                    # if len(closedDoors) == 0:
+                    #     # If no rooms - stuck
+                    #     if len(self.all_rooms) == 0:
+                    #         return None, {}
+                    #     # get the first room, as they were sorted in the first iteration
+                    #     room_name = self.all_rooms.pop(0)
+                    #     # get the door of the chosen room
+                    #     self._door = [loc for loc in state.values()
+                    #                   if "room_name" in loc and loc['room_name'] is
+                    #                   room_name and 'class_inheritance' in loc and
+                    #                   'Door' in loc['class_inheritance']]
+                    #
+                    #     # in case some broken room without door - stuck
+                    #     if len(self._door) == 0:
+                    #         return None, {}
+                    #     else:
+                    #         self._door = self._door[0]
+                    #
+                    # # randomly pick closed door
+                    # else:
+                    #     self._door = random.choice(closedDoors)
 
                     # get the location of the door
                     doorLoc = self._door['location']
@@ -318,9 +405,9 @@ class LiarAgent(BW4TBrain):
                     possible_action = self.pickAnAction(PossibleActions.MOVING_TO_ROOM)
                     if possible_action == PossibleActions.MOVING_TO_ROOM:
                         # TODO obj_id or room_name?
-                        self._sendMessage("Moving to " + self._door['obj_id'])
+                        self._messageMoveRoom(self._door['room_name'])
                     else:
-                        self._sendMessage(self.generateAMessageFromAction(possible_action))
+                        self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
                     # self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
                     self._navigator.add_waypoints([doorLoc])
                     # go to the next phase
@@ -341,9 +428,9 @@ class LiarAgent(BW4TBrain):
                 # send a message to notify the others that you are opening a door
                 possible_action = self.pickAnAction(PossibleActions.OPENING_DOOR)
                 if possible_action == PossibleActions.OPENING_DOOR:
-                    self._sendMessage("Opening door of " + self._door['obj_id'])
+                    self._messageOpenDoor(self._door['room_name'])
                 else:
-                    self._sendMessage(self.generateAMessageFromAction(possible_action))
+                    self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                 # Open door
                 # If already opened, no change
@@ -387,6 +474,29 @@ class LiarAgent(BW4TBrain):
                 self.drop = False
                 self._phase = Phase.REORDER_ITEMS
 
+            if Phase.CHECK_ITEMS == self._phase:
+                # Every time update the state for the new location of the agent
+                self._state_tracker.update(state)
+
+                action = self._navigator.get_move_action(self._state_tracker)
+                # print("tuk printq", self.dropped_off_count, self.agent_name)
+
+                for des, loc in self.all_desired_objects:
+                    if state[self._state_tracker.agent_id]['location'] == loc:
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
+                                "location"] == loc:
+                                if self.compareObjects(des, obj):
+                                    # self.dropped_off_count += 1
+                                    self.at_drop_location[loc] = 1
+                                    break
+                        else:
+                            continue
+                        break
+                if action is not None:
+                    return action, {}
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
     # pick an action from the PossibleActions with 20% chance it is the actual current action
     def pickAnAction(self, currentAction):
         if random.randint(1, 10) > 8:
@@ -402,7 +512,7 @@ class LiarAgent(BW4TBrain):
             return "Opening door of " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
         elif action == PossibleActions.SEARCHING_A_ROOM:
             return "Searching through " + (random.choice(self.all_rooms) if len(self.all_rooms) != 0 else "0?")
-        elif action == PossibleActions.ENCOUNTERING_A_BLOCK:
+        elif action == PossibleActions.ENCOUNTERING_A_GOAL_BLOCK:
             # when lying about finding, picking up, or dropping a goal block, use your own location, otherwise the location could be invalid
             return "Found goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(
                 self.state[self._state_tracker.agent_id]['location'])
@@ -412,64 +522,133 @@ class LiarAgent(BW4TBrain):
         elif action == PossibleActions.DROPPING_A_BLOCK:
             return "Dropped goal block " + str(random.choice(self.all_desired_objects)[0]) + " at location " + str(
                 self.state[self._state_tracker.agent_id]['location'])
+        elif action == PossibleActions.ENCOUNTERING_A_BLOCK:
+            # when lying about finding, picking up, or dropping a goal block, use your own location, otherwise the location could be invalid
+            return "Found block " + str(random.choice((self.seenObjects + self.all_desired_objects))[0]) + " at location " + str(
+                self.state[self._state_tracker.agent_id]['location'])
         else:
             print("Unexpected action received: ", action)
             exit(-1)
 
-    def _sendMessage(self, mssg):
+    def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
         '''
-        msg = Message(content=mssg, from_id=self.agent_name)
+        msg = Message(content=mssg, from_id=sender)
         if msg.content not in self.received_messages:
             self.send_message(msg)
 
     def _messageMoveRoom(self, room):
-        self._sendMessage("Moving to " + room)
+        self._sendMessage("Moving to " + room, self.agent_name)
 
     def _messageOpenDoor(self, room):
-        self._sendMessage("Opening door of " + room)
+        self._sendMessage("Opening door of " + room, self.agent_name)
 
     def _messageSearchThrough(self, room):
-        self._sendMessage("Searching through " + room)
+        self._sendMessage("Searching through " + room, self.agent_name)
 
     def _messageFoundGoalBlock(self, block_visualization, location):
-        self._sendMessage("Found goal block " + block_visualization + " at location " + location)
+        self._sendMessage("Found goal block " + block_visualization + " at location " + location, self.agent_name)
 
     def _messagePickUpGoalBlock(self, block_visualization, location):
-        self._sendMessage("Picking up goal block " + block_visualization + " at location " + location)
+        self._sendMessage("Picking up goal block " + block_visualization + " at location " + location, self.agent_name)
 
     def _messageDroppedGoalBlock(self, block_visualization, location):
-        self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location)
+        self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location,
+                          self.agent_name)
 
-    def _processMessages(self, teamMembers):
+    def _messageFoundBlock(self, block_visualization, location):
+        self._sendMessage("Found block " + block_visualization + " at location " + location, self.agent_name)
+
+
+    def _init_trust_table(self, ids):
+        data = {}
+        for id in ids:
+            arr = np.zeros(len(ids))
+            arr.fill(0.5)
+            data.update({id: arr})
+        df = pd.DataFrame(data, index=ids, dtype=float)
+        print(df)
+        df.to_csv("Trust.csv")
+
+    def _write_to_trust_table(self, trustor, trustee, new_trust):
+        df = pd.read_csv('Trust.csv', index_col=0)
+        df.loc[trustor, trustee] = new_trust
+        print(df)
+        df.to_csv('Trust.csv')
+
+    def increaseTrust(self, trustee):
+        self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.1, 0, 1)
+        self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+
+    def decreaseTrust(self, trustee):
+        self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.1, 0, 1)
+        self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+
+    def _processMessages(self):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
         '''
-        receivedMessages = {}
-        for member in teamMembers:
-            receivedMessages[member] = []
-        for mssg in self.received_messages:
-            for member in teamMembers:
+        for mssg in self.received_messages[self.totalMessagesReceived:]:
+            for member in self._teamMembers:
                 if mssg.from_id == member:
-                    receivedMessages[member].append(mssg.content)
-        return receivedMessages
+                    self.receivedMessages[member].append((self.ticks, mssg.content, False))
+                    self.totalMessagesReceived = self.totalMessagesReceived + 1
+                    self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+                    self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+        tbv_copy = self.tbv
+        for (ticks, mssg, from_id) in tbv_copy:
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
+                      self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+            if is_true is not None:
+                if is_true:
+                    self.increaseTrust(from_id)
+                else:
+                    self.decreaseTrust(from_id)
+                self.tbv.remove((ticks, mssg, from_id))
 
-    def _trustBelief(self, member, received):
-        '''
-        Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
-        '''
-        # You can change the default value to your preference
-        default = 0.5
-        trustBeliefs = {}
-        for member in received.keys():
-            trustBeliefs[member] = default
-        for member in received.keys():
-            for message in received[member]:
-                if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
-                    break
-        return trustBeliefs
+    def believeAgent(self):
+        for agent in self.receivedMessages:
+            if self.trustBeliefs[agent] >= 0.9:
+                for i in range(len(self.receivedMessages[agent])):
+                    mssg = self.receivedMessages[agent][i]
+                    if not mssg[2]:
+                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                        # mssg[2] = True
+                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+
+    def initTrustBeliefs(self):
+        for member in self._teamMembers:
+            self.trustBeliefs[member] = 0.5
+
+    # def _processMessages(self, teamMembers):
+    #     '''
+    #     Process incoming messages and create a dictionary with received messages from each team member.
+    #     '''
+    #     receivedMessages = {}
+    #     for member in teamMembers:
+    #         receivedMessages[member] = []
+    #     for mssg in self.received_messages:
+    #         for member in teamMembers:
+    #             if mssg.from_id == member:
+    #                 receivedMessages[member].append(mssg.content)
+    #     return receivedMessages
+
+    # def _trustBelief(self, member, received):
+    #     '''
+    #     Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
+    #     '''
+    #     # You can change the default value to your preference
+    #     default = 0.5
+    #     trustBeliefs = {}
+    #     for member in received.keys():
+    #         trustBeliefs[member] = default
+    #     for member in received.keys():
+    #         for message in received[member]:
+    #             if 'Found' in message and 'colour' not in message:
+    #                 trustBeliefs[member] -= 0.1
+    #                 break
+    #     return trustBeliefs
 
     def addToMemory(self, vis, loc, drop):
         if len(self.memory) == 0:
@@ -494,3 +673,142 @@ class LiarAgent(BW4TBrain):
             if obj["is_collectable"] is True and \
                     not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
                 return obj["obj_id"]
+
+    def acceptMessageIfSenderTrustworthy(self, mssg, sender):
+        splitMssg = mssg.split(' ')
+        if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
+            room_to = splitMssg[2]
+            if self.trustBeliefs[sender] >= 0.5:
+                for room, door in self.rooms_to_visit:
+                    if room_to == room:
+                        self.rooms_to_visit.remove((room, door))
+                        self.visited.append((room, door))
+
+        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            pass
+
+        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            if self.trustBeliefs[sender] >= 0.5:
+                for obj_vis, dropoff_loc in self.all_desired_objects:
+                    if self.compareObjects(vis, obj_vis):
+                        self.addToMemory(vis, loc, dropoff_loc)
+
+        if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
+            if self.trustBeliefs[sender] >= 0.5:
+                # self.dropped_off_count += 1
+                pass
+
+        if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            if self.trustBeliefs[sender] >= 0.4:
+                for dict1 in self.memory:
+                    if self.compareObjects(dict1['visualization'], vis):
+                        self.memory.remove(dict1)
+                for obj in self.desired_objects:
+                    if self.compareObjects(obj[0], vis):
+                        self.desired_objects.remove(obj)
+
+    def checkMessageTrue(self, ticks, mssg, sender):
+        splitMssg = mssg.split(' ')
+        if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
+            pass
+
+        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            pass
+
+        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
+                    return True
+                elif str(obj[1]) == loc:
+                    return False
+
+        if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
+            pass
+
+        if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'block':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
+                    return True
+                elif str(obj[1]) == loc:
+                    return False
+
+        return None
+
+    def getVisLocFromMessage(self, mssg):
+        bv = re.search("\{(.*)\}", mssg)
+        l = re.search("\((.*)\)", mssg)
+        vis = None
+        loc = None
+        if bv is not None:
+            vis = ast.literal_eval(mssg[bv.start(): bv.end()])
+        if l is not None:
+            loc = ast.literal_eval(mssg[l.start(): l.end()])
+        return vis, loc
+
+    def compareObjects(self, obj1, obj2):
+        keys = ('shape', 'colour')
+        for key in keys:
+            if key in obj1 and key in obj2:
+                if obj1[key] != obj2[key]:
+                    return False
+        return True
+
+    def addToSeenObjects(self, obj):
+        if obj not in self.seenObjects:
+            self.seenObjects.append(obj)
+
+    def verify_action_sequence(self, mssgs, sender, closed_doors):
+        mssg, prev_mssg = self.find_mssg(mssgs, sender)
+
+        if prev_mssg is not None:
+            prev = prev_mssg.split(' ')
+            # check if all door are open when a message for opening a door is received
+            # closed_doors = [door for door in state.values()
+            #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+            #         'is_open']]
+            if (prev[0] == 'Opening' or mssg.split(' ')[0] == 'Opening') and len(closed_doors) == 0:
+                return False
+
+            # check moving to room, opening door sequence
+            if prev[0] == 'Moving':
+                curr = mssg.split(' ')
+
+                # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
+                # TODO check whether door is not open
+                if curr[0] != 'Opening' and curr[2] not in closed_doors:
+                    return False
+
+                # decrease trust score if an agent says that he is going to one room, but opening the door of another
+                if curr[0] == 'Opening' and prev[2] != curr[2]:
+                    return False
+
+            return True
+        return
+
+    def find_mssg(self, mssgs, from_id):
+        counter = 0
+        mssg = None
+        prev_mssg = None
+        for mssg in mssgs:
+            if mssg[2] == from_id:
+                if (counter == 0):
+                    mssg = mssg[1]
+                    counter = counter + 1
+                else:
+                    prev_mssg = mssg[1]
+                    break
+
+        return mssg, prev_mssg

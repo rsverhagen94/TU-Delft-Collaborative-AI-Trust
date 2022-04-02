@@ -7,7 +7,10 @@ from matrx.agents.agent_utils.state_tracker import StateTracker
 from matrx.actions.door_actions import OpenDoorAction
 from matrx.actions.object_actions import GrabObject, DropObject
 from matrx.messages.message import Message
-
+import pandas as pd
+import numpy as np
+import re
+import ast
 
 class Phase(enum.Enum):
     PLAN_PATH_TO_CLOSED_DOOR = 1,
@@ -21,6 +24,7 @@ class Phase(enum.Enum):
     GO_TO_REORDER_ITEMS = 9
     REORDER_ITEMS = 10
     GRAB_AND_DROP = 11
+    CHECK_ITEMS = 12
 
 
 class LazyAgent(BW4TBrain):
@@ -44,12 +48,22 @@ class LazyAgent(BW4TBrain):
         self.stop_when = 0
         self.my_object = None
         self.use_memory = True
-
+        self.seenObjects = []
+        self.ticks = 0
+        self.receivedMessages = {}
+        self.totalMessagesReceived = 0
+        self.tbv = []
+        self.trustBeliefs = {}
+        self.rooms_to_visit = []
+        self.visited = []
+        self._door = None
+        self.dropped_off_count = 0
+        self.at_drop_location = {}
         # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
 
         self.grab = False
         self.drop = False
-
+        self.closed_doors = []
         self.obj_id = None
 
     def initialize(self):
@@ -460,6 +474,10 @@ class LazyAgent(BW4TBrain):
         self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location,
                           self.agent_name)
 
+    def _messageFoundBlock(self, block_visualization, location):
+        self._sendMessage("Found block " + block_visualization + " at location " + location, self.agent_name)
+
+
     def _processMessages(self, teamMembers):
         '''
         Process incoming messages and create a dictionary with received messages from each team member.
@@ -528,3 +546,203 @@ class LazyAgent(BW4TBrain):
             self.memory.append({"visualization": vis,
                                 "location": loc,
                                 "drop_off_location": drop})
+
+    def _init_trust_table(self, ids):
+        data = {}
+        for id in ids:
+            arr = np.zeros(len(ids))
+            arr.fill(0.5)
+            data.update({id: arr})
+        df = pd.DataFrame(data, index=ids, dtype=float)
+        print(df)
+        df.to_csv("Trust.csv")
+
+    def _write_to_trust_table(self, trustor, trustee, new_trust):
+        df = pd.read_csv('Trust.csv', index_col=0)
+        df.loc[trustor, trustee] = new_trust
+        print(df)
+        df.to_csv('Trust.csv')
+
+    def increaseTrust(self, trustee):
+        self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.1, 0, 1)
+        self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+
+    def decreaseTrust(self, trustee):
+        self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.1, 0, 1)
+        self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+
+    # TODO CORRECT METHOD FOR PROCESSING MESSAGES IS BELOW
+    # TODO CODE NEEDS TO BE FIXED IN ORDER TO USE  THIS METHOD
+    # def _processMessages(self):
+    #     '''
+    #     Process incoming messages and create a dictionary with received messages from each team member.
+    #     '''
+    #
+    #     for mssg in self.received_messages[self.totalMessagesReceived:]:
+    #         for member in self._teamMembers:
+    #             if mssg.from_id == member:
+    #                 self.receivedMessages[member].append((self.ticks, mssg.content, False))
+    #                 self.totalMessagesReceived = self.totalMessagesReceived + 1
+    #                 self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+    #                 self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+    #     tbv_copy = self.tbv
+    #     for (ticks, mssg, from_id) in tbv_copy:
+    #         is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
+    #                   self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+    #         if is_true is not None:
+    #             if is_true:
+    #                 self.increaseTrust(from_id)
+    #             else:
+    #                 self.decreaseTrust(from_id)
+    #             self.tbv.remove((ticks, mssg, from_id))
+
+    def believeAgent(self):
+        for agent in self.receivedMessages:
+            if self.trustBeliefs[agent] >= 0.9:
+                for i in range(len(self.receivedMessages[agent])):
+                    mssg = self.receivedMessages[agent][i]
+                    if not mssg[2]:
+                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                        # mssg[2] = True
+                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+
+    def initTrustBeliefs(self):
+        for member in self._teamMembers:
+            self.trustBeliefs[member] = 0.5
+    def acceptMessageIfSenderTrustworthy(self, mssg, sender):
+        splitMssg = mssg.split(' ')
+        if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
+            room_to = splitMssg[2]
+            if self.trustBeliefs[sender] >= 0.5:
+                for room, door in self.rooms_to_visit:
+                    if room_to == room:
+                        self.rooms_to_visit.remove((room, door))
+                        self.visited.append((room, door))
+
+        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            pass
+
+        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            if self.trustBeliefs[sender] >= 0.5:
+                for obj_vis, dropoff_loc in self.all_desired_objects:
+                    if self.compareObjects(vis, obj_vis):
+                        self.addToMemory(vis, loc, dropoff_loc)
+
+        if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
+            if self.trustBeliefs[sender] >= 0.5:
+                self.dropped_off_count += 1
+
+        if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            if self.trustBeliefs[sender] >= 0.4:
+                for dict1 in self.memory:
+                    if self.compareObjects(dict1['visualization'], vis):
+                        self.memory.remove(dict1)
+                for obj in self.desired_objects:
+                    if self.compareObjects(obj[0], vis):
+                        self.desired_objects.remove(obj)
+
+    def checkMessageTrue(self, ticks, mssg, sender):
+        splitMssg = mssg.split(' ')
+        if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
+            pass
+
+        if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            pass
+
+        if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
+                    return True
+                elif str(obj[1]) == loc:
+                    return False
+
+        if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
+            pass
+
+        if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
+            pass
+
+        if splitMssg[0] == 'Found' and splitMssg[1] == 'block':
+            vis, loc = self.getVisLocFromMessage(mssg)
+            for obj in self.seenObjects:
+                if self.compareObjects(vis, obj[0]) and obj[1] == loc:
+                    return True
+                elif str(obj[1]) == loc:
+                    return False
+
+        return None
+
+    def getVisLocFromMessage(self, mssg):
+        bv = re.search("\{(.*)\}", mssg)
+        l = re.search("\((.*)\)", mssg)
+        vis = None
+        loc = None
+        if bv is not None:
+            vis = ast.literal_eval(mssg[bv.start(): bv.end()])
+        if l is not None:
+            loc = ast.literal_eval(mssg[l.start(): l.end()])
+        return vis, loc
+
+    def compareObjects(self, obj1, obj2):
+        keys = ('shape', 'colour')
+        for key in keys:
+            if key in obj1 and key in obj2:
+                if obj1[key] != obj2[key]:
+                    return False
+        return True
+
+    def addToSeenObjects(self, obj):
+        if obj not in self.seenObjects:
+            self.seenObjects.append(obj)
+
+    def verify_action_sequence(self, mssgs, sender, closed_doors):
+        mssg, prev_mssg = self.find_mssg(mssgs, sender)
+
+        if prev_mssg is not None:
+            prev = prev_mssg.split(' ')
+            # check if all door are open when a message for opening a door is received
+            # closed_doors = [door for door in state.values()
+            #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+            #         'is_open']]
+            if (prev[0] == 'Opening' or mssg.split(' ')[0] == 'Opening') and len(closed_doors) == 0:
+                return False
+
+            # check moving to room, opening door sequence
+            if prev[0] == 'Moving':
+                curr = mssg.split(' ')
+
+                # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
+                # TODO check whether door is not open
+                if curr[0] != 'Opening' and curr[2] not in closed_doors:
+                    return False
+
+                # decrease trust score if an agent says that he is going to one room, but opening the door of another
+                if curr[0] == 'Opening' and prev[2] != curr[2]:
+                    return False
+
+            return True
+        return False
+
+    def find_mssg(self, mssgs, from_id):
+        counter = 0
+        mssg = None
+        prev_mssg = None
+        for mssg in mssgs:
+            if mssg[2] == from_id:
+                if (counter == 0):
+                    mssg = mssg[1]
+                    counter = counter + 1
+                else:
+                    prev_mssg = mssg[1]
+                    break
+
+        return mssg, prev_mssg

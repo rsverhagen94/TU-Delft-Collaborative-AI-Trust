@@ -25,6 +25,7 @@ class Phase(enum.Enum):
     GO_TO_REORDER_ITEMS = 9
     REORDER_ITEMS = 10
     GRAB_AND_DROP = 11
+    CHECK_ITEMS = 12
 
 
 class StrongAgent(BW4TBrain):
@@ -61,6 +62,7 @@ class StrongAgent(BW4TBrain):
         self.drop = False
         self._door = None
         self.dropped_off_count = 0
+        self.at_drop_location = {}
         self.obj_id = None
         self.closed_doors = []
 
@@ -107,6 +109,7 @@ class StrongAgent(BW4TBrain):
             # Add location for every desired object
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
+                self.at_drop_location[obj["location"]] = 0
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
             self.initTrustBeliefs()
@@ -119,7 +122,7 @@ class StrongAgent(BW4TBrain):
                     door = state.get_room_doors(room)
                     self.rooms_to_visit.append((room, door[0]))
 
-            print("ALL ROOOMS", self.rooms_to_visit)
+            # print("ALL ROOOMS", self.rooms_to_visit)
 
             self.closed_doors = [door for door in state.values()
                             if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
@@ -168,20 +171,21 @@ class StrongAgent(BW4TBrain):
                     found_obj.append((obj["visualization"], obj["obj_id"], obj["location"]))
 
                 # Check if some of the found objects that can be collected are desired objects
+                check = False
                 for obj in found_obj:
                     self.addToSeenObjects((obj[0], obj[2]))
-                    self._messageFoundBlock(str(obj[0]), str(obj[2]))
                     for des, loc in self.desired_objects:
                         if obj[0]["shape"] == des["shape"] and obj[0]["colour"] == des["colour"]:
                             # In case they are desired objects for the strong agent we are interested only in the
                             # first two items from bottom to up, if they are we pick them
                             # in case they are not we save them in the memory for later use
+                            check = True
                             self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
 
                             if (des, loc) in self.desired_objects:
                                 if self.capacity < 2:
                                     self.capacity += 1
-                                    print('inc cap', self.capacity, self.agent_name)
+                                    # print('inc cap', self.capacity, self.agent_name)
                                     self.drop_off_locations.append((obj[0], obj[1], loc))
                                     self.desired_objects.remove((des, loc))
                                     self._messagePickUpGoalBlock(str(obj[0]), str(obj[2]))
@@ -195,7 +199,10 @@ class StrongAgent(BW4TBrain):
                                     return GrabObject.__name__, {'object_id': obj[1]}
                                 else:
                                     self.addToMemory(obj[0], obj[2], loc)
-
+                    if not check:
+                        self._messageFoundBlock(str(obj[0]), str(obj[2]))
+                        check = False
+                # print('GOt so far in traverse room', self.agent_name)
                 # In case we are filled, deliver items, next phase
                 if self.capacity > 1:
                     # print("Deliver 2")
@@ -250,7 +257,14 @@ class StrongAgent(BW4TBrain):
                     if action != None:
                         return action, {}
                     else:
-                        self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                        # self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                        # Go check if items are ordered
+                        locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                        self._navigator.reset_full()
+                        # Add the navigation
+                        self._navigator.add_waypoints(locations)
+                        self.dropped_off_count = 0
+                        self._phase = Phase.CHECK_ITEMS
 
                 # print("! DONE !")
 
@@ -266,25 +280,27 @@ class StrongAgent(BW4TBrain):
 
                 # if len(self.desired_objects) == 0 and self.dropped_off_count == 3:
                 #     self._phase = Phase.GO_TO_REORDER_ITEMS
-                self.dropped_off_count += 1
+                # self.dropped_off_count += 1
+
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
-                print("DROP", self.dropped_off_count)
-                if len(self.desired_objects) == 0 and self.dropped_off_count == len(self.all_desired_objects):
-                    print(self.dropped_off_count)
+                # print("DROP", self.dropped_off_count)
+                doc = 0
+                for key in self.at_drop_location:
+                    doc += self.at_drop_location[key]
+                if doc == len(self.all_desired_objects):
+                    # print(self.dropped_off_count)
                     self._phase = Phase.GO_TO_REORDER_ITEMS
                     return None, {}
 
                 if len(self.memory) > 0:
-
-                    # print("MEMORY", self.memory)
-
-                    print("Going to MEMORY", self.memory)
+                    # print("Going to MEMORY", self.memory)
 
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
+                    self.memory.pop(0)
 
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
@@ -345,11 +361,13 @@ class StrongAgent(BW4TBrain):
                 locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
                 self._navigator.reset_full()
                 # Add the navigation
+                # print(locations)
                 self._navigator.add_waypoints(locations)
 
                 self._phase = Phase.REORDER_ITEMS
 
             if Phase.REORDER_ITEMS == self._phase:
+                # print(self.all_desired_objects)
                 if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
                     self.all_desired_objects.pop(0)
                     self._phase = Phase.GRAB_AND_DROP
@@ -375,6 +393,35 @@ class StrongAgent(BW4TBrain):
                 self.grab = False
                 self.drop = False
                 self._phase = Phase.REORDER_ITEMS
+
+            if Phase.CHECK_ITEMS == self._phase:
+                # Every time update the state for the new location of the agent
+                self._state_tracker.update(state)
+
+                action = self._navigator.get_move_action(self._state_tracker)
+
+                # print("tuk printq", self.dropped_off_count, self.agent_name)
+                # print(state[self._state_tracker.agent_id]['location'], self.capacity)
+                for des, loc in self.all_desired_objects:
+                    myLoc = state[self._state_tracker.agent_id]['location']
+                    if myLoc == loc:
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
+                                "location"] == myLoc:
+                                if self.compareObjects(des, obj):
+                                    self.at_drop_location[loc] = 1
+                                    break
+                        else:
+                            continue
+                        break
+                if action is not None:
+                    return action, {}
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+    # def checkIfItemsDelivered(self):
+    #     for des, loc in self.all_desired_objects:
+
 
     def getObjectIdFromLocation(self, state, loc):
         for obj in state.get_closest_with_property("is_collectable"):
@@ -448,14 +495,20 @@ class StrongAgent(BW4TBrain):
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
-            is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
-                      self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
+            is_sequence_true = self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+            # print('action seq', is_true)
             if is_true is not None:
                 if is_true:
                     self.increaseTrust(from_id)
                 else:
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
+            if is_sequence_true is not None:
+                if is_sequence_true:
+                    self.increaseTrust(from_id)
+                else:
+                    self.decreaseTrust(from_id)
 
     def believeAgent(self):
         for agent in self.receivedMessages:
@@ -514,7 +567,8 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
             if self.trustBeliefs[sender] >= 0.5:
-                self.dropped_off_count += 1
+                # self.dropped_off_count += 1
+                pass
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
@@ -594,6 +648,7 @@ class StrongAgent(BW4TBrain):
             #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
             #         'is_open']]
             if (prev[0] == 'Opening' or mssg.split(' ')[0] == 'Opening') and len(closed_doors) == 0:
+                print('Door is already open, dummy')
                 return False
 
             # check moving to room, opening door sequence
@@ -603,14 +658,17 @@ class StrongAgent(BW4TBrain):
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
                 # TODO check whether door is not open
                 if curr[0] != 'Opening' and curr[2] not in closed_doors:
+                    print('Door is already open, dummy, top kek')
                     return False
 
                 # decrease trust score if an agent says that he is going to one room, but opening the door of another
                 if curr[0] == 'Opening' and prev[2] != curr[2]:
+                    print('That is another room, dummy')
                     return False
 
             return True
-        return False
+
+        return
 
     def find_mssg(self, mssgs, from_id):
         counter = 0
