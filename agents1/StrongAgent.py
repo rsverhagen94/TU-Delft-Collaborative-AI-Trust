@@ -560,18 +560,20 @@ class StrongAgent(BW4TBrain):
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
                         # remove door of room from all closed_doors
-                        # self.closed_doors.remove(door)
+                        print("VRATAAAAAAAAAa")
+                        print(door)
+                        self.closed_doors.remove(door["room_name"])
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
             # TODO maybe we need to call verify_action_sequence first
             # if self.trustBeliefs[sender] >= 0.5:
-            print("VRATATAAAAAAAAAAAAAA")
-            print(splitMssg[3])
-            print(self.closed_doors)
-            if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
-                print("OPAAAAAAAAa")
-                self.closed_doors.remove(splitMssg[3])
-            # pass
+            # print("VRATATAAAAAAAAAAAAAA")
+            # print(splitMssg[3])
+            # print(self.closed_doors)
+            # if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
+            #     print("OPAAAAAAAAa")
+            #     self.closed_doors.remove(splitMssg[3])
+            pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
             pass
@@ -677,18 +679,20 @@ class StrongAgent(BW4TBrain):
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-                if curr[0] != 'Opening' and curr[2] not in closed_doors:
+                if curr[0] != 'Opening' and curr[3] not in closed_doors:
                     print('Door is already open, dummy, top kek')
                     return False
 
                 # decrease trust score if an agent says that he is going to one room, but opening the door of another
-                if curr[0] == 'Opening' and prev[2] != curr[2]:
+                if curr[0] == 'Opening' and prev[2] != curr[3]:
                     print('That is another room, dummy')
                     return False
+                elif curr[0] == 'Opening' and prev[2] == curr[3]:
+                    return True
 
-            if curr[0] == 'Opening' or curr[0] == 'Searching':
+            if curr[0] == 'Searching':
                 if prev[0] == 'Moving' and curr[2] == prev[2]:
-                    pass
+                    return True
                 else:
                     return False
 
@@ -697,7 +701,7 @@ class StrongAgent(BW4TBrain):
                     pass
                 else:
                     return False
-            return True
+            return
 
         return
 
