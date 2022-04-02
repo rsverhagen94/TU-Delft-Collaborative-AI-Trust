@@ -110,6 +110,7 @@ class StrongAgent(BW4TBrain):
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
                 self.at_drop_location[obj["location"]] = 0
+
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
             self.initTrustBeliefs()
@@ -275,19 +276,15 @@ class StrongAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                # print("dropped object")
+
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
-
-                # if len(self.desired_objects) == 0 and self.dropped_off_count == 3:
-                #     self._phase = Phase.GO_TO_REORDER_ITEMS
-                # self.dropped_off_count += 1
 
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
-                # print("DROP", self.dropped_off_count)
+
                 doc = 0
                 for key in self.at_drop_location:
                     doc += self.at_drop_location[key]
@@ -297,8 +294,6 @@ class StrongAgent(BW4TBrain):
                     return None, {}
 
                 if len(self.memory) > 0:
-                    # print("Going to MEMORY", self.memory)
-
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
                     self.memory.pop(0)
@@ -338,6 +333,7 @@ class StrongAgent(BW4TBrain):
                     self._messageMoveRoom(self._door['room_name'])
                     self._navigator.add_waypoints([doorLoc])
                     # go to the next phase
+                    # self._messageMoveRoom(room)
                     self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
