@@ -237,8 +237,10 @@ class LiarAgent(BW4TBrain):
                     if not check:
                         possible_action = self.pickAnAction(PossibleActions.ENCOUNTERING_A_BLOCK)
                         if possible_action == PossibleActions.ENCOUNTERING_A_BLOCK:
+                            print('truth')
                             self._messageFoundBlock(str(obj[0]), str(obj[2]))
                         else:
+                            print('lie')
                             self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
                         check = False
 

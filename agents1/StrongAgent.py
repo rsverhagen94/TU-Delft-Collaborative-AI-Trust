@@ -135,7 +135,7 @@ class StrongAgent(BW4TBrain):
             if Phase.ENTER_ROOM == self._phase:
                 # Get the room name for the latest chosen room from the phase PLAN_PATH_TO_CLOSED_DOOR
                 room = self._door['room_name']
-                self._messageMoveRoom(room)
+                # self._messageMoveRoom(room)
                 # Find all area tiles locations of the room to traverse
                 area = list(map(
                     lambda x: x["location"],
@@ -368,7 +368,7 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.REORDER_ITEMS
 
             if Phase.REORDER_ITEMS == self._phase:
-                # print(self.all_desired_objects)
+                print(self.all_desired_objects)
                 if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
                     self.all_desired_objects.pop(0)
                     self._phase = Phase.GRAB_AND_DROP
@@ -403,26 +403,31 @@ class StrongAgent(BW4TBrain):
 
                 # print("tuk printq", self.dropped_off_count, self.agent_name)
                 # print(state[self._state_tracker.agent_id]['location'], self.capacity)
+                found = False
+                myLoc = state[self._state_tracker.agent_id]['location']
                 for des, loc in self.all_desired_objects:
-                    myLoc = state[self._state_tracker.agent_id]['location']
                     if myLoc == loc:
                         for obj in state.get_closest_with_property("is_collectable"):
                             if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
                                 "location"] == myLoc:
                                 if self.compareObjects(des, obj):
                                     self.at_drop_location[loc] = 1
+                                    found = True
                                     break
                         else:
                             continue
                         break
+
+                if not found:
+                    for des, loc in self.all_desired_objects:
+                        if myLoc == loc:
+                            if (des, loc) not in self.desired_objects:
+                                print('Increase desired obj')
+                                self.desired_objects.append((des, loc))
                 if action is not None:
                     return action, {}
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
-
-    # def checkIfItemsDelivered(self):
-    #     for des, loc in self.all_desired_objects:
-
 
     def getObjectIdFromLocation(self, state, loc):
         for obj in state.get_closest_with_property("is_collectable"):
@@ -475,10 +480,12 @@ class StrongAgent(BW4TBrain):
         df.to_csv('Trust.csv')
 
     def increaseTrust(self, trustee):
+        print('increasing trust')
         self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.1, 0, 1)
         self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
 
     def decreaseTrust(self, trustee):
+        print('decreasing trust')
         self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.1, 0, 1)
         self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
 
@@ -498,11 +505,12 @@ class StrongAgent(BW4TBrain):
         for (ticks, mssg, from_id) in tbv_copy:
             is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
             is_sequence_true = self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
-            # print('action seq', is_true)
             if is_true is not None:
                 if is_true:
+                    print('increasing trust', mssg)
                     self.increaseTrust(from_id)
                 else:
+                    print('decreasing trust', mssg)
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
             if is_sequence_true is not None:
@@ -513,12 +521,11 @@ class StrongAgent(BW4TBrain):
 
     def believeAgent(self):
         for agent in self.receivedMessages:
-            if self.trustBeliefs[agent] >= 0.9:
+            if self.trustBeliefs[agent] >= 0.8:
                 for i in range(len(self.receivedMessages[agent])):
                     mssg = self.receivedMessages[agent][i]
                     if not mssg[2]:
                         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                        # mssg[2] = True
                         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
@@ -689,13 +696,12 @@ class StrongAgent(BW4TBrain):
         counter = 0
         mssg = None
         prev_mssg = None
-        for mssg in mssgs:
-            if mssg[2] == from_id:
-                if (counter == 0):
-                    mssg = mssg[1]
-                    counter = counter + 1
-                else:
-                    prev_mssg = mssg[1]
-                    break
-
+        for mssg_i in mssgs[from_id]:
+            if counter == 0:
+                mssg = mssg_i[1]
+                counter = counter + 1
+            else:
+                prev_mssg = mssg_i[1]
+                break
+        # print(mssg, prev_mssg)
         return mssg, prev_mssg
