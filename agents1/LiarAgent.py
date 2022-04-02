@@ -449,18 +449,19 @@ class LiarAgent(BW4TBrain):
                 self._phase = Phase.REORDER_ITEMS
 
             if Phase.REORDER_ITEMS == self._phase:
-                if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
-                    self.all_desired_objects.pop(0)
-                    self._phase = Phase.GRAB_AND_DROP
+                if len(self.all_desired_objects) != 0:
+                    if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
+                        self.all_desired_objects.pop(0)
+                        self._phase = Phase.GRAB_AND_DROP
 
-                if self._phase != Phase.GRAB_AND_DROP:
-                    self._state_tracker.update(state)
-                    action = self._navigator.get_move_action(self._state_tracker)
-                    # Move to the next location
-                    if action != None:
-                        return action, {}
-                    else:
-                        print("SHOULD BE DONE!")
+                    if self._phase != Phase.GRAB_AND_DROP:
+                        self._state_tracker.update(state)
+                        action = self._navigator.get_move_action(self._state_tracker)
+                        # Move to the next location
+                        if action != None:
+                            return action, {}
+                        else:
+                            print("SHOULD BE DONE!")
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:
@@ -598,26 +599,34 @@ class LiarAgent(BW4TBrain):
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
                     self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+                    is_sequence_true = self.verify_action_sequence(self.receivedMessages, member, self.closed_doors)
+                    if is_sequence_true is not None:
+                        if is_sequence_true:
+                            self.increaseTrust(member)
+                        else:
+                            self.decreaseTrust(member)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
-            is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
-                      self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
             if is_true is not None:
                 if is_true:
+                    print('increasing trust', mssg)
                     self.increaseTrust(from_id)
                 else:
+                    print('decreasing trust', mssg)
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
 
     def believeAgent(self):
         for agent in self.receivedMessages:
             if self.trustBeliefs[agent] >= 0.9:
-                for i in range(len(self.receivedMessages[agent])):
-                    mssg = self.receivedMessages[agent][i]
-                    if not mssg[2]:
-                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                        # mssg[2] = True
-                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+                pass
+                # for i in range(len(self.receivedMessages[agent])):
+                #     mssg = self.receivedMessages[agent][i]
+                #     if not mssg[2]:
+                #         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                #         # mssg[2] = True
+                #         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -680,7 +689,7 @@ class LiarAgent(BW4TBrain):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
             room_to = splitMssg[2]
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 for room, door in self.rooms_to_visit:
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
@@ -694,19 +703,19 @@ class LiarAgent(BW4TBrain):
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 for obj_vis, dropoff_loc in self.all_desired_objects:
                     if self.compareObjects(vis, obj_vis):
                         self.addToMemory(vis, loc, dropoff_loc)
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 # self.dropped_off_count += 1
                 pass
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.4:
+            if self.trustBeliefs[sender] >= 0.6:
                 for dict1 in self.memory:
                     if self.compareObjects(dict1['visualization'], vis):
                         self.memory.remove(dict1)
