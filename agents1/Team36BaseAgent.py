@@ -394,6 +394,7 @@ class BaseAgent(BaseLineAgent):
                 break
 
         while True:
+            print(self._phase)
             if Phase.PLAN_NEXT_ACTION == self._phase:
                 if len(self.__next_phase) > 0:
                     self._phase = self.__next_phase.pop()
@@ -436,6 +437,7 @@ class BaseAgent(BaseLineAgent):
                             action, param = self.pickup_block(agent_name, observations, targets_in_range[0]['obj_id'])
                             return action, param
                         else:
+                            self._world_state['found_blocks'].remove(closest_target)
                             self._phase = Phase.PLAN_NEXT_ACTION
                     except:
                         self._phase = Phase.PLAN_NEXT_ACTION
@@ -607,25 +609,32 @@ class BaseAgent(BaseLineAgent):
             return
         if (len(state.get_self()['is_carrying']) < self._carrying_capacity
                 and len(state.get_self()['is_carrying']) < len(missing_goals)):
+            print('1')
             carrying_index = len(state.get_self()['is_carrying'])
             for block in self._world_state['found_blocks']:
                 if block['visualization'] == missing_goals[carrying_index]['visualization']:
                     self._phase = Phase.PLAN_PATH_TO_BLOCK
                     moving_to_target = True
+                    print(self._phase)
                     break
                     
         elif len(state[self.agent_id]['is_carrying']) > 0:
+            print('2')
             sat_goals = sorted([goal for goal in self._world_state['goals'] if goal['satisfied']], key=lambda g: g['index'])
             if len([goal for goal in self._world_state['goals'] if not goal['verified']]) > 0:
+                print('a')
                 # if there exist unverified but satisfied goals, verify those
                 self._phase = Phase.PLAN_VERIFY_GOALS
             elif len(sat_goals) > 0 and not self.previousGoalsSatisfied(sat_goals[-1]['index']):
+                print('b')
                 self.plan_drop_beside_goal(state)
                 self.__next_phase.append(Phase.PLAN_FIX_SOLUTION)
             else:
+                print('c')
                 self._phase = Phase.PLAN_PATH_TO_GOAL
             moving_to_target = True
-            
+
+        print(moving_to_target)
         if not moving_to_target:
             self._phase = Phase.PLAN_PATH_TO_ROOM
 
@@ -760,6 +769,13 @@ class BaseAgent(BaseLineAgent):
 
         block_vis = {'size': block_to_drop['visualization']['size'], 'shape': block_to_drop['visualization']['shape'],
                      'colour': block_to_drop['visualization']['colour']}
+        for goal in sorted([goal for goal in self._world_state['goals']], key=lambda g: g['index']):
+            if goal != goal['location'] == state.get_self()['location'] \
+                    and goal['visualization'] == block_vis:
+                break
+            elif not goal['satisfied']:
+                self.plan_drop_beside_goal(state)
+                return
         for goal in self._world_state['goals']:
             if goal['location'] == state.get_self()['location'] \
                     and goal['visualization'] == block_vis:
@@ -767,6 +783,7 @@ class BaseAgent(BaseLineAgent):
                 goal['verified'] = True
                 goal['by'] = agent_name
                 break
+
 
         if len(state.get_self()['is_carrying']) > 1:
             self.__next_phase.append(Phase.PLAN_PATH_TO_GOAL)

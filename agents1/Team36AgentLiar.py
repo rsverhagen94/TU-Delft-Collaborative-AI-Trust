@@ -34,8 +34,12 @@ class LiarAgent(BaseAgent):
                                        Messages.OPENING_DOOR,
                                        Messages.SEARCHING_THROUGH,
                                        Messages.FOUND_GOAL_BLOCK1,
-                                       Messages.PICKING_UP_GOAL_BLOCK2,
-                                       Messages.DROPPED_GOAL_BLOCK1])
+                                       Messages.PICKING_UP_GOAL_BLOCK2
+                                       ])
+        worldSize = self.state['World']['grid_shape']
+        x = random.choice(range(1,worldSize[0]))
+        y = random.choice(range(1,worldSize[1]))
+        location = (x, y)
         message = ''
         if Messages.MOVING_TO_ROOM == randommessage:
             message = Messages.MOVING_TO_ROOM.value[0] + random.choice(doors)
@@ -46,15 +50,11 @@ class LiarAgent(BaseAgent):
         elif Messages.FOUND_GOAL_BLOCK1 == randommessage:
             block = random.choice(blocks)
             message = Messages.FOUND_GOAL_BLOCK1.value[0] + json.dumps(block['visualization']) + \
-                      Messages.FOUND_GOAL_BLOCK2.value[0] + str(block['location'])
+                      Messages.FOUND_GOAL_BLOCK2.value[0] + str(location)
         elif Messages.PICKING_UP_GOAL_BLOCK1 == randommessage:
             block = random.choice(blocks)
             message = Messages.PICKING_UP_GOAL_BLOCK1.value[0] + json.dumps(block['visualization']) + \
-                      Messages.PICKING_UP_GOAL_BLOCK2.value[0] + str(block['location'])
-        elif Messages.DROPPED_GOAL_BLOCK1 == randommessage:
-            block = random.choice(blocks)
-            message = Messages.DROPPED_GOAL_BLOCK1.value[0] + json.dumps(block['visualization']) + \
-                      Messages.DROPPED_GOAL_BLOCK2.value[0] + str(block['location'])
+                      Messages.PICKING_UP_GOAL_BLOCK2.value[0] + str(location)
 
         if random.random() > 0.2:
             mssg = message
