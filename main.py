@@ -19,6 +19,8 @@ if __name__ == "__main__":
         # {'name': 'agent2', 'botclass': StrongAgent, 'settings': {}},
         # {'name': 'Strong', 'botclass': StrongAgent, 'settings': {}},
         {'name':'Lazy', 'botclass':LazyAgent, 'settings':{}},
+        {'name': 'Strong', 'botclass': StrongAgent, 'settings': {}},
+        # {'name':'agent4', 'botclass':LazyAgent, 'settings':{}},
         # {'name':'agent1', 'botclass':ColorblindAgent, 'settings':{}},
         # {'name':'agent2', 'botclass':BaseLineAgent, 'settings':{}},
         {'name':'human', 'botclass':Human, 'settings':{}}
