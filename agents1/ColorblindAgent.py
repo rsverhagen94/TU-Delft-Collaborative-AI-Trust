@@ -194,20 +194,20 @@ class ColorblindAgent(BW4TBrain):
                             # in case they are not we save them in the memory for later use
                             self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
 
-                            if ((des, loc)) in self.desired_objects:
-                                if self.capacity == 0:
-                                    self.capacity += 1
-                                    self.drop_off_locations.append((obj[0], obj[1], loc))
-                                    self.desired_objects.remove((des, loc))
-                                    self._messagePickUpGoalBlock(str(obj[0]), str(obj[2]))
+                            #if ((des, loc)) in self.desired_objects:
+                            #    if self.capacity == 0:
+                            #        self.capacity += 1
+                            #        self.drop_off_locations.append((obj[0], obj[1], loc))
+                            #        self.desired_objects.remove((des, loc))
+                            #        self._messagePickUpGoalBlock(str(obj[0]), str(obj[2]))
 
-                                    for dict1 in self.memory:
-                                        if obj[0]["shape"] == dict1["visualization"]["shape"]:
-                                            self.memory.remove(dict1)
+                            #        for dict1 in self.memory:
+                            #            if obj[0]["shape"] == dict1["visualization"]["shape"]:
+                            #                self.memory.remove(dict1)
 
-                                    return GrabObject.__name__, {'object_id': obj[1]}
-                                else:
-                                    self.addToMemory(obj[0], obj[2], loc)
+                            #        return GrabObject.__name__, {'object_id': obj[1]}
+                            #    else:
+                            #        self.addToMemory(obj[0], obj[2], loc)
                     if not check:
                         self._messageFoundBlock(str(obj[0]), str(obj[2]))
                         check = False
@@ -678,7 +678,7 @@ class ColorblindAgent(BW4TBrain):
         return vis, loc
 
     def compareObjects(self, obj1, obj2):
-        keys = ('shape', 'colour')
+        keys = ('shape')
         for key in keys:
             if key in obj1 and key in obj2:
                 if obj1[key] != obj2[key]:
