@@ -85,7 +85,6 @@ class LazyAgent(BW4TBrain):
 
         self.believeAgent()
 
-
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
@@ -526,6 +525,12 @@ class LazyAgent(BW4TBrain):
                         else:
                             continue
                         break
+                if not found:
+                    for des, loc in self.all_desired_objects:
+                        if myLoc == loc:
+                            if (des, loc) not in self.desired_objects:
+                                print('Increase desired obj')
+                                self.desired_objects.append((des, loc))
                 if action is not None:
                     return action, {}
                 else:
@@ -564,7 +569,6 @@ class LazyAgent(BW4TBrain):
             self.memory.append({"visualization": vis,
                                 "location": loc,
                                 "drop_off_location": drop})
-
 
     def getObjectIdFromLocation(self, state, loc):
         for obj in state.get_closest_with_property("is_collectable"):
@@ -634,39 +638,39 @@ class LazyAgent(BW4TBrain):
                 if mssg.from_id == member:
                     self.receivedMessages[member].append((self.ticks, mssg.content, False))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
-                    self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+                    if (self.ticks, mssg.content, mssg.from_id) not in self.tbv:
+                        self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+                    is_sequence_true = self.verify_action_sequence(self.receivedMessages, member, self.closed_doors)
+                    if is_sequence_true is not None:
+                        if is_sequence_true:
+                            self.increaseTrust(member)
+                        else:
+                            self.decreaseTrust(member)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
             is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
-            is_sequence_true = self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
-            # print('action seq', is_true)
             if is_true is not None:
                 if is_true:
                     self.increaseTrust(from_id)
                 else:
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
-            if is_sequence_true is not None:
-                if is_sequence_true:
-                    self.increaseTrust(from_id)
-                else:
-                    self.decreaseTrust(from_id)
 
     def believeAgent(self):
         for agent in self.receivedMessages:
             if self.trustBeliefs[agent] >= 0.9:
-                for i in range(len(self.receivedMessages[agent])):
-                    mssg = self.receivedMessages[agent][i]
-                    if not mssg[2]:
-                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                        # mssg[2] = True
-                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+                pass
+                # for i in range(len(self.receivedMessages[agent])):
+                #     mssg = self.receivedMessages[agent][i]
+                #     if not mssg[2]:
+                #         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                #         # mssg[2] = True
+                #         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
             self.trustBeliefs[member] = 0.5
-
 
     def acceptMessageIfSenderTrustworthy(self, mssg, sender):
         splitMssg = mssg.split(' ')
@@ -677,8 +681,20 @@ class LazyAgent(BW4TBrain):
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
+                        print("VRATAAAAAAAAAa")
+                        print(door)
+                        self.closed_doors.remove(door["room_name"])
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            # TODO maybe we need to call verify_action_sequence first
+            # if self.trustBeliefs[sender] >= 0.5:
+            print("VRATATAAAAAAAAAAAAAA")
+            print(splitMssg[3])
+            print(self.closed_doors)
+            if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
+                print("OPAAAAAAAAa")
+                # self.closed_doors.remove(splitMssg[3])
+            # pass
             pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
@@ -769,44 +785,56 @@ class LazyAgent(BW4TBrain):
 
         if prev_mssg is not None:
             prev = prev_mssg.split(' ')
+            curr = mssg.split(' ')
             # check if all door are open when a message for opening a door is received
             # closed_doors = [door for door in state.values()
             #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
             #         'is_open']]
-            if (prev[0] == 'Opening' or mssg.split(' ')[0] == 'Opening') and len(closed_doors) == 0:
+            if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(closed_doors) == 0:
                 print('Door is already open, dummy')
+                return False
+
+            if (prev[0] == 'Opening' and prev[3] not in closed_doors) or (
+                    curr[0] == 'Opening' and curr[3] not in closed_doors):
+                print("TUKAAAAAAAAAAAAaa")
                 return False
 
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
-                curr = mssg.split(' ')
-
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-                # TODO check whether door is not open
-                if curr[0] != 'Opening' and curr[2] not in closed_doors:
-                    print('Door is already open, dummy, top kek')
+                if curr[0] != 'Opening':
+                    print('Invalid action sequence')
                     return False
 
                 # decrease trust score if an agent says that he is going to one room, but opening the door of another
-                if curr[0] == 'Opening' and prev[2] != curr[2]:
+                if curr[0] == 'Opening' and prev[2] != curr[3]:
                     print('That is another room, dummy')
                     return False
+                elif curr[0] == 'Opening' and prev[2] == curr[3]:
+                    return True
 
-            return True
+            if curr[0] == 'Searching':
+                if prev[0] == 'Moving' and curr[2] == prev[2]:
+                    return True
+                else:
+                    return False
 
+            if curr[0] == 'Picking':
+                if prev[0] == 'Found':
+                    pass
+                else:
+                    return False
         return
 
     def find_mssg(self, mssgs, from_id):
         counter = 0
         mssg = None
         prev_mssg = None
-        for mssg in mssgs:
-            if mssg[2] == from_id:
-                if (counter == 0):
-                    mssg = mssg[1]
-                    counter = counter + 1
-                else:
-                    prev_mssg = mssg[1]
-                    break
-
+        for mssg_i in mssgs[from_id]:
+            if counter == 0:
+                mssg = mssg_i[1]
+                counter = counter + 1
+            else:
+                prev_mssg = mssg_i[1]
+                break
         return mssg, prev_mssg
