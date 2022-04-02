@@ -283,18 +283,16 @@ class BaseAgent(BaseLineAgent):
         blocks_that_should_be_at_location = [block for block in self._world_state['found_blocks']
                                                 if self.dist(self._you, block) <= 0]
         for block in observations['blocks']:
-            # if block is on a correct goal position, skip
+            # find possible goal positions of block
             goals = [g for g in self._world_state['goals']
-                        if g['visualization'] == block['visualization'] and g['location'] == block['location']]
-            for g in goals:
-                g['satisfied'] = True
-                g['verified'] = True
-            if len(goals) > 0:
-                # this block is placed on a correct goal position
-                continue
+                        if g['visualization'] == block['visualization']]
 
-            self._sendMessage('Found goal block {} at location {}'.format(json.dumps(block['visualization']), block['location']), self._you['obj_id'])
+            if len(goals) != 0:
+                # this block does not have a goal, so no messaging is required
+                self._sendMessage('Found goal block {} at location {}'.format(json.dumps(block['visualization']), block['location']), self._you['obj_id'])
+
             exists = False
+            # only add a block if it is not in the current world state (duplicates are not really usefull in the world_state
             for b in self._world_state['found_blocks']:
                 if b['visualization'] == block['visualization'] and b['location'] == block['location']:
                     exists = True
@@ -316,12 +314,11 @@ class BaseAgent(BaseLineAgent):
                 self._world_state['found_blocks'].remove(block)
                 self._decreaseBelief("Willingness", block['by'], 0.1)
 
-        # handle goal verification (only done if standing on a goal, since sense capabilities is a bit iffy)
-        goals_to_verify_at_cur_location = [goal for goal in self._world_state['goals']
+        # handle goal verification (done for goals in a radius of 1 manhattan distance)
+        goals_to_verify = [goal for goal in self._world_state['goals']
                                     if not goal['verified']
-                                        and goal['location'] == self._you['location']]
-        if len(goals_to_verify_at_cur_location) > 0:
-            goal = goals_to_verify_at_cur_location[0]
+                                        and self.dist(self._you['location'], goal['location']) <= 1]
+        for goal in goals_to_verify:
             correct_blocks_on_goal = [b for b in observations['blocks']
                                         if b['location'] == goal['location']
                                             and b['visualization'] == goal['visualization']]
@@ -505,12 +502,6 @@ class BaseAgent(BaseLineAgent):
                 self._world_state['searched_rooms'].append({'room_id': self._current_room['room_name'], 'by': agent_name})
                 self._phase = Phase.PLAN_NEXT_ACTION
 
-
-            # if Phase.PICKUP_BLOCK == self._phase:
-            #     action = self.pickup_block(agent_name, observations)
-            #     if action is not None:
-            #         return action
-
             if Phase.DROP_BLOCK == self._phase:
                 if len(state.get_self()['is_carrying']) == 0:
                     self._phase = Phase.PLAN_NEXT_ACTION
@@ -518,27 +509,6 @@ class BaseAgent(BaseLineAgent):
                     action = self.drop_block(agent_name, state, state.get_self()['is_carrying'][0]['obj_id'])
                     if action is not None:
                         return action
-
-            # TODO: remove when deemed absolutely unnecessary/useless
-            # if Phase.FOLLOW_PATH_TO_VERIFY_GOAL == self._phase:
-            #     self._state_tracker.update(state)
-            #     action = self._navigator.get_move_action(self._state_tracker)
-            #     if action != None:
-            #         return action, {}
-            #     self._phase = Phase.VERIFY_GOAL
-            #
-            # if Phase.VERIFY_GOAL == self._phase:
-            #     self.verify_goal(observations)
-            #
-            # if Phase.PLAN_MOVE_OFF_GOAL == self._phase:
-            #     self.plan_move_off_goal()
-            #
-            # if Phase.MOVE_OFF_GOAL == self._phase:
-            #     self._state_tracker.update(state)
-            #     action = self._navigator.get_move_action(self._state_tracker)
-            #     if action != None:
-            #         return action, {}
-            #     self._phase = Phase.DROP_BLOCK
 
             if Phase.PLAN_VERIFY_GOALS == self._phase:
                 goals = [goal for goal in self._world_state['goals']]
@@ -559,12 +529,17 @@ class BaseAgent(BaseLineAgent):
                 self._phase = Phase.PLAN_NEXT_ACTION
 
             if Phase.PLAN_FIX_SOLUTION == self._phase:
-                goals = [goal for goal in self._world_state['goals']]
+                missing_goals = sorted(self.get_missing_goals(), key=lambda g: g['index'])
+                first_unsat_goal_index = 0
+                if len(missing_goals) > 0:
+                    first_unsat_goal_index = missing_goals[0]['index']
+                goals = [goal for goal in self._world_state['goals']
+                            if goal['index'] >= first_unsat_goal_index]
                 self._navigator.reset_full()
                 for goal in goals:
                     self._navigator.add_waypoint(goal['location'])
                     self._phase = Phase.FIX_SOLUTION
-                    self._current_state = {'type': Status.FIXING_SOLUTION, 'cur_goal':0}
+                    self._current_state = {'type': Status.FIXING_SOLUTION, 'cur_goal':first_unsat_goal_index}
 
             if Phase.FIX_SOLUTION == self._phase:
                 self._state_tracker.update(state)
@@ -590,8 +565,6 @@ class BaseAgent(BaseLineAgent):
                 else:
                     self._phase = Phase.PLAN_NEXT_ACTION
 
-
-
             if Phase.RETRY_SOLUTION == self._phase:
                 self._phase = Phase.PLAN_FIX_SOLUTION
                 pass
@@ -616,13 +589,23 @@ class BaseAgent(BaseLineAgent):
                     break
                     
         elif len(state[self.agent_id]['is_carrying']) > 0:
+            block_vis = copy.deepcopy(state.get_self()['is_carrying'][0]['visualization'])
+            block_vis.pop('visualize_from_center')
+            block_vis.pop('opacity')
+            block_vis.pop('depth')
+
             sat_goals = sorted([goal for goal in self._world_state['goals'] if goal['satisfied']], key=lambda g: g['index'])
             if len([goal for goal in self._world_state['goals'] if not goal['verified']]) > 0:
                 # if there exist unverified but satisfied goals, verify those
                 self._phase = Phase.PLAN_VERIFY_GOALS
             elif len(sat_goals) > 0 and not self.previousGoalsSatisfied(sat_goals[-1]['index']):
+                # after possibly verifying the goals there exists goals that are prematurely satisfied, fix those
                 self.plan_drop_beside_goal(state)
                 self.__next_phase.append(Phase.PLAN_FIX_SOLUTION)
+            elif block_vis != missing_goals[0]['visualization']:
+                # we are carrying a goal block that should not yet be satisfied (probably due to a lie or miscommunication)
+                # drop this block next to its goal and make a new plan
+                self.plan_drop_beside_goal(state)
             else:
                 self._phase = Phase.PLAN_PATH_TO_GOAL
             moving_to_target = True
@@ -761,13 +744,7 @@ class BaseAgent(BaseLineAgent):
 
         block_vis = {'size': block_to_drop['visualization']['size'], 'shape': block_to_drop['visualization']['shape'],
                      'colour': block_to_drop['visualization']['colour']}
-        for goal in sorted([goal for goal in self._world_state['goals']], key=lambda g: g['index']):
-            if goal['location'] == state.get_self()['location'] \
-                    and goal['visualization'] == block_vis:
-                break
-            elif not goal['satisfied']:
-                self.plan_drop_beside_goal(state)
-                return
+
         for goal in self._world_state['goals']:
             if goal['location'] == state.get_self()['location'] \
                     and goal['visualization'] == block_vis:
@@ -775,7 +752,6 @@ class BaseAgent(BaseLineAgent):
                 goal['verified'] = True
                 goal['by'] = agent_name
                 break
-
 
         if len(state.get_self()['is_carrying']) > 1:
             self.__next_phase.append(Phase.PLAN_PATH_TO_GOAL)
@@ -792,7 +768,7 @@ class BaseAgent(BaseLineAgent):
         goals_of_block = [g for g in self._world_state['goals'] if g['visualization'] == block_to_drop['visualization']]
         goal_locations = [g['location'] for g in self._world_state['goals']]
         drop_location = copy.deepcopy(state.get_self()['location'])
-        if (len(goals_of_block) > 0):
+        if len(goals_of_block) > 0:
             drop_location = copy.deepcopy(goals_of_block[0]['location'])
         while drop_location in goal_locations:
             drop_location = (drop_location[0]-1, drop_location[1])
@@ -814,31 +790,6 @@ class BaseAgent(BaseLineAgent):
         self._sendMessage('Dropped goal block {} at drop location {}'.format(json.dumps(block_to_drop['visualization']), state.get_self()['location']), state.get_self()['obj_id'])
         self._phase = Phase.PLAN_NEXT_ACTION
         return DropObject.__name__, {'object_id': block_to_drop['obj_id']}
-
-
-    # TODO: remove when deemed absolutely unnecessary/useless
-    # def verify_goal(self, observations):
-    #     found_goal = False
-    #     for goal in self._world_state['goals']:
-    #         for block in observations['blocks']:
-    #             if block['visualization'] == goal['visualization'] and block['location'] == goal['location']:
-    #                 goal['verified'] = True
-    #                 found_goal = True
-    #                 self._increaseBelief(Belief.TRUST, goal['by'], 0.2)
-    #                 self._phase = Phase.PLAN_PATH_TO_GOAL
-    #     if not found_goal:
-    #         for goal in self._world_state['goals']:
-    #             if not goal['verified'] and goal['satisfied']:
-    #                 goal['satisfied'] = False
-    #                 self._decreaseBelief(Belief.TRUST, goal['by'], 0.3)
-    #         self._phase = Phase.PLAN_MOVE_OFF_GOAL
-    #
-    # def plan_move_off_goal(self):
-    #     current_location = self._you['location']
-    #     next_location = current_location[0] - 1, current_location[1] - 1
-    #     self._navigator.reset_full()
-    #     self._navigator.add_waypoint(next_location)
-    #     self._phase = Phase.MOVE_OFF_GOAL
 
     def _check_if_lazy(self):
         if self._be_lazy:
