@@ -1,3 +1,4 @@
-,liar,human
-liar,0.5,0.5
-human,0.5,0.5
+,liar,strong,human
+liar,0.5,0.5,0.5
+strong,0.0,0.5,0.5
+human,0.5,0.5,0.5

@@ -564,9 +564,14 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
             # TODO maybe we need to call verify_action_sequence first
-            if self.trustBeliefs[sender] >= 0.5:
+            # if self.trustBeliefs[sender] >= 0.5:
+            print("VRATATAAAAAAAAAAAAAA")
+            print(splitMssg[3])
+            print(self.closed_doors)
+            if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
+                print("OPAAAAAAAAa")
                 self.closed_doors.remove(splitMssg[3])
-            pass
+            # pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
             pass
@@ -663,6 +668,10 @@ class StrongAgent(BW4TBrain):
             #         'is_open']]
             if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(closed_doors) == 0:
                 print('Door is already open, dummy')
+                return False
+
+            if (prev[0] == 'Opening' and prev[3] not in closed_doors) or (curr[0] == 'Opening' and curr[3] not in closed_doors):
+                print("TUKAAAAAAAAAAAAaa")
                 return False
 
             # check moving to room, opening door sequence
