@@ -127,7 +127,8 @@ class StrongAgent(BW4TBrain):
             self.closed_doors = [door for door in state.values()
                             if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                     'is_open']]
-
+            for i, door in enumerate(self.closed_doors):
+                self.closed_doors[i] = self.closed_doors[i]["room_name"]
         while True:
 
             # Phase entering room
@@ -551,8 +552,13 @@ class StrongAgent(BW4TBrain):
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
+                        # remove door of room from all closed_doors
+                        # self.closed_doors.remove(door)
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
+            # TODO maybe we need to call verify_action_sequence first
+            if self.trustBeliefs[sender] >= 0.5:
+                self.closed_doors.remove(splitMssg[3])
             pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
@@ -643,20 +649,18 @@ class StrongAgent(BW4TBrain):
 
         if prev_mssg is not None:
             prev = prev_mssg.split(' ')
+            curr = mssg.split(' ')
             # check if all door are open when a message for opening a door is received
             # closed_doors = [door for door in state.values()
             #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
             #         'is_open']]
-            if (prev[0] == 'Opening' or mssg.split(' ')[0] == 'Opening') and len(closed_doors) == 0:
+            if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(closed_doors) == 0:
                 print('Door is already open, dummy')
                 return False
 
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
-                curr = mssg.split(' ')
-
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-                # TODO check whether door is not open
                 if curr[0] != 'Opening' and curr[2] not in closed_doors:
                     print('Door is already open, dummy, top kek')
                     return False
@@ -666,6 +670,17 @@ class StrongAgent(BW4TBrain):
                     print('That is another room, dummy')
                     return False
 
+            if curr[0] == 'Opening' or curr[0] == 'Searching':
+                if prev[0] == 'Moving' and curr[2] == prev[2]:
+                    pass
+                else:
+                    return False
+
+            if curr[0] == 'Picking':
+                if prev[0] == 'Found':
+                    pass
+                else:
+                    return False
             return True
 
         return
