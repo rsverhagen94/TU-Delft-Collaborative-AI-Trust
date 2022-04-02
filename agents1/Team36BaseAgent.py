@@ -60,6 +60,7 @@ class BaseAgent(BaseLineAgent):
         self._be_lazy = False
         self._be_lazy_after_moves = 0
         self.gf_start = None
+        self._status = None
         self._current_state = {'type': None}
         self._world_state = {
             'found_blocks': [],  # list of blocks, contains {'location','visualization','by''}
@@ -82,6 +83,7 @@ class BaseAgent(BaseLineAgent):
         self._door = None
         self._phase = Phase.PLAN_NEXT_ACTION
         self.gf_start = None
+        self._status = None
         self._current_state = {'type': None}
         self._carrying_capacity = 1
         self._is_lazy = False
@@ -345,6 +347,7 @@ class BaseAgent(BaseLineAgent):
         return state
 
     def decide_on_bw4t_action(self, state: State):
+        self._status = state
         agent_name = state[self.agent_id]['obj_id']
         self._you = state[self.agent_id]
         # Add team members

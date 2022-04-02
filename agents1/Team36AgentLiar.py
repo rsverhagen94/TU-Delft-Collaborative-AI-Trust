@@ -1,4 +1,5 @@
 import enum
+import json
 import random
 
 from matrx.agents.agent_utils.state import State
@@ -21,23 +22,11 @@ class Messages(enum.Enum):
 
 class LiarAgent(BaseAgent):
 
-    def __init__(self, settings: Dict[str, object]):
-        super().__init__(settings)
-        self.__state = None
-
-    def initialize(self):
-        super().initialize()
-        self.__state = None
-
-    def decide_on_bw4t_action(self, state: State):
-        self.__state = state
-        super().decide_on_bw4t_action(state)
-
     def _sendMessage(self, mssg, sender):
         """
         Enable sending messages in one line of code
         """
-        doors = [door['room_name'] for door in self.__state.values()
+        doors = [door['room_name'] for door in self._status.values()
                  if 'class_inheritance' in door
                  and 'Door' in door['class_inheritance']]
         blocks = self._world_state['goals']
@@ -56,16 +45,16 @@ class LiarAgent(BaseAgent):
             message = Messages.SEARCHING_THROUGH.value[0] + random.choice(doors)
         elif Messages.FOUND_GOAL_BLOCK1 == randommessage:
             block = random.choice(blocks)
-            message = Messages.FOUND_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
-                      Messages.FOUND_GOAL_BLOCK2.value[0] + repr(block['location'])
+            message = Messages.FOUND_GOAL_BLOCK1.value[0] + json.dumps(block['visualization']) + \
+                      Messages.FOUND_GOAL_BLOCK2.value[0] + str(block['location'])
         elif Messages.PICKING_UP_GOAL_BLOCK1 == randommessage:
             block = random.choice(blocks)
-            message = Messages.PICKING_UP_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
-                      Messages.PICKING_UP_GOAL_BLOCK2.value[0] + repr(block['location'])
+            message = Messages.PICKING_UP_GOAL_BLOCK1.value[0] + json.dumps(block['visualization']) + \
+                      Messages.PICKING_UP_GOAL_BLOCK2.value[0] + str(block['location'])
         elif Messages.DROPPED_GOAL_BLOCK1 == randommessage:
             block = random.choice(blocks)
-            message = Messages.DROPPED_GOAL_BLOCK1.value[0] + repr(block['visualization']) + \
-                      Messages.DROPPED_GOAL_BLOCK2.value[0] + repr(block['location'])
+            message = Messages.DROPPED_GOAL_BLOCK1.value[0] + json.dumps(block['visualization']) + \
+                      Messages.DROPPED_GOAL_BLOCK2.value[0] + str(block['location'])
 
         if random.random() > 0.2:
             mssg = message
