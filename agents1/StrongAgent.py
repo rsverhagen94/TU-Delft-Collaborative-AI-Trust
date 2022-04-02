@@ -110,6 +110,7 @@ class StrongAgent(BW4TBrain):
             for obj in desired_objects:
                 found_obj.append((obj["visualization"], obj["location"]))
                 self.at_drop_location[obj["location"]] = 0
+
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
             self.initTrustBeliefs()
@@ -275,19 +276,15 @@ class StrongAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                # print("dropped object")
+
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
-
-                # if len(self.desired_objects) == 0 and self.dropped_off_count == 3:
-                #     self._phase = Phase.GO_TO_REORDER_ITEMS
-                # self.dropped_off_count += 1
 
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
-                # print("DROP", self.dropped_off_count)
+
                 doc = 0
                 for key in self.at_drop_location:
                     doc += self.at_drop_location[key]
@@ -297,8 +294,6 @@ class StrongAgent(BW4TBrain):
                     return None, {}
 
                 if len(self.memory) > 0:
-                    # print("Going to MEMORY", self.memory)
-
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
                     self.memory.pop(0)
@@ -338,6 +333,7 @@ class StrongAgent(BW4TBrain):
                     self._messageMoveRoom(self._door['room_name'])
                     self._navigator.add_waypoints([doorLoc])
                     # go to the next phase
+                    # self._messageMoveRoom(room)
                     self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
@@ -563,7 +559,9 @@ class StrongAgent(BW4TBrain):
                         self.rooms_to_visit.remove((room, door))
                         self.visited.append((room, door))
                         # remove door of room from all closed_doors
-                        # self.closed_doors.remove(door)
+                        print("VRATAAAAAAAAAa")
+                        print(door)
+                        self.closed_doors.remove(door["room_name"])
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
             # TODO maybe we need to call verify_action_sequence first
@@ -575,6 +573,7 @@ class StrongAgent(BW4TBrain):
                 print("OPAAAAAAAAa")
                 # self.closed_doors.remove(splitMssg[3])
             # pass
+            pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
             pass
@@ -680,18 +679,20 @@ class StrongAgent(BW4TBrain):
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-                if curr[0] != 'Opening' and curr[2] not in closed_doors:
-                    print('Door is already open, dummy, top kek')
+                if curr[0] != 'Opening':
+                    print('Invalid action sequence')
                     return False
 
                 # decrease trust score if an agent says that he is going to one room, but opening the door of another
-                if curr[0] == 'Opening' and prev[2] != curr[2]:
+                if curr[0] == 'Opening' and prev[2] != curr[3]:
                     print('That is another room, dummy')
                     return False
+                elif curr[0] == 'Opening' and prev[2] == curr[3]:
+                    return True
 
-            if curr[0] == 'Opening' or curr[0] == 'Searching':
+            if curr[0] == 'Searching':
                 if prev[0] == 'Moving' and curr[2] == prev[2]:
-                    pass
+                    return True
                 else:
                     return False
 
@@ -700,7 +701,6 @@ class StrongAgent(BW4TBrain):
                     pass
                 else:
                     return False
-
         return
 
     def find_mssg(self, mssgs, from_id):
