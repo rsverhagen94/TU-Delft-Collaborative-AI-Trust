@@ -679,8 +679,8 @@ class StrongAgent(BW4TBrain):
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-                if curr[0] != 'Opening' and curr[3] not in closed_doors:
-                    print('Door is already open, dummy, top kek')
+                if curr[0] != 'Opening':
+                    print('Invalid action sequence')
                     return False
 
                 # decrease trust score if an agent says that he is going to one room, but opening the door of another
