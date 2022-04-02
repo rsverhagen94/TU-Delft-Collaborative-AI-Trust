@@ -12,18 +12,20 @@ import numpy as np
 import re
 import ast
 
+
 class Phase(enum.Enum):
-    PLAN_PATH_TO_CLOSED_DOOR = 1,
-    FOLLOW_PATH_TO_CLOSED_DOOR = 2,
-    OPEN_DOOR = 3,
-    ENTER_ROOM = 4,
-    TRAVERSE_ROOM = 5,
-    DELIVER_ITEM = 6,
-    FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7,
+    PLAN_PATH_TO_CLOSED_DOOR = 1
+    FOLLOW_PATH_TO_CLOSED_DOOR = 2
+    OPEN_DOOR = 3
+    ENTER_ROOM = 4
+    TRAVERSE_ROOM = 5
+    DELIVER_ITEM = 6
+    FOLLOW_PATH_TO_DROP_OFF_LOCATION = 7
     DROP_OBJECT = 8
     GO_TO_REORDER_ITEMS = 9
     REORDER_ITEMS = 10
     GRAB_AND_DROP = 11
+    CHECK_ITEMS = 12
 
 class ColorblindAgent(BW4TBrain):
 
@@ -31,34 +33,20 @@ class ColorblindAgent(BW4TBrain):
         super().__init__(settings)
         self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
         self._teamMembers = []
+        # This list only keeps track of the remaining desired_objects
         self.desired_objects = []
+        # this list keeps track of all desired objects and is not updated throughout the execution of the simulation
+        self.all_desired_objects = []
+        self.agent_name = None
         # only the strong agents can pick 2 blocks
         # for other agents this is 0 or 1
         self.capacity = 0
         self.drop_off_locations = []
         self.object_to_be_dropped = None
         self.initialization_flag = True
-        self.all_desired_objects = []
-
-        # memory keeps track of the objects that were located but should be retrieved later
-        #   it contains the following information
-        #   {
-        #       "visualization" : the visualization of the object that has to be picked up
-        #       "location"      : the location where the object was found (TODO if a specific object is needed,
-        #                           go to the nearest object with that visualization if multiple are available in this array)
-        #       "drop_off_location" : where the object need to be dropped
-        #   }
         self.memory = []
         self.all_rooms = []
-        self.detected_objects = []
-        self.processed_messages = []
 
-        self.grab = False
-        self.drop = False
-
-        self.obj_id = None
-        self.agent_name = None
-        self.seenObjects = []
         self.ticks = 0
         self.receivedMessages = {}
         self.totalMessagesReceived = 0
@@ -68,8 +56,14 @@ class ColorblindAgent(BW4TBrain):
         self.trustBeliefs = {}
         self.rooms_to_visit = []
         self.visited = []
-        self._door = None
+        self.seenObjects = []
         self.dropped_off_count = 0
+        self.at_drop_location = {}
+        # used for the last phase - GRAB_AND_DROP to keep track of when an object is grabbed and after it was just dropped
+
+        self.grab = False
+        self.drop = False
+
         self.obj_id = None
         self.closed_doors = []
 
@@ -83,19 +77,30 @@ class ColorblindAgent(BW4TBrain):
         return state
 
     def decide_on_bw4t_action(self, state: State):
-        agent_name = state[self.agent_id]['obj_id']
+        self.ticks = self.ticks + 1
+
+        # Process messages from team members
+        self._processMessages()
+
+        self.believeAgent()
+
         # Add team members
-        for member in state['World']['team_members']:
-            if member != agent_name and member not in self._teamMembers:
-                self._teamMembers.append(member)
-                # Process messages from team members
-        receivedMessages = self._processMessages(self._teamMembers)
+
+        # Process messages from team members
+        # receivedMessages = self._processMessages(self._teamMembers)
         # Update trust beliefs for team members
-        self._trustBlief(self._teamMembers, receivedMessages)
+        # self._trustBelief(self._teamMembers, receivedMessages)
 
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
+            agent_name = state[self.agent_id]['obj_id']
+            self.agent_name = agent_name
+
+            for member in state['World']['team_members']:
+                if member != agent_name and member not in self._teamMembers:
+                    self._teamMembers.append(member)
+                    self.receivedMessages[member] = []
 
             # Add all rooms in a list
             self.all_rooms = sorted(state.get_all_room_names())
@@ -111,34 +116,35 @@ class ColorblindAgent(BW4TBrain):
             # Add location for every desired object
             for obj in desired_objects:
                 found_obj.append(({"shape": obj["visualization"]["shape"], "colour": None }, obj["location"]))
+                self.at_drop_location[obj["location"]] = 0
             self.desired_objects = sorted(found_obj, key=lambda x: x[1], reverse=True)
 
             self.all_desired_objects = self.desired_objects.copy()
             sorted(self.all_desired_objects, key=lambda obj: obj[1], reverse=True)
 
-        while True:
-            # TODO parse all new messages
-            # if a desired object is found, add it to self.detected_objects list
-            # if an object from detected_objects has been collected/dropped, remove it from the list
-            #   AND remove the last waypoint from the navigator
-            #   AND self._phase = self.previous_phase
-            #   AND keep track of already dropped objects
-            for msg in self.received_messages:
-                if not msg in self.processed_messages and msg.from_id != self.agent_id:
-                    self._parseMessage(msg)
-                    self.processed_messages.append(msg)
+            self.initTrustBeliefs()
+            self._init_trust_table(state['World']['team_members'])
 
-            if len(self.detected_objects) > 0:
-                self.previous_phase = self._phase
-                self._phase = Phase.FOLLOW_PATH_TO_DESIRED_OBJECT
-                # TODO do something
+            for room in self.all_rooms:
+                if room != "world_bounds":
+                    door = state.get_room_doors(room)
+                    self.rooms_to_visit.append((room, door[0]))
+
+            # print("ALL ROOOMS", self.rooms_to_visit)
+
+            self.closed_doors = [door for door in state.values()
+                            if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+                    'is_open']]
+
+        while True:
 
             # Phase entering room
             if Phase.ENTER_ROOM == self._phase:
-
                 # Get the room name for the latest chosen room from the phase PLAN_PATH_TO_CLOSED_DOOR
                 room = self._door['room_name']
 
+                # TODO must change the message structure
+                # self._messageMoveRoom(room)
                 # Find all area tiles locations of the room to traverse
                 area = list(map(
                     lambda x: x["location"],
@@ -148,6 +154,8 @@ class ColorblindAgent(BW4TBrain):
 
                 # Sort the location of the tiles and traverse them
                 sorted_by_xy = sorted(sorted(area, key=lambda x: x[1]))
+                room = self._door['room_name']
+                self._messageSearchThrough(room)
 
                 # Add the locations of the tiles to traverse in order to the navigator
                 self._navigator.reset_full()
@@ -161,51 +169,72 @@ class ColorblindAgent(BW4TBrain):
                 self._state_tracker.update(state)
 
                 action = self._navigator.get_move_action(self._state_tracker)
+                # If the agent has moved update look for and item
+                # We are interested only in collectable items (such that can be picked)
+                object_prop = list(map(
+                    lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if
+                                  wall["is_collectable"] is True and not 'GhostBlock' in wall[
+                                      'class_inheritance']]))
+
+                # For all possible objects save only visualization and id
+                found_obj = []
+                for obj in object_prop:
+                    found_obj.append(({"shape": obj["visualization"]["shape"], "colour": None }, obj["obj_id"], obj["location"]))
+
+                # Check if some of the found objects that can be collected are desired objects
+                check = False
+
+                for obj in found_obj:
+                    self.addToSeenObjects((obj[0], obj[2]))
+
+                    for des, loc in self.desired_objects:
+                        if obj[0]["shape"] == des["shape"]:
+                            # In case they are desired objects for the strong agent we are interested only in the
+                            # first two items from bottom to up, if they are we pick them
+                            # in case they are not we save them in the memory for later use
+                            self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
+
+                            if ((des, loc)) in self.desired_objects:
+                                if self.capacity == 0:
+                                    self.capacity += 1
+                                    self.drop_off_locations.append((obj[0], obj[1], loc))
+                                    self.desired_objects.remove((des, loc))
+                                    self._messagePickUpGoalBlock(str(obj[0]), str(obj[2]))
+
+                                    for dict1 in self.memory:
+                                        if obj[0]["shape"] == dict1["visualization"]["shape"]:
+                                            self.memory.remove(dict1)
+
+                                    return GrabObject.__name__, {'object_id': obj[1]}
+                                else:
+                                    self.addToMemory(obj[0], obj[2], loc)
+                    if not check:
+                        self._messageFoundBlock(str(obj[0]), str(obj[2]))
+                        check = False
+
+                # In case we are filled, deliver items, next phase
+                if self.capacity == 1:
+                    # print("Deliver 1")
+                    self._phase = Phase.DELIVER_ITEM
+                # In case there is only one object left needed and is found deliver it, next phase
+                # If no desired object was found just move
+
                 if action != None:
-                    # If the agent has moved update look for and item
-                    # We are interested only in collectable items (such that can be picked)
-                    object_prop = list(map(
-                        lambda x: x, [wall for wall in state.get_closest_with_property("is_collectable") if
-                                      wall["is_collectable"] is True and not 'GhostBlock' in wall[
-                                          'class_inheritance']]))
-
-                    # For all possible objects save only visualization and id
-                    found_obj = []
-                    for obj in object_prop:
-                        found_obj.append((obj["visualization"], obj["obj_id"], obj["location"]))
-
-                    # Check if some of the found objects that can be collected are desired objects
-                    for obj in found_obj:
-                        for des, loc in self.desired_objects:
-                            if obj[0]["shape"] == des["shape"]:
-                                # In case they are desired objects for the strong agent we are interested only in the
-                                # first two items from bottom to up, if they are we pick them
-                                # in case they are not we save them in the memory for later use
-                                if ((des, loc)) in self.desired_objects:
-                                #        and \
-                                #        not ((des, obj[2])) in map((lambda mem: (mem["visualization"], mem["location"])), self.memory):
-                                # if ((des, loc)) != self.desired_objects[0] \
-                                #         and ((des, loc)) in self.desired_objects:
-
-                                    self._sendMessage("Found " + str(obj[0]["shape"]), self.agent_id)
-                                    self.memory.append({ "visualization": { "shape": des["shape"], "colour": None }, "location": obj[2], "drop_off_location": loc })
-                                    self.memory.sort(key= lambda mem: mem["location"], reverse=True)
-
-                    # If no desired object was found just move
                     return action, {}
-
-                # If the room is traversed go to te next room
-                self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                elif self._phase != Phase.DELIVER_ITEM:
+                    # If the room is traversed go to te next room
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             # Find the path to the deliver location
             if Phase.DELIVER_ITEM == self._phase:
                 locations = []
                 # sort the location of the picked items so that the first dropped will be at the bottom
-                for _, loc in self.drop_off_locations:
+                for _, _, loc in self.drop_off_locations:
                     locations.append(loc)
                 locations.sort(reverse=True)
                 self._navigator.reset_full()
                 # Add the navigation
+                # print(locations)
                 self._navigator.add_waypoints(locations)
 
                 # Next phase
@@ -215,15 +244,16 @@ class ColorblindAgent(BW4TBrain):
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
                 # Check if the current location of the agent is the correct drop off location
-                for obj_id, loc in self.drop_off_locations:
+                for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
                         self.object_to_be_dropped = obj_id
                         # if it is the correct location drop the object
                         self._phase = Phase.DROP_OBJECT
-                        self.drop_off_locations.remove((obj_id, loc))
+                        self.drop_off_locations.remove((obj_viz, obj_id, loc))
+                        self._messageDroppedGoalBlock(str(obj_viz), str(loc))
 
-                # if not already dropped the object  move to the next location
+                # if not already dropped the object move to the next location
                 if not flag:
                     self._state_tracker.update(state)
 
@@ -232,19 +262,14 @@ class ColorblindAgent(BW4TBrain):
                     if action != None:
                         return action, {}
                     else:
-                        # If dropped both items use the memory to go to the next desired object, that was found
-                        # Use the traverse method phase for now and check on every step
-                        # could be implemented to go to the room and then traverse it again
-                        # now just checks every step
-                        if len(self.memory) != 0:
-                            self._navigator.reset_full()
-                            self._navigator.add_waypoints([self.memory.peek()["location"]])
-                            self._phase = Phase.TRAVERSE_ROOM
-                        else:
-                            # If memory is empty continue traversing rooms
-                            self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                        locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                        self._navigator.reset_full()
+                        # Add the navigation
+                        self._navigator.add_waypoints(locations)
+                        self.dropped_off_count = 0
+                        self._phase = Phase.CHECK_ITEMS
 
-                print("! DONE !")
+                # print("! DONE !")
 
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
@@ -252,54 +277,96 @@ class ColorblindAgent(BW4TBrain):
                     exit(-1)
                 # update capacity
                 self.capacity -= 1
-                print("dropped object")
+                # print("dropped object")
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+
+                # if len(self.desired_objects) == 0:
+                #     self._phase = Phase.GO_TO_REORDER_ITEMS
+
+                # self.dropped_off_count += 1
 
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
 
-                closedDoors = [door for door in state.values()
-                               if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
-                        'is_open']]
+                doc = 0
+                for key in self.at_drop_location:
+                    doc += self.at_drop_location[key]
+                if doc == len(self.all_desired_objects):
+                    # print(self.dropped_off_count)
+                    self._phase = Phase.GO_TO_REORDER_ITEMS
+                    return None, {}
 
+                # closedDoors = [door for door in state.values()
+                #                if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
+                #         'is_open']]
+                if len(self.memory) > 0:
+
+                    # print("MEMORY", self.memory)
+                    self._navigator.reset_full()
+                    self._navigator.add_waypoints([self.memory[0]["location"]])
+
+                    self.memory.pop(0)
+                    self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
                 # Check if all rooms open
-                if len(closedDoors) == 0:
-                    # If no rooms - stuck
-                    if len(self.all_rooms) == 0:
-                        return None, {}
-                    # get the first room, as they were sorted in the first iteration
-                    room_name = self.all_rooms.pop(0)
-                    # get the door of the chosen room
-                    self._door = [loc for loc in state.values()
-                                  if "room_name" in loc and loc['room_name'] is
-                                  room_name and 'class_inheritance' in loc and
-                                  'Door' in loc['class_inheritance']]
-
-                    # in case some broken room without door - stuck
-                    if len(self._door) == 0:
-                        return None, {}
-                    else:
-                        self._door = self._door[0]
-
-                # randomly pick closed door
                 else:
-                    self._door = random.choice(closedDoors)
+                    if len(self.rooms_to_visit) != 0:
+                        self._door = self.rooms_to_visit.pop(random.randint(0, len(self.rooms_to_visit) - 1))[1]
+                    elif len(self.visited) != 0:
+                        self._door = self.visited.pop()[1]
+                    else:
+                        if len(self.all_rooms) == 0:
+                            return None, {}
 
-                # get the location of the door
-                doorLoc = self._door['location']
+                        # get the first room, as they were sorted in the first iteration
+                        room_name = self.all_rooms.pop(0)
+                        self.all_rooms.append(room_name)
+                        # get the door of the chosen room
+                        self._door = [loc for loc in state.values()
+                                      if "room_name" in loc and loc['room_name'] is
+                                      room_name and 'class_inheritance' in loc and
+                                      'Door' in loc['class_inheritance']][0]
 
-                # Location in front of door is south from door
-                doorLoc = doorLoc[0], doorLoc[1] + 1
+                        if len(self._door) == 0:
+                            return None, {}
 
-                # Send message of current action
-                self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
-                self._navigator.add_waypoints([doorLoc])
-                # go to the next phase
-                self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
+                    # if len(closedDoors) == 0:
+                    #     # If no rooms - stuck
+                    #     if len(self.all_rooms) == 0:
+                    #         return None, {}
+                    #     # get the first room, as they were sorted in the first iteration
+                    #     room_name = self.all_rooms.pop(0)
+                    #     # get the door of the chosen room
+                    #     self._door = [loc for loc in state.values()
+                    #                   if "room_name" in loc and loc['room_name'] is
+                    #                   room_name and 'class_inheritance' in loc and
+                    #                   'Door' in loc['class_inheritance']]
+                    #
+                    #     # in case some broken room without door - stuck
+                    #     if len(self._door) == 0:
+                    #         return None, {}
+                    #     else:
+                    #         self._door = self._door[0]
+                    #
+                    # # randomly pick closed door
+                    # else:
+                    #     self._door = random.choice(closedDoors)
+
+                    # get the location of the door
+                    doorLoc = self._door['location']
+
+                    # Location in front of door is south from door
+                    doorLoc = doorLoc[0], doorLoc[1] + 1
+
+                    # Send message of current action
+                    self._messageMoveRoom(self._door['room_name'])
+                    # self._sendMessage('Moving to door of ' + self._door['room_name'], agent_name)
+                    self._navigator.add_waypoints([doorLoc])
+                    # go to the next phase
+                    self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 self._state_tracker.update(state)
@@ -312,10 +379,13 @@ class ColorblindAgent(BW4TBrain):
 
             if Phase.OPEN_DOOR == self._phase:
                 self._phase = Phase.ENTER_ROOM
+
+                # send a message to notify the others that you are opening a door
+                self._messageOpenDoor(self._door['room_name'])
+
                 # Open door
                 # If already opened, no change
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
-
 
             if Phase.GO_TO_REORDER_ITEMS == self._phase:
                 locations = []
@@ -355,6 +425,30 @@ class ColorblindAgent(BW4TBrain):
                 self.drop = False
                 self._phase = Phase.REORDER_ITEMS
 
+            if Phase.CHECK_ITEMS == self._phase:
+                # Every time update the state for the new location of the agent
+                self._state_tracker.update(state)
+
+                action = self._navigator.get_move_action(self._state_tracker)
+                # print("tuk printq", self.dropped_off_count, self.agent_name)
+
+                for des, loc in self.all_desired_objects:
+                    if state[self._state_tracker.agent_id]['location'] == loc:
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
+                                "location"] == loc:
+                                if self.compareObjects(des, obj):
+                                    # self.dropped_off_count += 1
+                                    self.at_drop_location[loc] = 1
+                                    break
+                        else:
+                            continue
+                        break
+                if action is not None:
+                    return action, {}
+                else:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
     def _sendMessage(self, mssg, sender):
         '''
         Enable sending messages in one line of code
@@ -362,58 +456,6 @@ class ColorblindAgent(BW4TBrain):
         msg = Message(content=mssg, from_id=sender)
         if msg.content not in self.received_messages:
             self.send_message(msg)
-
-    def _processMessages(self, teamMembers):
-        '''
-        Process incoming messages and create a dictionary with received messages from each team member.
-        '''
-        receivedMessages = {}
-        for member in teamMembers:
-            receivedMessages[member] = []
-        for mssg in self.received_messages:
-            for member in teamMembers:
-                if mssg.from_id == member:
-                    receivedMessages[member].append(mssg.content)
-        return receivedMessages
-
-    def _parseMessage(self, msg):
-        if "Found" in msg.content:
-            message = msg.content.split()
-            message = message[message.index("Found")+1:]
-            print(message)
-
-    def _trustBlief(self, member, received):
-        '''
-        Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
-        '''
-        # You can change the default value to your preference
-        default = 0.5
-        trustBeliefs = {}
-        for member in received.keys():
-            trustBeliefs[member] = default
-        for member in received.keys():
-            for message in received[member]:
-                if 'Found' in message and 'colour' not in message:
-                    trustBeliefs[member] -= 0.1
-                    break
-        return trustBeliefs
-
-    def _traverseRoom(self, min_xy, max_xy):
-        self._navigator.reset_full()
-
-        list_coordinates = []
-        for x in range(min_xy[0] + 1, max_xy[0]):
-            for y in range(min_xy[1] + 1, max_xy[1] - 1):
-                list_coordinates.append((x, y))
-                # print(x, y)
-
-        self._navigator.add_waypoints(list_coordinates)
-
-    def getObjectIdFromLocation(self, state, loc):
-        for obj in state.get_closest_with_property("is_collectable"):
-            if obj["is_collectable"] is True and \
-                    not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
-                return obj["obj_id"]
 
     def _messageMoveRoom(self, room):
         self._sendMessage("Moving to " + room, self.agent_name)
@@ -431,10 +473,12 @@ class ColorblindAgent(BW4TBrain):
         self._sendMessage("Picking up goal block " + block_visualization + " at location " + location, self.agent_name)
 
     def _messageDroppedGoalBlock(self, block_visualization, location):
-        self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location, self.agent_name)
+        self._sendMessage("Dropped goal block " + block_visualization + " at drop location " + location,
+                          self.agent_name)
 
     def _messageFoundBlock(self, block_visualization, location):
         self._sendMessage("Found block " + block_visualization + " at location " + location, self.agent_name)
+
 
     def _init_trust_table(self, ids):
         data = {}
@@ -460,30 +504,27 @@ class ColorblindAgent(BW4TBrain):
         self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.1, 0, 1)
         self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
 
-    # TODO CORRECT METHOD FOR PROCESSING MESSAGES IS BELOW
-    # TODO CODE NEEDS TO BE FIXED IN ORDER TO USE  THIS METHOD
-    # def _processMessages(self):
-    #     '''
-    #     Process incoming messages and create a dictionary with received messages from each team member.
-    #     '''
-    #
-    #     for mssg in self.received_messages[self.totalMessagesReceived:]:
-    #         for member in self._teamMembers:
-    #             if mssg.from_id == member:
-    #                 self.receivedMessages[member].append((self.ticks, mssg.content, False))
-    #                 self.totalMessagesReceived = self.totalMessagesReceived + 1
-    #                 self.tbv.append((self.ticks, mssg.content, mssg.from_id))
-    #                 self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
-    #     tbv_copy = self.tbv
-    #     for (ticks, mssg, from_id) in tbv_copy:
-    #         is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
-    #                   self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
-    #         if is_true is not None:
-    #             if is_true:
-    #                 self.increaseTrust(from_id)
-    #             else:
-    #                 self.decreaseTrust(from_id)
-    #             self.tbv.remove((ticks, mssg, from_id))
+    def _processMessages(self):
+        '''
+        Process incoming messages and create a dictionary with received messages from each team member.
+        '''
+        for mssg in self.received_messages[self.totalMessagesReceived:]:
+            for member in self._teamMembers:
+                if mssg.from_id == member:
+                    self.receivedMessages[member].append((self.ticks, mssg.content, False))
+                    self.totalMessagesReceived = self.totalMessagesReceived + 1
+                    self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+                    self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+        tbv_copy = self.tbv
+        for (ticks, mssg, from_id) in tbv_copy:
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
+                      self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+            if is_true is not None:
+                if is_true:
+                    self.increaseTrust(from_id)
+                else:
+                    self.decreaseTrust(from_id)
+                self.tbv.remove((ticks, mssg, from_id))
 
     def believeAgent(self):
         for agent in self.receivedMessages:
@@ -498,6 +539,35 @@ class ColorblindAgent(BW4TBrain):
     def initTrustBeliefs(self):
         for member in self._teamMembers:
             self.trustBeliefs[member] = 0.5
+
+    # def _processMessages(self, teamMembers):
+    #     '''
+    #     Process incoming messages and create a dictionary with received messages from each team member.
+    #     '''
+    #     receivedMessages = {}
+    #     for member in teamMembers:
+    #         receivedMessages[member] = []
+    #     for mssg in self.received_messages:
+    #         for member in teamMembers:
+    #             if mssg.from_id == member:
+    #                 receivedMessages[member].append(mssg.content)
+    #     return receivedMessages
+
+    # def _trustBelief(self, member, received):
+    #     '''
+    #     Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
+    #     '''
+    #     # You can change the default value to your preference
+    #     default = 0.5
+    #     trustBeliefs = {}
+    #     for member in received.keys():
+    #         trustBeliefs[member] = default
+    #     for member in received.keys():
+    #         for message in received[member]:
+    #             if 'Found' in message and 'colour' not in message:
+    #                 trustBeliefs[member] -= 0.1
+    #                 break
+    #     return trustBeliefs
 
     def addToMemory(self, vis, loc, drop):
         if len(self.memory) == 0:
@@ -516,6 +586,12 @@ class ColorblindAgent(BW4TBrain):
 
         self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
                              reverse=True)
+
+    def getObjectIdFromLocation(self, state, loc):
+        for obj in state.get_closest_with_property("is_collectable"):
+            if obj["is_collectable"] is True and \
+                    not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
+                return obj["obj_id"]
 
     def acceptMessageIfSenderTrustworthy(self, mssg, sender):
         splitMssg = mssg.split(' ')
@@ -542,7 +618,8 @@ class ColorblindAgent(BW4TBrain):
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
             if self.trustBeliefs[sender] >= 0.5:
-                self.dropped_off_count += 1
+                # self.dropped_off_count += 1
+                pass
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
@@ -638,7 +715,7 @@ class ColorblindAgent(BW4TBrain):
                     return False
 
             return True
-        return False
+        return
 
     def find_mssg(self, mssgs, from_id):
         counter = 0
