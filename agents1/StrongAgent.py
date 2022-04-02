@@ -244,7 +244,7 @@ class StrongAgent(BW4TBrain):
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
-                        self.object_to_be_dropped = obj_id
+                        self.object_to_be_dropped = (obj_id, loc)
                         # if it is the correct location drop the object
                         self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_viz, obj_id, loc))
@@ -271,7 +271,7 @@ class StrongAgent(BW4TBrain):
                 # print("! DONE !")
 
             if Phase.DROP_OBJECT == self._phase:
-                if self.object_to_be_dropped is None:
+                if self.object_to_be_dropped[0] is None:
                     print("CODE BROKEN VERY BAD")
                     exit(-1)
                 # update capacity
@@ -279,8 +279,9 @@ class StrongAgent(BW4TBrain):
 
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
-
-                return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+                if self.getObjectIdFromLocation(state, self.object_to_be_dropped[1]['location']) is not None:
+                    print('ok\nok\nok\nok\nok')
+                return DropObject.__name__, {'object_id': self.object_to_be_dropped[0]}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -349,7 +350,10 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.ENTER_ROOM
                 # Open door
                 # If already opened, no change
-                self._messageOpenDoor(self._door['room_name'])
+                print(self._door, self.closed_doors)
+                if self._door['room_name'] in self.closed_doors:
+                    print('sending open door msg')
+                    self._messageOpenDoor(self._door['room_name'])
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
             if Phase.GO_TO_REORDER_ITEMS == self._phase:
@@ -383,9 +387,11 @@ class StrongAgent(BW4TBrain):
                 if not self.grab:
                     self.obj_id = self.getObjectIdFromLocation(state, state[self._state_tracker.agent_id]['location'])
                     self.grab = True
+                    print('grabbed', self.obj_id)
                     return GrabObject.__name__, {'object_id': self.obj_id}
                 if not self.drop:
                     self.drop = True
+                    print('dropped', self.obj_id)
                     return DropObject.__name__, {'object_id': self.obj_id}
 
                 self.grab = False
@@ -430,6 +436,7 @@ class StrongAgent(BW4TBrain):
         for obj in state.get_closest_with_property("is_collectable"):
             if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
                 return obj["obj_id"]
+        return
 
     def _sendMessage(self, mssg, sender):
         '''
@@ -499,7 +506,7 @@ class StrongAgent(BW4TBrain):
                     if (self.ticks, mssg.content, mssg.from_id) not in self.tbv:
                         self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
-                    is_sequence_true = self.verify_action_sequence(self.receivedMessages, member, self.closed_doors)
+                    is_sequence_true = self.verify_action_sequence(self.receivedMessages, member)
                     if is_sequence_true is not None:
                         if is_sequence_true:
                             self.increaseTrust(member)
@@ -566,11 +573,11 @@ class StrongAgent(BW4TBrain):
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
             # TODO maybe we need to call verify_action_sequence first
             # if self.trustBeliefs[sender] >= 0.5:
-            print("VRATATAAAAAAAAAAAAAA")
-            print(splitMssg[3])
-            print(self.closed_doors)
-            if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
-                print("OPAAAAAAAAa")
+            # print("VRATATAAAAAAAAAAAAAA")
+            # print(splitMssg[3])
+            # print(self.closed_doors)
+            # if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
+            #     print("OPAAAAAAAAa")
                 # self.closed_doors.remove(splitMssg[3])
             # pass
             pass
@@ -658,7 +665,7 @@ class StrongAgent(BW4TBrain):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
 
-    def verify_action_sequence(self, mssgs, sender, closed_doors):
+    def verify_action_sequence(self, mssgs, sender):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
 
         if prev_mssg is not None:
@@ -668,11 +675,11 @@ class StrongAgent(BW4TBrain):
             # closed_doors = [door for door in state.values()
             #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
             #         'is_open']]
-            if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(closed_doors) == 0:
+            if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(self.closed_doors) == 0:
                 print('Door is already open, dummy')
                 return False
 
-            if (prev[0] == 'Opening' and prev[3] not in closed_doors) or (curr[0] == 'Opening' and curr[3] not in closed_doors):
+            if (prev[0] == 'Opening' and prev[3] not in self.closed_doors) or (curr[0] == 'Opening' and curr[3] not in self.closed_doors):
                 print("TUKAAAAAAAAAAAAaa")
                 return False
 
