@@ -615,9 +615,9 @@ class LazyAgent(BW4TBrain):
             if len(self.not_dropped) > 0:
                 if self.capacity > 0:
                     self.capacity -=1
-                    print("NOT DROPPED_LA")
-
-                return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
+                item = self.not_dropped.pop(0)[0]
+                print("NOT DROPPED_LA", item)
+                return DropObject.__name__, {'object_id': item}
 
     def addToMemory(self, vis, loc, drop):
         if len(self.memory) == 0:

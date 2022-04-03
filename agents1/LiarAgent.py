@@ -530,7 +530,9 @@ class LiarAgent(BW4TBrain):
             if len(self.not_dropped) > 0:
                 if self.capacity > 0:
                     self.capacity -=1
-                print("NOT DROPPED_LI")
+                item = self.not_dropped.pop(0)[0]
+                print("NOT DROPPED_LI", item)
+
                 return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
 
 
