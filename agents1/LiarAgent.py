@@ -36,7 +36,9 @@ class PossibleActions(enum.Enum):
     PICKING_UP_A_BLOCK = 6
     DROPPING_A_BLOCK = 7
 
-
+# What the difference between the trust scores should be when agents are sharing their
+# trust scores with the world in order to influence other agents' scores
+EPSILON = 0.15
 
 class LiarAgent(BW4TBrain):
 
@@ -97,6 +99,10 @@ class LiarAgent(BW4TBrain):
         self._processMessages()
 
         self.believeAgent()
+
+        # share trust scored every 25th tick
+        if self.ticks % 25 == 0:
+            self.shareTrustScores()
 
         # Add team members
 
@@ -771,6 +777,16 @@ class LiarAgent(BW4TBrain):
                     if self.compareObjects(obj[0], vis):
                         self.desired_objects.remove(obj)
 
+        if mssg.startswith("Trust score of "):
+            agent, trust_score = self.getAgentScoreFromMessage(mssg)
+            # sender will not send a trust score about itself, but check this is true just in case
+            if trust_score is not None and self.trustBeliefs[sender] >= 0.6 and agent != self.agent_name and sender != agent: # TODO 0.6
+                if self.trustBeliefs[agent] < trust_score - EPSILON:
+                    self.increaseTrust(agent)
+                elif self.trustBeliefs[agent] > trust_score + EPSILON:
+                    self.decreaseTrust(agent)
+                # else don't do anything
+
     def checkMessageTrue(self, ticks, mssg, sender):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
@@ -817,6 +833,16 @@ class LiarAgent(BW4TBrain):
             loc = ast.literal_eval(mssg[l.start(): l.end()])
         return vis, loc
 
+    def getAgentScoreFromMessage(self, mssg):
+        mssg_split = mssg.split()
+        trust_score = None
+        try:
+            trust_score = float(mssg_split[5])
+        except ValueError:
+            print("ERROR when parsing message about trust. Incorrect message format: trust is not a float.")
+
+        return mssg_split[3], trust_score
+
     def compareObjects(self, obj1, obj2):
         keys = ('shape', 'colour')
         for key in keys:
@@ -828,6 +854,12 @@ class LiarAgent(BW4TBrain):
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
+
+    def shareTrustScores(self):
+        for agent in self.trustBeliefs:
+            if agent != self.agent_name:
+                belief = self.trustBeliefs[agent]
+                self._sendMessage("Trust score of " + agent + " is " + str(belief), self.agent_name)
 
     def verify_action_sequence(self, mssgs, sender, closed_doors):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
@@ -862,7 +894,8 @@ class LiarAgent(BW4TBrain):
         mssg = None
         prev_mssg = None
         for mssg in mssgs:
-            if mssg[2] == from_id:
+            # ignore messages about the trust score of an agent
+            if mssg[2] == from_id and not "Trust score of " in mssg[1]:
                 if (counter == 0):
                     mssg = mssg[1]
                     counter = counter + 1

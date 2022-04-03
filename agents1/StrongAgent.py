@@ -576,6 +576,7 @@ class StrongAgent(BW4TBrain):
                             self.increaseTrust(member)
                         else:
                             self.decreaseTrust(member)
+        self.already_said()
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
             is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
@@ -786,3 +787,37 @@ class StrongAgent(BW4TBrain):
                 prev_mssg = mssg_i[1]
                 break
         return mssg, prev_mssg
+
+
+    # TODO check if messages are after a certain tick so that we don't check messages that are already checked
+    def already_said(self):
+        for name in self.receivedMessages.keys():
+            if name != self.agent_id:
+                for mssg in self.receivedMessages[name]:
+                    vis, loc = self.getVisLocFromMessage(mssg[1])
+                    # TODO
+                    # Fix it so that there is no duplication -> trust score will be  inscreased twice
+                    # Make it so that the second for loop starts at the index after the current index of the
+                    # above for loop
+                    for name_2 in self.receivedMessages.keys():
+                        if name_2 != self.agent_id and name_2 != name:
+                            for mssg_2 in self.receivedMessages[name_2]:
+                                vis_2, loc_2 = self.getVisLocFromMessage(mssg_2[1])
+                                if mssg[1].split(' ')[0] == 'Found':
+                                    if mssg_2[1].split(' ')[0] == 'Found':
+                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
+                                            print("OPALANKAAAAAAAAAAAa")
+                                            print(mssg[1].split(' ')[2])
+                                            print(mssg_2[1].split(' ')[2])
+                                            self.increaseTrust(name)
+                                            self.increaseTrust(name_2)
+                                    elif mssg_2[1].split(' ')[0] == 'Picking':
+                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
+                                            print("OPALANKAAAAAAAAAAAa")
+                                            self.increaseTrust(name)
+                                            self.increaseTrust(name_2)
+                                    elif mssg_2[1].split(' ')[0] == 'Dropped':
+                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
+                                            print("OPALANKAAAAAAAAAAAa")
+                                            self.increaseTrust(name)
+                                            self.increaseTrust(name_2)
