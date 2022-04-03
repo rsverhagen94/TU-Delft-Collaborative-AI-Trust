@@ -513,6 +513,12 @@ class LiarAgent(BW4TBrain):
                                 if self.compareObjects(des, obj):
                                     # self.dropped_off_count += 1
                                     self.at_drop_location[loc] = 1
+                                    possible_action = self.pickAnAction(PossibleActions.ENCOUNTERING_A_BLOCK)
+                                    if possible_action == PossibleActions.ENCOUNTERING_A_GOAL_BLOCK:
+                                        self._messageFoundGoalBlock(str(des), str(loc))
+                                    else:
+                                        self._sendMessage(self.generateAMessageFromAction(possible_action),
+                                                          self.agent_name)
                                     break
                         else:
                             continue

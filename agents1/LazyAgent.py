@@ -572,6 +572,7 @@ class LazyAgent(BW4TBrain):
                             if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
                                 "location"] == myLoc:
                                 if self.compareObjects(des, obj):
+                                    self._messageFoundBlock(str(des), str(loc))
                                     self.at_drop_location[loc] = 1
                                     break
                         else:

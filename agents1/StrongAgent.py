@@ -447,6 +447,7 @@ class StrongAgent(BW4TBrain):
                                 "location"] == myLoc:
                                 if self.compareObjects(des, obj):
                                     self.at_drop_location[loc] = 1
+                                    self._messageFoundBlock(str(des), str(loc))
                                     found = True
                                     break
                         else:
