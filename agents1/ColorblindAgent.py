@@ -89,8 +89,6 @@ class ColorblindAgent(BW4TBrain):
         # Process messages from team members
         self._processMessages()
 
-        self.believeAgent()
-
         if self.ticks % 25 == 0:
             self.shareTrustScores()
 
@@ -145,6 +143,8 @@ class ColorblindAgent(BW4TBrain):
             self.closed_doors = [door for door in state.values()
                             if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                     'is_open']]
+            for i, door in enumerate(self.closed_doors):
+                self.closed_doors[i] = self.closed_doors[i]["room_name"]
 
         while True:
 
@@ -206,8 +206,8 @@ class ColorblindAgent(BW4TBrain):
                             # first two items from bottom to up, if they are we pick them
                             # in case they are not we save them in the memory for later use
                             self._messageFoundGoalBlock(str(obj[0]), str(obj[2]))
-
-                            if (loc) in map(lambda o: o[2], self.memory):
+                            print('memory:', self.memory)
+                            if (loc) in map(lambda o: o['location'], self.memory):
                                 if self.capacity == 0:
                                     self.capacity += 1
                                     self.drop_off_locations.append((obj[0], obj[1], loc))
@@ -373,10 +373,12 @@ class ColorblindAgent(BW4TBrain):
                         self._door = [loc for loc in state.values()
                                       if "room_name" in loc and loc['room_name'] is
                                       room_name and 'class_inheritance' in loc and
-                                      'Door' in loc['class_inheritance']][0]
+                                      'Door' in loc['class_inheritance']]
 
                         if len(self._door) == 0:
                             return None, {}
+
+                        self._door = self._door[0]
 
                     doorLoc = self._door['location']
 
@@ -516,19 +518,6 @@ class ColorblindAgent(BW4TBrain):
         self.memory = sorted(self.memory, key=lambda x: x["drop_off_location"],
                              reverse=True)
 
-    def check_for_not_dropped(self):
-        if self.dropped_off_count > 0:
-            self.dropped_off_count -= 1
-        elif self.dropped_off_count == 0:
-            if len(self.not_dropped) > 0:
-                if self.capacity > 0:
-                    self.capacity -= 1
-
-                item = self.not_dropped.pop(0)[0]
-                print("NOT DROPPED_S", item)
-
-                return DropObject.__name__, {'object_id': item}
-
     def getObjectIdFromLocation(self, state, loc):
         for obj in state.get_closest_with_property("is_collectable"):
             if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
@@ -602,7 +591,7 @@ class ColorblindAgent(BW4TBrain):
                 if mssg.from_id == member:
                     self.receivedMessages[member].append((self.ticks, mssg.content, False))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
-                    if (self.ticks, mssg.content, mssg.from_id) not in self.tbv:
+                    if (self.ticks, mssg.content, mssg.from_id) not in self.tbv and mssg.content.startswith('Found'):
                         self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
                     is_sequence_true = self.verify_action_sequence(self.receivedMessages, member)
@@ -611,28 +600,20 @@ class ColorblindAgent(BW4TBrain):
                             self.increaseTrust(member)
                         else:
                             self.decreaseTrust(member)
-        self.already_said()
+            self.already_said(mssg.content, mssg.from_id)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
-            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
-            if is_true is not None:
-                if is_true:
-                    print('increasing trust', mssg)
-                    self.increaseTrust(from_id)
-                else:
-                    print('decreasing trust', mssg)
-                    self.decreaseTrust(from_id)
-                self.tbv.remove((ticks, mssg, from_id))
-
-    def believeAgent(self):
-        for agent in self.receivedMessages:
-            if self.trustBeliefs[agent] >= 0.8:
-                pass
-                # for i in range(len(self.receivedMessages[agent])):
-                #     mssg = self.receivedMessages[agent][i]
-                #     if not mssg[2]:
-                #         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                #         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+            # splitMssg = mssg.split(' ')
+            if mssg.startswith('Found'):
+                is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
+                if is_true is not None:
+                    if is_true:
+                        print('increasing trust', mssg)
+                        self.increaseTrust(from_id)
+                    else:
+                        print('decreasing trust', mssg)
+                        self.decreaseTrust(from_id)
+                    self.tbv.remove((ticks, mssg, from_id))
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -654,15 +635,6 @@ class ColorblindAgent(BW4TBrain):
                         self.closed_doors.remove(door["room_name"])
 
         if splitMssg[0] == 'Opening' and splitMssg[1] == 'door':
-            # TODO maybe we need to call verify_action_sequence first
-            # if self.trustBeliefs[sender] >= 0.5:
-            # print("VRATATAAAAAAAAAAAAAA")
-            # print(splitMssg[3])
-            # print(self.closed_doors)
-            # if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
-            #     print("OPAAAAAAAAa")
-            # self.closed_doors.remove(splitMssg[3])
-            # pass
             pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
@@ -738,11 +710,14 @@ class ColorblindAgent(BW4TBrain):
 
     def compareObjects(self, obj1, obj2):
         keys = ('shape', 'colour')
+        flag = True
         for key in keys:
             if key in obj1 and key in obj2:
-                if obj1[key] != obj2[key]:
-                    return False
-        return True
+                if obj1[key] == obj2[key] or obj1[key] is None or obj2[key] is None:
+                    pass
+                else:
+                    flag = False
+        return flag
 
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
@@ -808,37 +783,30 @@ class ColorblindAgent(BW4TBrain):
         return mssg, prev_mssg
 
     # TODO check if messages are after a certain tick so that we don't check messages that are already checked
-    def already_said(self):
+    def already_said(self, received_mssg, sender):
         for name in self.receivedMessages.keys():
-            if name != self.agent_id:
+            if name != self.agent_id and name != sender:
                 for mssg in self.receivedMessages[name]:
                     vis, loc = self.getVisLocFromMessage(mssg[1])
-                    # TODO
-                    # Fix it so that there is no duplication -> trust score will be  inscreased twice
-                    # Make it so that the second for loop starts at the index after the current index of the
-                    # above for loop
-                    for name_2 in self.receivedMessages.keys():
-                        if name_2 != self.agent_id and name_2 != name:
-                            for mssg_2 in self.receivedMessages[name_2]:
-                                vis_2, loc_2 = self.getVisLocFromMessage(mssg_2[1])
-                                if mssg[1].split(' ')[0] == 'Found':
-                                    if mssg_2[1].split(' ')[0] == 'Found':
-                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
-                                            print("OPALANKAAAAAAAAAAAa")
-                                            print(mssg[1].split(' ')[2])
-                                            print(mssg_2[1].split(' ')[2])
-                                            self.increaseTrust(name)
-                                            self.increaseTrust(name_2)
-                                    elif mssg_2[1].split(' ')[0] == 'Picking':
-                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
-                                            print("OPALANKAAAAAAAAAAAa")
-                                            self.increaseTrust(name)
-                                            self.increaseTrust(name_2)
-                                    elif mssg_2[1].split(' ')[0] == 'Dropped':
-                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
-                                            print("OPALANKAAAAAAAAAAAa")
-                                            self.increaseTrust(name)
-                                            self.increaseTrust(name_2)
+                    received_vis, received_loc = self.getVisLocFromMessage(received_mssg[1])
+                    if mssg[1].split(' ')[0] == 'Found':
+                        if received_mssg[1].split(' ')[0] == 'Found':
+                            if self.compareObjects(vis, received_vis) and loc == received_loc:
+                                print("OPALANKAAAAAAAAAAAa")
+                                print(mssg[1].split(' ')[2])
+                                print(received_mssg[1].split(' ')[2])
+                                self.increaseTrust(sender)
+                                self.increaseTrust(name)
+                        elif received_mssg[1].split(' ')[0] == 'Picking':
+                            if self.compareObjects(vis, received_vis) and loc == received_loc:
+                                print("OPALANKAAAAAAAAAAAa")
+                                self.increaseTrust(sender)
+                                self.increaseTrust(name)
+                        elif received_mssg[1].split(' ')[0] == 'Dropped':
+                            if self.compareObjects(vis, received_vis) and loc == received_loc:
+                                print("OPALANKAAAAAAAAAAAa")
+                                self.increaseTrust(sender)
+                                self.increaseTrust(name)
 
     def shareTrustScores(self):
         for agent in self.trustBeliefs:

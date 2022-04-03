@@ -98,8 +98,6 @@ class LiarAgent(BW4TBrain):
         # Process messages from team members
         self._processMessages()
 
-        self.believeAgent()
-
         # share trust scored every 25th tick
         if self.ticks % 25 == 0:
             self.shareTrustScores()
@@ -155,7 +153,8 @@ class LiarAgent(BW4TBrain):
             self.closed_doors = [door for door in state.values()
                             if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
                     'is_open']]
-
+            for i, door in enumerate(self.closed_doors):
+                self.closed_doors[i] = self.closed_doors[i]["room_name"]
         while True:
 
             # Phase entering room
@@ -665,6 +664,7 @@ class LiarAgent(BW4TBrain):
                             self.increaseTrust(member)
                         else:
                             self.decreaseTrust(member)
+            self.already_said(mssg.content, mssg.from_id)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
             is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
@@ -676,17 +676,6 @@ class LiarAgent(BW4TBrain):
                     print('decreasing trust', mssg)
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
-
-    def believeAgent(self):
-        for agent in self.receivedMessages:
-            if self.trustBeliefs[agent] >= 0.9:
-                pass
-                # for i in range(len(self.receivedMessages[agent])):
-                #     mssg = self.receivedMessages[agent][i]
-                #     if not mssg[2]:
-                #         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                #         # mssg[2] = True
-                #         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -823,11 +812,14 @@ class LiarAgent(BW4TBrain):
 
     def compareObjects(self, obj1, obj2):
         keys = ('shape', 'colour')
+        flag = True
         for key in keys:
             if key in obj1 and key in obj2:
-                if obj1[key] != obj2[key]:
-                    return False
-        return True
+                if obj1[key] == obj2[key] or obj1[key] is None or obj2[key] is None:
+                    pass
+                else:
+                    flag = False
+        return flag
 
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
@@ -882,3 +874,28 @@ class LiarAgent(BW4TBrain):
                     break
 
         return mssg, prev_mssg
+
+    def already_said(self, received_mssg, sender):
+        for name in self.receivedMessages.keys():
+            if name != self.agent_id and name != sender:
+                for mssg in self.receivedMessages[name]:
+                    vis, loc = self.getVisLocFromMessage(mssg[1])
+                    received_vis, received_loc = self.getVisLocFromMessage(received_mssg[1])
+                    if mssg[1].split(' ')[0] == 'Found':
+                        if received_mssg[1].split(' ')[0] == 'Found':
+                            if self.compareObjects(vis, received_vis) and loc == received_loc:
+                                print("OPALANKAAAAAAAAAAAa")
+                                print(mssg[1].split(' ')[2])
+                                print(received_mssg[1].split(' ')[2])
+                                self.increaseTrust(sender)
+                                self.increaseTrust(name)
+                        elif received_mssg[1].split(' ')[0] == 'Picking':
+                            if self.compareObjects(vis, received_vis) and loc == received_loc:
+                                print("OPALANKAAAAAAAAAAAa")
+                                self.increaseTrust(sender)
+                                self.increaseTrust(name)
+                        elif received_mssg[1].split(' ')[0] == 'Dropped':
+                            if self.compareObjects(vis, received_vis) and loc == received_loc:
+                                print("OPALANKAAAAAAAAAAAa")
+                                self.increaseTrust(sender)
+                                self.increaseTrust(name)
