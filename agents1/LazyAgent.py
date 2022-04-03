@@ -381,7 +381,10 @@ class LazyAgent(BW4TBrain):
                     print("GO TO MEMORY: ", decision)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
-
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
+                    else:
+                        self.dropped_off_count = -1
                     if decision:
                         self.stop_when = -1
                         self.use_memory = True
@@ -427,6 +430,10 @@ class LazyAgent(BW4TBrain):
                     # Location in front of door is south from door
                     doorLoc = (doorLoc[0], doorLoc[1] + 1)
 
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
+                    else:
+                        self.dropped_off_count = -1
                     # Send message of current action
                     # self._sendMessage('Moving to door of ' + self._door['room_name'], self.agent_name)
                     self._messageMoveRoom(self._door['room_name'])

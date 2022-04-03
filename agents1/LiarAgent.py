@@ -78,6 +78,9 @@ class LiarAgent(BW4TBrain):
         self.obj_id = None
         self.closed_doors = []
 
+        self.not_dropped = []
+        self.drop_counter = 0
+
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
@@ -154,7 +157,6 @@ class LiarAgent(BW4TBrain):
                 # Get the room name for the latest chosen room from the phase PLAN_PATH_TO_CLOSED_DOOR
                 room = self._door['room_name']
 
-                # TODO must change the message structure
                 # self._messageMoveRoom(room)
                 # Find all area tiles locations of the room to traverse
                 area = list(map(
@@ -183,6 +185,7 @@ class LiarAgent(BW4TBrain):
             if Phase.TRAVERSE_ROOM == self._phase:
                 # Every time update the state for the new location of the agent
                 self._state_tracker.update(state)
+                self.check_for_not_dropped()
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 # If the agent has moved update look for and item
@@ -275,6 +278,8 @@ class LiarAgent(BW4TBrain):
             # Follow path to the drop off location
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
+                flag_not_dropped = False
+                self.object_to_be_dropped = None
                 # Check if the current location of the agent is the correct drop off location
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
@@ -284,16 +289,27 @@ class LiarAgent(BW4TBrain):
                         self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_viz, obj_id, loc))
                         possible_action = self.pickAnAction(PossibleActions.DROPPING_A_BLOCK)
-                        if possible_action == PossibleActions.DROPPING_A_BLOCK:
-                            # TODO cheating a little bit here, since the visualization is not saved anywhere
-                            # for now the visualization of the dropped block is taken from the self.desired_objects list
-                            # by getting the block that has a drop off location equal to the agent's current location
-                            # update this after the memory of this agent is updated to be like the StrongAgent's memory
-                            # agent_location = state[self._state_tracker.agent_id]['location']
-                            # self._sendMessage("Dropped goal block " + str(list(filter(lambda block: block[1] == agent_location, self.desired_objects))[0]) + " at location " + str(agent_location))
+
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
+                                "location"] == loc:
+                                self.not_dropped.append((obj_id, loc))
+                                flag_not_dropped = True
+
+                        if not flag_not_dropped:
+                            self.object_to_be_dropped = (obj_id, loc)
                             self._messageDroppedGoalBlock(str(obj_viz), str(loc))
-                        else:
-                            self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
+                            self._phase = Phase.DROP_OBJECT
+
+                            if possible_action == PossibleActions.DROPPING_A_BLOCK:
+                                # for now the visualization of the dropped block is taken from the self.desired_objects list
+                                # by getting the block that has a drop off location equal to the agent's current location
+                                # update this after the memory of this agent is updated to be like the StrongAgent's memory
+                                # agent_location = state[self._state_tracker.agent_id]['location']
+                                # self._sendMessage("Dropped goal block " + str(list(filter(lambda block: block[1] == agent_location, self.desired_objects))[0]) + " at location " + str(agent_location))
+                                self._messageDroppedGoalBlock(str(obj_viz), str(loc))
+                            else:
+                                self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                 # if not already dropped the object move to the next location
                 if not flag:
@@ -316,19 +332,16 @@ class LiarAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
-                    exit(-1)
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
                 # update capacity
-                self.capacity -= 1
-                # print("dropped object")
-                # Drop object
-                self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+                else:
+                    self.capacity -= 1
+                    # print("dropped object")
+                    # Drop object
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                # if len(self.desired_objects) == 0:
-                #     self._phase = Phase.GO_TO_REORDER_ITEMS
 
-                # self.dropped_off_count += 1
-
-                return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+                    return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -349,7 +362,8 @@ class LiarAgent(BW4TBrain):
                     # print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
-
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
                     self.memory.pop(0)
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
@@ -375,27 +389,10 @@ class LiarAgent(BW4TBrain):
                         if len(self._door) == 0:
                             return None, {}
 
-                    # if len(closedDoors) == 0:
-                    #     # If no rooms - stuck
-                    #     if len(self.all_rooms) == 0:
-                    #         return None, {}
-                    #     # get the first room, as they were sorted in the first iteration
-                    #     room_name = self.all_rooms.pop(0)
-                    #     # get the door of the chosen room
-                    #     self._door = [loc for loc in state.values()
-                    #                   if "room_name" in loc and loc['room_name'] is
-                    #                   room_name and 'class_inheritance' in loc and
-                    #                   'Door' in loc['class_inheritance']]
-                    #
-                    #     # in case some broken room without door - stuck
-                    #     if len(self._door) == 0:
-                    #         return None, {}
-                    #     else:
-                    #         self._door = self._door[0]
-                    #
-                    # # randomly pick closed door
-                    # else:
-                    #     self._door = random.choice(closedDoors)
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
+                    else:
+                        self.dropped_off_count = -1
 
                     # get the location of the door
                     doorLoc = self._door['location']
@@ -500,6 +497,36 @@ class LiarAgent(BW4TBrain):
                     return action, {}
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+    def getRandom1(self):
+        return random.random()
+
+    def shortestDistance_drop(self, state, go_to):
+        current_loc = state[self._state_tracker.agent_id]['location']
+        if current_loc[0] > go_to[0]:
+            x = current_loc[0] - go_to[0]
+        else:
+            x = go_to[0] - current_loc[0]
+
+        if current_loc[1] > go_to[1]:
+            y = current_loc[1] - go_to[1]
+        else:
+            y = go_to[1] - current_loc[1]
+
+        distance = (x ** 2 + y ** 2) ** 0.5
+
+        return int(round(distance * self.getRandom1()))
+
+    def check_for_not_dropped(self):
+        if self.dropped_off_count != 0:
+            self.dropped_off_count -= 1
+        elif self.dropped_off_count == 0:
+            if len(self.not_dropped) > 0:
+                if self.capacity > 0:
+                    self.capacity -=1
+                return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
+
+
     # pick an action from the PossibleActions with 20% chance it is the actual current action
     def pickAnAction(self, currentAction):
         if random.randint(1, 10) > 8:
