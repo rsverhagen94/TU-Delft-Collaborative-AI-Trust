@@ -86,6 +86,10 @@ class StrongAgent(BW4TBrain):
         # Process messages from team members
         self._processMessages()
 
+        # share trust scored every 25th tick
+        if self.ticks % 25 == 0:
+            self.shareTrustScores()
+
         # We check if we enter for first time in the method as there is recursion
         # We want to keep track of some objects and reinitialize them every time
         if self.initialization_flag:
@@ -664,6 +668,19 @@ class StrongAgent(BW4TBrain):
                     if self.compareObjects(obj[0], vis):
                         self.desired_objects.remove(obj)
 
+
+        if mssg.startswith("Trust score of "):
+            agent, trust_score = self.getAgentScoreFromMessage(mssg)
+            # sender will not send a trust score about itself, but check this is true just in case
+            if trust_score is not None and self.trustBeliefs[sender] >= 0.6 and agent != self.agent_name and sender != agent: # TODO 0.6
+                if self.trustBeliefs[agent] < trust_score - EPSILON:
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+                elif self.trustBeliefs[agent] > trust_score + EPSILON:
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+                # else don't do anything
+
     def checkMessageTrue(self, ticks, mssg, sender):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
@@ -699,6 +716,16 @@ class StrongAgent(BW4TBrain):
 
         return None
 
+    def getAgentScoreFromMessage(self, mssg):
+        mssg_split = mssg.split()
+        trust_score = None
+        try:
+            trust_score = float(mssg_split[5])
+        except ValueError:
+            print("ERROR when parsing message about trust. Incorrect message format: trust is not a float.")
+
+        return mssg_split[3], trust_score
+
     def getVisLocFromMessage(self, mssg):
         bv = re.search("\{(.*)\}", mssg)
         l = re.search("\((.*)\)", mssg)
@@ -724,6 +751,12 @@ class StrongAgent(BW4TBrain):
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
+
+    def shareTrustScores(self):
+        for agent in self.trustBeliefs:
+            if agent != self.agent_name:
+                belief = self.trustBeliefs[agent]
+                self._sendMessage("Trust score of " + agent + " is " + str(belief), self.agent_name)
 
     def verify_action_sequence(self, mssgs, sender):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
@@ -775,12 +808,14 @@ class StrongAgent(BW4TBrain):
         mssg = None
         prev_mssg = None
         for mssg_i in mssgs[from_id]:
-            if counter == 0:
-                mssg = mssg_i[1]
-                counter = counter + 1
-            else:
-                prev_mssg = mssg_i[1]
-                break
+            # ignore messages about the trust score of an agent
+            if not "Trust score of " in mssg_i[1]:
+                if counter == 0:
+                    mssg = mssg_i[1]
+                    counter = counter + 1
+                else:
+                    prev_mssg = mssg_i[1]
+                    break
         return mssg, prev_mssg
 
 
@@ -1576,9 +1611,11 @@ class LazyAgent(BW4TBrain):
             # sender will not send a trust score about itself, but check this is true just in case
             if trust_score is not None and self.trustBeliefs[sender] >= 0.6 and agent != self.agent_name and sender != agent: # TODO 0.6
                 if self.trustBeliefs[agent] < trust_score - EPSILON:
-                    self.increaseTrust(agent)
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
                 elif self.trustBeliefs[agent] > trust_score + EPSILON:
-                    self.decreaseTrust(agent)
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
                 # else don't do anything
 
     def checkMessageTrue(self, ticks, mssg, sender):
@@ -2464,9 +2501,11 @@ class LiarAgent(BW4TBrain):
             # sender will not send a trust score about itself, but check this is true just in case
             if trust_score is not None and self.trustBeliefs[sender] >= 0.6 and agent != self.agent_name and sender != agent: # TODO 0.6
                 if self.trustBeliefs[agent] < trust_score - EPSILON:
-                    self.increaseTrust(agent)
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
                 elif self.trustBeliefs[agent] > trust_score + EPSILON:
-                    self.decreaseTrust(agent)
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
                 # else don't do anything
 
     def checkMessageTrue(self, ticks, mssg, sender):
@@ -3230,6 +3269,18 @@ class ColorblindAgent(BW4TBrain):
                 for obj in self.desired_objects:
                     if self.compareObjects(obj[0], vis):
                         self.desired_objects.remove(obj)
+
+        if mssg.startswith("Trust score of "):
+            agent, trust_score = self.getAgentScoreFromMessage(mssg)
+            # sender will not send a trust score about itself, but check this is true just in case
+            if trust_score is not None and self.trustBeliefs[sender] >= 0.6 and agent != self.agent_name and sender != agent: # TODO 0.6
+                if self.trustBeliefs[agent] < trust_score - EPSILON:
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] + 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+                elif self.trustBeliefs[agent] > trust_score + EPSILON:
+                    self.trustBeliefs[trustee] = np.clip(self.trustBeliefs[trustee] - 0.05, 0, 1)
+                    self._write_to_trust_table(self.agent_id, trustee, self.trustBeliefs[trustee])
+                # else don't do anything
 
     def checkMessageTrue(self, ticks, mssg, sender):
         splitMssg = mssg.split(' ')
