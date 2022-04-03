@@ -68,6 +68,9 @@ class LazyAgent(BW4TBrain):
         self.obj_id = None
         self.delivered_item = False
 
+        self.not_dropped = []
+        self.drop_counter = 0
+
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
@@ -175,7 +178,7 @@ class LazyAgent(BW4TBrain):
                 # self._messageSearchThrough(room)
 
                 self._state_tracker.update(state)
-
+                self.check_for_not_dropped()
                 action = self._navigator.get_move_action(self._state_tracker)
 
                 if self.stop_when > 0 or self.stop_when == -1:
@@ -271,7 +274,9 @@ class LazyAgent(BW4TBrain):
             # Follow path to the drop off location
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
+                flag_not_dropped = False
                 self.delivered_item = False
+                self.object_to_be_dropped = None
 
                 # Check if the current location of the agent is the correct drop off location
                 # print(self.drop_off_locations)
@@ -288,17 +293,26 @@ class LazyAgent(BW4TBrain):
                 elif state[self._state_tracker.agent_id]['location'] == self.drop_off_locations[2]:
                     flag = True
 
-                    self.object_to_be_dropped = self.drop_off_locations[1]
+                    self.object_to_be_dropped = None
                     self.delivered_item = True
 
                     # if it is the correct location drop the object
-
                     self._phase = Phase.DROP_OBJECT
                     if (self.my_object[0], self.my_object[1]) in self.desired_objects:
                         self.desired_objects.remove((self.my_object[0], self.my_object[1]))
 
                     self._messageDroppedGoalBlock(str(self.drop_off_locations[0]), str(self.drop_off_locations[2]))
 
+                    for obj in state.get_closest_with_property("is_collectable"):
+                        if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
+                            "location"] == self.drop_off_locations[2]:
+                            self.not_dropped.append((self.object_to_be_dropped, self.drop_off_locations[2]))
+                            flag_not_dropped = True
+
+                    if not flag_not_dropped:
+                        self.object_to_be_dropped = self.drop_off_locations[1]
+                        self._messageDroppedGoalBlock(str(self.drop_off_locations[0]), str(self.drop_off_locations[2]))
+                        self._phase = Phase.DROP_OBJECT
                     #print("MEMORY", self.memory)
 
                 # if not already dropped the object move to the next location
@@ -323,21 +337,24 @@ class LazyAgent(BW4TBrain):
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
                     exit(-1)
-                # update capacity
-                self.capacity -= 1
-                # Drop object
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                # print("DELIVER ITEMSSS: ", self.delivered_item)
-                if self.delivered_item:
-                    locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
-                    self._navigator.reset_full()
-                    # Add the navigation
-                    self._navigator.add_waypoints(locations)
-                    self.dropped_off_count = 0
-                    self._phase = Phase.CHECK_ITEMS
+                # update capacity
                 else:
-                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
-                    self.delivered_item = False
+                    self.capacity -= 1
+                    # Drop object
+
+                    # print("DELIVER ITEMSSS: ", self.delivered_item)
+                    if self.delivered_item:
+                        locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                        self._navigator.reset_full()
+                        # Add the navigation
+                        self._navigator.add_waypoints(locations)
+                        self.dropped_off_count = 0
+                        self._phase = Phase.CHECK_ITEMS
+                    else:
+                        self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+                        self.delivered_item = False
 
 
 
@@ -436,6 +453,7 @@ class LazyAgent(BW4TBrain):
             # When going using memory randomize
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
+                self.check_for_not_dropped()
                 if self.stop_when > 0:
                     self.stop_when -= 1
                     self._state_tracker.update(state)
@@ -562,6 +580,31 @@ class LazyAgent(BW4TBrain):
             y = b[1] - a[1]
 
         return (x ** 2 + y ** 2) ** 0.5
+
+    def shortestDistance_drop(self, state, go_to):
+        current_loc = state[self._state_tracker.agent_id]['location']
+        if current_loc[0] > go_to[0]:
+            x = current_loc[0] - go_to[0]
+        else:
+            x = go_to[0] - current_loc[0]
+
+        if current_loc[1] > go_to[1]:
+            y = current_loc[1] - go_to[1]
+        else:
+            y = go_to[1] - current_loc[1]
+
+        distance = (x ** 2 + y ** 2) ** 0.5
+
+        return int(round(distance * self.getRandom1()))
+
+    def check_for_not_dropped(self):
+        if self.dropped_off_count != 0:
+            self.dropped_off_count -= 1
+        elif self.dropped_off_count == 0:
+            if len(self.not_dropped) > 0:
+                if self.capacity > 0:
+                    self.capacity -=1
+                return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
 
     def addToMemory(self, vis, loc, drop):
         if len(self.memory) == 0:

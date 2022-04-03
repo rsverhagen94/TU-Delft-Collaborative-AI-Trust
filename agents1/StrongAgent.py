@@ -65,6 +65,8 @@ class StrongAgent(BW4TBrain):
         self.at_drop_location = {}
         self.obj_id = None
         self.closed_doors = []
+        self.not_dropped = []
+        self.drop_counter = 0
 
     def initialize(self):
         super().initialize()
@@ -158,7 +160,7 @@ class StrongAgent(BW4TBrain):
             if Phase.TRAVERSE_ROOM == self._phase:
                 # Every time update the state for the new location of the agent
                 self._state_tracker.update(state)
-
+                self.check_for_not_dropped()
                 action = self._navigator.get_move_action(self._state_tracker)
                 # If the agent has moved update look for and item
                 # We are interested only in collectable items (such that can be picked)
@@ -240,15 +242,24 @@ class StrongAgent(BW4TBrain):
             # Follow path to the drop off location
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
-
+                flag_not_dropped = False
+                self.object_to_be_dropped = None
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
-                        self.object_to_be_dropped = (obj_id, loc)
                         # if it is the correct location drop the object
-                        self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_viz, obj_id, loc))
-                        self._messageDroppedGoalBlock(str(obj_viz), str(loc))
+
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
+                                self.not_dropped.append((obj_id, loc))
+                                flag_not_dropped = True
+
+                        if not flag_not_dropped:
+                            self.object_to_be_dropped = (obj_id, loc)
+                            self._messageDroppedGoalBlock(str(obj_viz), str(loc))
+                            self._phase = Phase.DROP_OBJECT
+
 
                 # if not already dropped the object move to the next location
                 if not flag:
@@ -273,15 +284,17 @@ class StrongAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped[0] is None:
                     print("CODE BROKEN VERY BAD")
-                    exit(-1)
-                # update capacity
-                self.capacity -= 1
+                    # exit(-1)
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                # Drop object
-                self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
-                if self.getObjectIdFromLocation(state, self.object_to_be_dropped[1]['location']) is not None:
-                    print('ok\nok\nok\nok\nok')
-                return DropObject.__name__, {'object_id': self.object_to_be_dropped[0]}
+                # update capacity
+                else:
+                    self.capacity -= 1
+
+                    # Drop object
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+
+                    return DropObject.__name__, {'object_id': self.object_to_be_dropped[0]}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -298,7 +311,8 @@ class StrongAgent(BW4TBrain):
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
                     self.memory.pop(0)
-
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
                 # Check if all rooms open
@@ -333,6 +347,11 @@ class StrongAgent(BW4TBrain):
                     # self._sendMessage('Moving to door of ' + self._door['room_name'], self.agent_name)
                     self._messageMoveRoom(self._door['room_name'])
                     self._navigator.add_waypoints([doorLoc])
+
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
+                    else:
+                        self.dropped_off_count = -1
                     # go to the next phase
                     # self._messageMoveRoom(room)
                     self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -340,6 +359,8 @@ class StrongAgent(BW4TBrain):
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 self._state_tracker.update(state)
                 # Follow path to door
+
+                self.check_for_not_dropped()
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
@@ -431,6 +452,34 @@ class StrongAgent(BW4TBrain):
                     return action, {}
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+    def getRandom1(self):
+        return random.random()
+
+    def shortestDistance_drop(self, state, go_to):
+        current_loc = state[self._state_tracker.agent_id]['location']
+        if current_loc[0] > go_to[0]:
+            x = current_loc[0] - go_to[0]
+        else:
+            x = go_to[0] - current_loc[0]
+
+        if current_loc[1] > go_to[1]:
+            y = current_loc[1] - go_to[1]
+        else:
+            y = go_to[1] - current_loc[1]
+
+        distance = (x ** 2 + y ** 2) ** 0.5
+
+        return int(round(distance * self.getRandom1()))
+
+    def check_for_not_dropped(self):
+        if self.dropped_off_count != 0:
+            self.dropped_off_count -= 1
+        elif self.dropped_off_count == 0:
+            if len(self.not_dropped) > 0:
+                if self.capacity > 0:
+                    self.capacity -=1
+                return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
 
     def getObjectIdFromLocation(self, state, loc):
         for obj in state.get_closest_with_property("is_collectable"):

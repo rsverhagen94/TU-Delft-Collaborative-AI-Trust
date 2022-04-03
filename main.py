@@ -15,8 +15,8 @@ press the start button in god mode to start the session.
 
 if __name__ == "__main__":
     agents = [
-        # {'name':'Liar', 'botclass':LiarAgent, 'settings':{}},
-        # {'name': 'agent2', 'botclass': StrongAgent, 'settings': {}},
+        #{'name':'Liar', 'botclass':LiarAgent, 'settings':{}},
+        #{'name': 'agent2', 'botclass': StrongAgent, 'settings': {}},
         # {'name': 'Strong', 'botclass': StrongAgent, 'settings': {}},
         {'name':'Lazy', 'botclass':LazyAgent, 'settings':{}},
         {'name': 'Strong', 'botclass': StrongAgent, 'settings': {}},
