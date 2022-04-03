@@ -1,0 +1,660 @@
+Started world...
+Starting background api server
+Initialized app: <Flask 'matrx.api.api'>
+ * Serving Flask app 'matrx.api.api' (lazy loading)
+Starting visualization server
+Initialized app: <Flask 'matrx_visualizer.visualization_server'>
+ * Environment: production
+ * Serving Flask app 'matrx_visualizer.visualization_server' (lazy loading)
+   WARNING: This is a development server. Do not use it in a production deployment.
+ * Environment: production
+   Use a production WSGI server instead.
+   WARNING: This is a development server. Do not use it in a production deployment.
+ * Debug mode: off
+   Use a production WSGI server instead.
+ * Debug mode: off
+MATRX paused through api
+MATRX paused through api
+MATRX paused through api
+MATRX paused through api
+MATRX paused through api
+Received message: Moving to door of room_6
+Received message: Moving to door of room_3
+('OpenDoorAction', {'object_id': 'room_3_-_door@(6,_13)'})
+Received message: Moving to door of room_0
+Object {  <class 'dict'> }:  {'isAgent': True, 'team': '', 'name': 'agent2', 'obj_id': 'agent2', 'location': (6, 8), 'is_movable': None, 'action_set': ['CloseDoorAction', 'DropObject', 'MoveEast', 'GrabObject', 'Move', 'MoveSouthWest', 'MoveWest', 'MoveNorth', 'MoveSouthEast', 'MoveNorthEast', 'RemoveObject', 'MoveNorthWest', 'MoveSouth', 'OpenDoorAction'], 'carried_by': [], 'is_human_agent': False, 'is_traversable': True, 'class_inheritance': ['ColorblindAgent', 'BW4TBrain', 'BW4TAgentBrain', 'AgentBrain', 'ABC', 'object'], 'is_blocked_by_action': True, 'is_carrying': [], 'sense_capability': {<class 'matrx.objects.agent_body.AgentBody'>: 2, <class 'bw4t.BW4TBlocks.CollectableBlock'>: 1, '*': inf}, 'visualization': {'size': 1.0, 'shape': 1, 'colour': '#0008ff', 'depth': 100, 'opacity': 1.0, 'show_busy': False, 'visualize_from_center': True}, 'current_action': 'MoveEast', 'current_action_args': {'grab_range': 1, 'max_objects': 1, 'action_duration': 1}, 'current_action_duration': 1, 'current_action_started_at_tick': 54}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 4)', 'obj_id': 'world_bounds_-_wall@(23,_4)', 'location': (23, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(4, 0)', 'obj_id': 'world_bounds_-_wall@(4,_0)', 'location': (4, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(8, 0)', 'obj_id': 'world_bounds_-_wall@(8,_0)', 'location': (8, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(19, 0)', 'obj_id': 'world_bounds_-_wall@(19,_0)', 'location': (19, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 5)', 'obj_id': 'world_bounds_-_wall@(0,_5)', 'location': (0, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 14)', 'obj_id': 'world_bounds_-_wall@(0,_14)', 'location': (0, 14), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 23)', 'obj_id': 'world_bounds_-_wall@(0,_23)', 'location': (0, 23), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(21, 0)', 'obj_id': 'world_bounds_-_wall@(21,_0)', 'location': (21, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(1, 24)', 'obj_id': 'world_bounds_-_wall@(1,_24)', 'location': (1, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(3, 24)', 'obj_id': 'world_bounds_-_wall@(3,_24)', 'location': (3, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(14, 24)', 'obj_id': 'world_bounds_-_wall@(14,_24)', 'location': (14, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 7)', 'obj_id': 'world_bounds_-_wall@(0,_7)', 'location': (0, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 16)', 'obj_id': 'world_bounds_-_wall@(0,_16)', 'location': (0, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(16, 24)', 'obj_id': 'world_bounds_-_wall@(16,_24)', 'location': (16, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(20, 24)', 'obj_id': 'world_bounds_-_wall@(20,_24)', 'location': (20, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 20)', 'obj_id': 'world_bounds_-_wall@(23,_20)', 'location': (23, 20), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 0)', 'obj_id': 'world_bounds_-_wall@(0,_0)', 'location': (0, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(11, 0)', 'obj_id': 'world_bounds_-_wall@(11,_0)', 'location': (11, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 9)', 'obj_id': 'world_bounds_-_wall@(0,_9)', 'location': (0, 9), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(15, 0)', 'obj_id': 'world_bounds_-_wall@(15,_0)', 'location': (15, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(17, 0)', 'obj_id': 'world_bounds_-_wall@(17,_0)', 'location': (17, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 13)', 'obj_id': 'world_bounds_-_wall@(23,_13)', 'location': (23, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 22)', 'obj_id': 'world_bounds_-_wall@(23,_22)', 'location': (23, 22), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 2)', 'obj_id': 'world_bounds_-_wall@(0,_2)', 'location': (0, 2), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(10, 24)', 'obj_id': 'world_bounds_-_wall@(10,_24)', 'location': (10, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 6)', 'obj_id': 'world_bounds_-_wall@(23,_6)', 'location': (23, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(5, 0)', 'obj_id': 'world_bounds_-_wall@(5,_0)', 'location': (5, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 15)', 'obj_id': 'world_bounds_-_wall@(23,_15)', 'location': (23, 15), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 24)', 'obj_id': 'world_bounds_-_wall@(23,_24)', 'location': (23, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(12, 24)', 'obj_id': 'world_bounds_-_wall@(12,_24)', 'location': (12, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(7, 0)', 'obj_id': 'world_bounds_-_wall@(7,_0)', 'location': (7, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(18, 0)', 'obj_id': 'world_bounds_-_wall@(18,_0)', 'location': (18, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(22, 0)', 'obj_id': 'world_bounds_-_wall@(22,_0)', 'location': (22, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 8)', 'obj_id': 'world_bounds_-_wall@(23,_8)', 'location': (23, 8), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(9, 0)', 'obj_id': 'world_bounds_-_wall@(9,_0)', 'location': (9, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 17)', 'obj_id': 'world_bounds_-_wall@(23,_17)', 'location': (23, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(13, 0)', 'obj_id': 'world_bounds_-_wall@(13,_0)', 'location': (13, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 18)', 'obj_id': 'world_bounds_-_wall@(0,_18)', 'location': (0, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(2, 24)', 'obj_id': 'world_bounds_-_wall@(2,_24)', 'location': (2, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 1)', 'obj_id': 'world_bounds_-_wall@(23,_1)', 'location': (23, 1), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 10)', 'obj_id': 'world_bounds_-_wall@(23,_10)', 'location': (23, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(6, 24)', 'obj_id': 'world_bounds_-_wall@(6,_24)', 'location': (6, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 19)', 'obj_id': 'world_bounds_-_wall@(23,_19)', 'location': (23, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(4, 24)', 'obj_id': 'world_bounds_-_wall@(4,_24)', 'location': (4, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(1, 0)', 'obj_id': 'world_bounds_-_wall@(1,_0)', 'location': (1, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 11)', 'obj_id': 'world_bounds_-_wall@(0,_11)', 'location': (0, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(8, 24)', 'obj_id': 'world_bounds_-_wall@(8,_24)', 'location': (8, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(19, 24)', 'obj_id': 'world_bounds_-_wall@(19,_24)', 'location': (19, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 20)', 'obj_id': 'world_bounds_-_wall@(0,_20)', 'location': (0, 20), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 3)', 'obj_id': 'world_bounds_-_wall@(23,_3)', 'location': (23, 3), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(3, 0)', 'obj_id': 'world_bounds_-_wall@(3,_0)', 'location': (3, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(14, 0)', 'obj_id': 'world_bounds_-_wall@(14,_0)', 'location': (14, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 12)', 'obj_id': 'world_bounds_-_wall@(23,_12)', 'location': (23, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(21, 24)', 'obj_id': 'world_bounds_-_wall@(21,_24)', 'location': (21, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 21)', 'obj_id': 'world_bounds_-_wall@(23,_21)', 'location': (23, 21), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 4)', 'obj_id': 'world_bounds_-_wall@(0,_4)', 'location': (0, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(16, 0)', 'obj_id': 'world_bounds_-_wall@(16,_0)', 'location': (16, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 13)', 'obj_id': 'world_bounds_-_wall@(0,_13)', 'location': (0, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 22)', 'obj_id': 'world_bounds_-_wall@(0,_22)', 'location': (0, 22), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(20, 0)', 'obj_id': 'world_bounds_-_wall@(20,_0)', 'location': (20, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 5)', 'obj_id': 'world_bounds_-_wall@(23,_5)', 'location': (23, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 14)', 'obj_id': 'world_bounds_-_wall@(23,_14)', 'location': (23, 14), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 23)', 'obj_id': 'world_bounds_-_wall@(23,_23)', 'location': (23, 23), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 6)', 'obj_id': 'world_bounds_-_wall@(0,_6)', 'location': (0, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 15)', 'obj_id': 'world_bounds_-_wall@(0,_15)', 'location': (0, 15), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(11, 24)', 'obj_id': 'world_bounds_-_wall@(11,_24)', 'location': (11, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 24)', 'obj_id': 'world_bounds_-_wall@(0,_24)', 'location': (0, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 7)', 'obj_id': 'world_bounds_-_wall@(23,_7)', 'location': (23, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(15, 24)', 'obj_id': 'world_bounds_-_wall@(15,_24)', 'location': (15, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 16)', 'obj_id': 'world_bounds_-_wall@(23,_16)', 'location': (23, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(10, 0)', 'obj_id': 'world_bounds_-_wall@(10,_0)', 'location': (10, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 8)', 'obj_id': 'world_bounds_-_wall@(0,_8)', 'location': (0, 8), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(17, 24)', 'obj_id': 'world_bounds_-_wall@(17,_24)', 'location': (17, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 17)', 'obj_id': 'world_bounds_-_wall@(0,_17)', 'location': (0, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(12, 0)', 'obj_id': 'world_bounds_-_wall@(12,_0)', 'location': (12, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 0)', 'obj_id': 'world_bounds_-_wall@(23,_0)', 'location': (23, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 9)', 'obj_id': 'world_bounds_-_wall@(23,_9)', 'location': (23, 9), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 18)', 'obj_id': 'world_bounds_-_wall@(23,_18)', 'location': (23, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 1)', 'obj_id': 'world_bounds_-_wall@(0,_1)', 'location': (0, 1), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 10)', 'obj_id': 'world_bounds_-_wall@(0,_10)', 'location': (0, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(5, 24)', 'obj_id': 'world_bounds_-_wall@(5,_24)', 'location': (5, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 19)', 'obj_id': 'world_bounds_-_wall@(0,_19)', 'location': (0, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 2)', 'obj_id': 'world_bounds_-_wall@(23,_2)', 'location': (23, 2), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(23, 11)', 'obj_id': 'world_bounds_-_wall@(23,_11)', 'location': (23, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(7, 24)', 'obj_id': 'world_bounds_-_wall@(7,_24)', 'location': (7, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(18, 24)', 'obj_id': 'world_bounds_-_wall@(18,_24)', 'location': (18, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(22, 24)', 'obj_id': 'world_bounds_-_wall@(22,_24)', 'location': (22, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 3)', 'obj_id': 'world_bounds_-_wall@(0,_3)', 'location': (0, 3), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(2, 0)', 'obj_id': 'world_bounds_-_wall@(2,_0)', 'location': (2, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 12)', 'obj_id': 'world_bounds_-_wall@(0,_12)', 'location': (0, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(9, 24)', 'obj_id': 'world_bounds_-_wall@(9,_24)', 'location': (9, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(0, 21)', 'obj_id': 'world_bounds_-_wall@(0,_21)', 'location': (0, 21), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(6, 0)', 'obj_id': 'world_bounds_-_wall@(6,_0)', 'location': (6, 0), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'world_bounds', 'name': 'world_bounds - wall@(13, 24)', 'obj_id': 'world_bounds_-_wall@(13,_24)', 'location': (13, 24), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#000000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(4, 4)', 'obj_id': 'room_0_-_wall@(4,_4)', 'location': (4, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(7, 4)', 'obj_id': 'room_0_-_wall@(7,_4)', 'location': (7, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(8, 4)', 'obj_id': 'room_0_-_wall@(8,_4)', 'location': (8, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(3, 4)', 'obj_id': 'room_0_-_wall@(3,_4)', 'location': (3, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(7, 7)', 'obj_id': 'room_0_-_wall@(7,_7)', 'location': (7, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(8, 7)', 'obj_id': 'room_0_-_wall@(8,_7)', 'location': (8, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(3, 7)', 'obj_id': 'room_0_-_wall@(3,_7)', 'location': (3, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(5, 4)', 'obj_id': 'room_0_-_wall@(5,_4)', 'location': (5, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(6, 4)', 'obj_id': 'room_0_-_wall@(6,_4)', 'location': (6, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(5, 7)', 'obj_id': 'room_0_-_wall@(5,_7)', 'location': (5, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(4, 7)', 'obj_id': 'room_0_-_wall@(4,_7)', 'location': (4, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(8, 6)', 'obj_id': 'room_0_-_wall@(8,_6)', 'location': (8, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(3, 6)', 'obj_id': 'room_0_-_wall@(3,_6)', 'location': (3, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(8, 5)', 'obj_id': 'room_0_-_wall@(8,_5)', 'location': (8, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0 - wall@(3, 5)', 'obj_id': 'room_0_-_wall@(3,_5)', 'location': (3, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_0', 'name': 'room_0 - door@(6, 7)', 'obj_id': 'room_0_-_door@(6,_7)', 'location': (6, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area', 'location': (4, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_1', 'location': (4, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_2', 'location': (5, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_3', 'location': (5, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_4', 'location': (6, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_5', 'location': (6, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_6', 'location': (7, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_0', 'name': 'room_0_area', 'obj_id': 'room_0_area_7', 'location': (7, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(12, 4)', 'obj_id': 'room_1_-_wall@(12,_4)', 'location': (12, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(11, 7)', 'obj_id': 'room_1_-_wall@(11,_7)', 'location': (11, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(13, 4)', 'obj_id': 'room_1_-_wall@(13,_4)', 'location': (13, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(14, 4)', 'obj_id': 'room_1_-_wall@(14,_4)', 'location': (14, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(13, 7)', 'obj_id': 'room_1_-_wall@(13,_7)', 'location': (13, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(10, 4)', 'obj_id': 'room_1_-_wall@(10,_4)', 'location': (10, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(14, 7)', 'obj_id': 'room_1_-_wall@(14,_7)', 'location': (14, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(9, 6)', 'obj_id': 'room_1_-_wall@(9,_6)', 'location': (9, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(10, 7)', 'obj_id': 'room_1_-_wall@(10,_7)', 'location': (10, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(14, 6)', 'obj_id': 'room_1_-_wall@(14,_6)', 'location': (14, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(9, 5)', 'obj_id': 'room_1_-_wall@(9,_5)', 'location': (9, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(9, 7)', 'obj_id': 'room_1_-_wall@(9,_7)', 'location': (9, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(11, 4)', 'obj_id': 'room_1_-_wall@(11,_4)', 'location': (11, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(14, 5)', 'obj_id': 'room_1_-_wall@(14,_5)', 'location': (14, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1 - wall@(9, 4)', 'obj_id': 'room_1_-_wall@(9,_4)', 'location': (9, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_1', 'name': 'room_1 - door@(12, 7)', 'obj_id': 'room_1_-_door@(12,_7)', 'location': (12, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area', 'location': (10, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_1', 'location': (10, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_2', 'location': (11, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_3', 'location': (11, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_4', 'location': (12, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_5', 'location': (12, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_6', 'location': (13, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_1', 'name': 'room_1_area', 'obj_id': 'room_1_area_7', 'location': (13, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(20, 5)', 'obj_id': 'room_2_-_wall@(20,_5)', 'location': (20, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(18, 4)', 'obj_id': 'room_2_-_wall@(18,_4)', 'location': (18, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(16, 7)', 'obj_id': 'room_2_-_wall@(16,_7)', 'location': (16, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(17, 7)', 'obj_id': 'room_2_-_wall@(17,_7)', 'location': (17, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(19, 4)', 'obj_id': 'room_2_-_wall@(19,_4)', 'location': (19, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(15, 5)', 'obj_id': 'room_2_-_wall@(15,_5)', 'location': (15, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(20, 4)', 'obj_id': 'room_2_-_wall@(20,_4)', 'location': (20, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(15, 4)', 'obj_id': 'room_2_-_wall@(15,_4)', 'location': (15, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(19, 7)', 'obj_id': 'room_2_-_wall@(19,_7)', 'location': (19, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(20, 7)', 'obj_id': 'room_2_-_wall@(20,_7)', 'location': (20, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(15, 7)', 'obj_id': 'room_2_-_wall@(15,_7)', 'location': (15, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(20, 6)', 'obj_id': 'room_2_-_wall@(20,_6)', 'location': (20, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(15, 6)', 'obj_id': 'room_2_-_wall@(15,_6)', 'location': (15, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(16, 4)', 'obj_id': 'room_2_-_wall@(16,_4)', 'location': (16, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2 - wall@(17, 4)', 'obj_id': 'room_2_-_wall@(17,_4)', 'location': (17, 4), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_2', 'name': 'room_2 - door@(18, 7)', 'obj_id': 'room_2_-_door@(18,_7)', 'location': (18, 7), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area', 'location': (16, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_1', 'location': (16, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_2', 'location': (17, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_3', 'location': (17, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_4', 'location': (18, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_5', 'location': (18, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_6', 'location': (19, 5), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_2', 'name': 'room_2_area', 'obj_id': 'room_2_area_7', 'location': (19, 6), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(4, 10)', 'obj_id': 'room_3_-_wall@(4,_10)', 'location': (4, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(4, 13)', 'obj_id': 'room_3_-_wall@(4,_13)', 'location': (4, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(7, 10)', 'obj_id': 'room_3_-_wall@(7,_10)', 'location': (7, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(8, 10)', 'obj_id': 'room_3_-_wall@(8,_10)', 'location': (8, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(3, 10)', 'obj_id': 'room_3_-_wall@(3,_10)', 'location': (3, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(7, 13)', 'obj_id': 'room_3_-_wall@(7,_13)', 'location': (7, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(5, 13)', 'obj_id': 'room_3_-_wall@(5,_13)', 'location': (5, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(8, 13)', 'obj_id': 'room_3_-_wall@(8,_13)', 'location': (8, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(3, 13)', 'obj_id': 'room_3_-_wall@(3,_13)', 'location': (3, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(5, 10)', 'obj_id': 'room_3_-_wall@(5,_10)', 'location': (5, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(6, 10)', 'obj_id': 'room_3_-_wall@(6,_10)', 'location': (6, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(8, 12)', 'obj_id': 'room_3_-_wall@(8,_12)', 'location': (8, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(3, 12)', 'obj_id': 'room_3_-_wall@(3,_12)', 'location': (3, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(8, 11)', 'obj_id': 'room_3_-_wall@(8,_11)', 'location': (8, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3 - wall@(3, 11)', 'obj_id': 'room_3_-_wall@(3,_11)', 'location': (3, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': True, 'room_name': 'room_3', 'name': 'room_3 - door@(6, 13)', 'obj_id': 'room_3_-_door@(6,_13)', 'location': (6, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#006400', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area', 'location': (4, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_1', 'location': (4, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_2', 'location': (5, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_3', 'location': (5, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_4', 'location': (6, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_5', 'location': (6, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_6', 'location': (7, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_3', 'name': 'room_3_area', 'obj_id': 'room_3_area_7', 'location': (7, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(9, 10)', 'obj_id': 'room_4_-_wall@(9,_10)', 'location': (9, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(9, 13)', 'obj_id': 'room_4_-_wall@(9,_13)', 'location': (9, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(11, 10)', 'obj_id': 'room_4_-_wall@(11,_10)', 'location': (11, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(12, 10)', 'obj_id': 'room_4_-_wall@(12,_10)', 'location': (12, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(11, 13)', 'obj_id': 'room_4_-_wall@(11,_13)', 'location': (11, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(13, 10)', 'obj_id': 'room_4_-_wall@(13,_10)', 'location': (13, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(14, 10)', 'obj_id': 'room_4_-_wall@(14,_10)', 'location': (14, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(10, 13)', 'obj_id': 'room_4_-_wall@(10,_13)', 'location': (10, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(13, 13)', 'obj_id': 'room_4_-_wall@(13,_13)', 'location': (13, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(9, 12)', 'obj_id': 'room_4_-_wall@(9,_12)', 'location': (9, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(10, 10)', 'obj_id': 'room_4_-_wall@(10,_10)', 'location': (10, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(14, 13)', 'obj_id': 'room_4_-_wall@(14,_13)', 'location': (14, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(14, 12)', 'obj_id': 'room_4_-_wall@(14,_12)', 'location': (14, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(9, 11)', 'obj_id': 'room_4_-_wall@(9,_11)', 'location': (9, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4 - wall@(14, 11)', 'obj_id': 'room_4_-_wall@(14,_11)', 'location': (14, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_4', 'name': 'room_4 - door@(12, 13)', 'obj_id': 'room_4_-_door@(12,_13)', 'location': (12, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area', 'location': (10, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_1', 'location': (10, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_2', 'location': (11, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_3', 'location': (11, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_4', 'location': (12, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_5', 'location': (12, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_6', 'location': (13, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_4', 'name': 'room_4_area', 'obj_id': 'room_4_area_7', 'location': (13, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(20, 11)', 'obj_id': 'room_5_-_wall@(20,_11)', 'location': (20, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(15, 11)', 'obj_id': 'room_5_-_wall@(15,_11)', 'location': (15, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(16, 10)', 'obj_id': 'room_5_-_wall@(16,_10)', 'location': (16, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(17, 10)', 'obj_id': 'room_5_-_wall@(17,_10)', 'location': (17, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(16, 13)', 'obj_id': 'room_5_-_wall@(16,_13)', 'location': (16, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(18, 10)', 'obj_id': 'room_5_-_wall@(18,_10)', 'location': (18, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(17, 13)', 'obj_id': 'room_5_-_wall@(17,_13)', 'location': (17, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(19, 10)', 'obj_id': 'room_5_-_wall@(19,_10)', 'location': (19, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(20, 13)', 'obj_id': 'room_5_-_wall@(20,_13)', 'location': (20, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(15, 13)', 'obj_id': 'room_5_-_wall@(15,_13)', 'location': (15, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(20, 10)', 'obj_id': 'room_5_-_wall@(20,_10)', 'location': (20, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(15, 10)', 'obj_id': 'room_5_-_wall@(15,_10)', 'location': (15, 10), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(19, 13)', 'obj_id': 'room_5_-_wall@(19,_13)', 'location': (19, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(20, 12)', 'obj_id': 'room_5_-_wall@(20,_12)', 'location': (20, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5 - wall@(15, 12)', 'obj_id': 'room_5_-_wall@(15,_12)', 'location': (15, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_5', 'name': 'room_5 - door@(18, 13)', 'obj_id': 'room_5_-_door@(18,_13)', 'location': (18, 13), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area', 'location': (16, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_1', 'location': (16, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_2', 'location': (17, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_3', 'location': (17, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_4', 'location': (18, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_5', 'location': (18, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_6', 'location': (19, 11), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_5', 'name': 'room_5_area', 'obj_id': 'room_5_area_7', 'location': (19, 12), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0008ff', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(4, 16)', 'obj_id': 'room_6_-_wall@(4,_16)', 'location': (4, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(8, 17)', 'obj_id': 'room_6_-_wall@(8,_17)', 'location': (8, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(4, 19)', 'obj_id': 'room_6_-_wall@(4,_19)', 'location': (4, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(3, 17)', 'obj_id': 'room_6_-_wall@(3,_17)', 'location': (3, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(7, 16)', 'obj_id': 'room_6_-_wall@(7,_16)', 'location': (7, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(8, 16)', 'obj_id': 'room_6_-_wall@(8,_16)', 'location': (8, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(3, 16)', 'obj_id': 'room_6_-_wall@(3,_16)', 'location': (3, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(7, 19)', 'obj_id': 'room_6_-_wall@(7,_19)', 'location': (7, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(8, 19)', 'obj_id': 'room_6_-_wall@(8,_19)', 'location': (8, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(3, 19)', 'obj_id': 'room_6_-_wall@(3,_19)', 'location': (3, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(5, 16)', 'obj_id': 'room_6_-_wall@(5,_16)', 'location': (5, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(6, 16)', 'obj_id': 'room_6_-_wall@(6,_16)', 'location': (6, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(5, 19)', 'obj_id': 'room_6_-_wall@(5,_19)', 'location': (5, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(8, 18)', 'obj_id': 'room_6_-_wall@(8,_18)', 'location': (8, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6 - wall@(3, 18)', 'obj_id': 'room_6_-_wall@(3,_18)', 'location': (3, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_6', 'name': 'room_6 - door@(6, 19)', 'obj_id': 'room_6_-_door@(6,_19)', 'location': (6, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area', 'location': (4, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_1', 'location': (4, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_2', 'location': (5, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_3', 'location': (5, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_4', 'location': (6, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_5', 'location': (6, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_6', 'location': (7, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_6', 'name': 'room_6_area', 'obj_id': 'room_6_area_7', 'location': (7, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(9, 16)', 'obj_id': 'room_7_-_wall@(9,_16)', 'location': (9, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(9, 19)', 'obj_id': 'room_7_-_wall@(9,_19)', 'location': (9, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(11, 16)', 'obj_id': 'room_7_-_wall@(11,_16)', 'location': (11, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(14, 17)', 'obj_id': 'room_7_-_wall@(14,_17)', 'location': (14, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(12, 16)', 'obj_id': 'room_7_-_wall@(12,_16)', 'location': (12, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(11, 19)', 'obj_id': 'room_7_-_wall@(11,_19)', 'location': (11, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(13, 16)', 'obj_id': 'room_7_-_wall@(13,_16)', 'location': (13, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(14, 16)', 'obj_id': 'room_7_-_wall@(14,_16)', 'location': (14, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(13, 19)', 'obj_id': 'room_7_-_wall@(13,_19)', 'location': (13, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(10, 16)', 'obj_id': 'room_7_-_wall@(10,_16)', 'location': (10, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(14, 19)', 'obj_id': 'room_7_-_wall@(14,_19)', 'location': (14, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(9, 18)', 'obj_id': 'room_7_-_wall@(9,_18)', 'location': (9, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(10, 19)', 'obj_id': 'room_7_-_wall@(10,_19)', 'location': (10, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(14, 18)', 'obj_id': 'room_7_-_wall@(14,_18)', 'location': (14, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7 - wall@(9, 17)', 'obj_id': 'room_7_-_wall@(9,_17)', 'location': (9, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_7', 'name': 'room_7 - door@(12, 19)', 'obj_id': 'room_7_-_door@(12,_19)', 'location': (12, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area', 'location': (10, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_1', 'location': (10, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_2', 'location': (11, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_3', 'location': (11, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_4', 'location': (12, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_5', 'location': (12, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_6', 'location': (13, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_7', 'name': 'room_7_area', 'obj_id': 'room_7_area_7', 'location': (13, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#ff1500', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(16, 16)', 'obj_id': 'room_8_-_wall@(16,_16)', 'location': (16, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(17, 16)', 'obj_id': 'room_8_-_wall@(17,_16)', 'location': (17, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(20, 17)', 'obj_id': 'room_8_-_wall@(20,_17)', 'location': (20, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(18, 16)', 'obj_id': 'room_8_-_wall@(18,_16)', 'location': (18, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(16, 19)', 'obj_id': 'room_8_-_wall@(16,_19)', 'location': (16, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(17, 19)', 'obj_id': 'room_8_-_wall@(17,_19)', 'location': (17, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(19, 16)', 'obj_id': 'room_8_-_wall@(19,_16)', 'location': (19, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(15, 17)', 'obj_id': 'room_8_-_wall@(15,_17)', 'location': (15, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(20, 16)', 'obj_id': 'room_8_-_wall@(20,_16)', 'location': (20, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(15, 16)', 'obj_id': 'room_8_-_wall@(15,_16)', 'location': (15, 16), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(19, 19)', 'obj_id': 'room_8_-_wall@(19,_19)', 'location': (19, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(20, 19)', 'obj_id': 'room_8_-_wall@(20,_19)', 'location': (20, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(15, 19)', 'obj_id': 'room_8_-_wall@(15,_19)', 'location': (15, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(20, 18)', 'obj_id': 'room_8_-_wall@(20,_18)', 'location': (20, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8 - wall@(15, 18)', 'obj_id': 'room_8_-_wall@(15,_18)', 'location': (15, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Wall', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#8a8a8a', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'is_open': False, 'room_name': 'room_8', 'name': 'room_8 - door@(18, 19)', 'obj_id': 'room_8_-_door@(18,_19)', 'location': (18, 19), 'is_movable': False, 'carried_by': [], 'is_traversable': False, 'class_inheritance': ['Door', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#640000', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area', 'location': (16, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_1', 'location': (16, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_2', 'location': (17, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_3', 'location': (17, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_4', 'location': (18, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_5', 'location': (18, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_6', 'location': (19, 17), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'room_name': 'room_8', 'name': 'room_8_area', 'obj_id': 'room_8_area_7', 'location': (19, 18), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#0dff00', 'depth': 80, 'opacity': 0.1, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'drop_zone_nr': 0, 'is_drop_zone': True, 'is_goal_block': False, 'is_collectable': False, 'name': 'Drop off 0', 'obj_id': 'Drop_off_0', 'location': (12, 21), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#878787', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'drop_zone_nr': 0, 'is_drop_zone': True, 'is_goal_block': False, 'is_collectable': False, 'name': 'Drop off 0', 'obj_id': 'Drop_off_0_1', 'location': (12, 22), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#878787', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'drop_zone_nr': 0, 'is_drop_zone': True, 'is_goal_block': False, 'is_collectable': False, 'name': 'Drop off 0', 'obj_id': 'Drop_off_0_2', 'location': (12, 23), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['AreaTile', 'EnvObject', 'object'], 'visualization': {'size': 1.0, 'shape': 0, 'colour': '#878787', 'depth': 80, 'opacity': 1.0, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'drop_zone_nr': 0, 'is_drop_zone': False, 'is_goal_block': True, 'is_collectable': False, 'name': 'Collect Block', 'obj_id': 'Collect_Block', 'location': (12, 23), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['GhostBlock', 'EnvObject', 'object'], 'visualization': {'size': 0.5, 'shape': 0, 'colour': '#0008ff', 'depth': 85, 'opacity': 0.5, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'drop_zone_nr': 0, 'is_drop_zone': False, 'is_goal_block': True, 'is_collectable': False, 'name': 'Collect Block', 'obj_id': 'Collect_Block_1', 'location': (12, 22), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['GhostBlock', 'EnvObject', 'object'], 'visualization': {'size': 0.5, 'shape': 2, 'colour': '#0dff00', 'depth': 85, 'opacity': 0.5, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'drop_zone_nr': 0, 'is_drop_zone': False, 'is_goal_block': True, 'is_collectable': False, 'name': 'Collect Block', 'obj_id': 'Collect_Block_2', 'location': (12, 21), 'is_movable': False, 'carried_by': [], 'is_traversable': True, 'class_inheritance': ['GhostBlock', 'EnvObject', 'object'], 'visualization': {'size': 0.5, 'shape': 0, 'colour': '#0dff00', 'depth': 85, 'opacity': 0.5, 'visualize_from_center': True}}
+
+Object {  <class 'dict'> }:  {'nr_ticks': 56, 'curr_tick_timestamp': 1647980929346, 'grid_shape': (24, 25), 'tick_duration': 0.1, 'team_members': ['agent1', 'agent2', 'human'], 'world_ID': 'world_1', 'vis_settings': {'vis_bg_clr': '#C2C2C2', 'vis_bg_img': None}}
+

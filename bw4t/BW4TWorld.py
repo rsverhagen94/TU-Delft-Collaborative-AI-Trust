@@ -15,6 +15,8 @@ from agents1.BW4THuman import Human
 from bw4t.CollectionGoal import CollectionGoal
 from bw4t.BW4TLogger import BW4TLogger
 from bw4t.BW4THumanBrain import HumanBrain
+from agents1.LiarAgent import LiarAgent
+from agents1.StrongAgent import StrongAgent
 
 DEFAULT_WORLDSETTINGS: dict={
     'deadline': 3000, # Ticks after which world terminates anyway 
@@ -190,6 +192,16 @@ class BW4TWorld:
                 team=team_name, name=agent['name'],
                 key_action_map=self._worldsettings['key_action_map'],
                 sense_capability=sense_capability, visualize_shape=2, visualize_colour='#FFFF00')
+            elif agent['botclass']==LiarAgent:
+                self._builder.add_agent(loc, brain,
+                team=team_name, name=agent['name'],
+                key_action_map=self._worldsettings['key_action_map'],
+                sense_capability=sense_capability, visualize_shape=2, visualize_colour='#FFFFFF')
+            elif agent['botclass']==StrongAgent:
+                self._builder.add_agent(loc, brain,
+                team=team_name, name=agent['name'],
+                key_action_map=self._worldsettings['key_action_map'],
+                sense_capability=sense_capability, visualize_shape=2, visualize_colour='#000000')
             else:
                 self._builder.add_agent(loc, brain, 
                 team=team_name, name=agent['name'], 

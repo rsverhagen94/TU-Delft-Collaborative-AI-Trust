@@ -9,9 +9,9 @@ class BW4TBrain(BW4TAgentBrain, ABC):
     This class is the obligatory base class for BW4T agents.
     BW4T agents must implement decide_on_bw4t_action
     """
-        
+
     NOT_ALLOWED_PARAMS:Final[Set[str]] ={'remove_range', 'grab_range', 'door_range', 'action_duration'}
-   
+
     DEFAULT_SETTINGS:Final[Dict[str,object]]={'slowdown':1, 'grab_range':1}
 
     def __init__(self, settings:Dict[str,object]):
@@ -21,30 +21,30 @@ class BW4TBrain(BW4TAgentBrain, ABC):
         field to the given slowdown. 1 implies normal speed
         of 1 action per tick. 3 givs 1 allowed action every 3 ticks. etc
         Implementors of BW4TBrain are NOT ALLOWED TO CHANGE THE VALUES OF NOT ALLOWED PARAMS.
-        This is to ensure that agents run at the required speed.      
+        This is to ensure that agents run at the required speed.
         Missing values get the value from DEFAULT_SETTINGS.
         '''
         self.__settings = self.DEFAULT_SETTINGS.copy()
         self.__settings.update(settings)
         super().__init__()
-    
+
     @final
     def initialize(self):
         super().initialize()
-        
+
     @final
     def decide_on_action(self, state:State):
-        act,params = self.decide_on_bw4t_action(state)  
+        act,params = self.decide_on_bw4t_action(state)
         params['grab_range']=1
         # Max objects should be changed for the strong agent
-        params['max_objects']=1
-        params['action_duration'] = self.__settings['slowdown']  
+        params['max_objects']=2 if type(self).__name__ == "StrongAgent" else 1
+        params['action_duration'] = self.__settings['slowdown']
         if self.__settings['grab_range']>1:
             raise ValueError("Parameter use not allowed ", self.__settings['grab_range'])
-        return act,params 
-    
+        return act,params
+
     def filter_bw4t_observations(self,state)->State:
-        """ 
+        """
         Filters the world state before deciding on an action.
         This function is called every tick, so use this for eg. message processing.
 
@@ -97,7 +97,7 @@ class BW4TBrain(BW4TAgentBrain, ABC):
 
         """
         return state
-    
+
     def decide_on_bw4t_action(self, state:State):
         '''
         @param state
@@ -106,26 +106,26 @@ class BW4TBrain(BW4TAgentBrain, ABC):
 
         Contains the decision logic of the agent.
         @return tuple (action name:str,  action arguments:dict)
-        
+
         action is a string of the class name of an action that is also in the
         `action_set` class attribute. To ensure backwards compatibility
         we advise to use Action.__name__ where Action is the intended
         action.
-        
+
         action_args is a dictionary with keys any action arguments and as values the
         actual argument values. If a required argument is missing an
         exception is raised, if an argument that is not used by that
-        action a warning is printed. 
-        
+        action a warning is printed.
+
         An argument that is always possible is that of action_duration, which
         denotes how many ticks this action should take and overrides the
         action duration set by the action implementation. The minimum of 1
         is used if you provide a value <1.
-            
+
         Check the action documentation to determine possible arguments.
         BW4T agents can not use NOT_ALLOWED_PARAMS above,
         they are set fixed by the environment builder
-        
+
         This function is called only when the agent can take an action.
         Actions that need execution every tick should be placed in
         filter_bw4t_observations.
