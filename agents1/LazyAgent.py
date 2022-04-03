@@ -524,6 +524,8 @@ class LazyAgent(BW4TBrain):
                             return action, {}
                         else:
                             print("SHOULD BE DONE!")
+                elif len(self.all_desired_objects) <= 0:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:
@@ -607,12 +609,14 @@ class LazyAgent(BW4TBrain):
         return int(round(distance * self.getRandom1()))
 
     def check_for_not_dropped(self):
-        if self.dropped_off_count != 0:
+        if self.dropped_off_count > 0:
             self.dropped_off_count -= 1
         elif self.dropped_off_count == 0:
             if len(self.not_dropped) > 0:
                 if self.capacity > 0:
                     self.capacity -=1
+                    print("NOT DROPPED_LA")
+
                 return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
 
     def addToMemory(self, vis, loc, drop):

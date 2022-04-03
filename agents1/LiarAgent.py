@@ -293,6 +293,7 @@ class LiarAgent(BW4TBrain):
                         for obj in state.get_closest_with_property("is_collectable"):
                             if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
                                 "location"] == loc:
+                                print("YESSSSSSSSSS")
                                 self.not_dropped.append((obj_id, loc))
                                 flag_not_dropped = True
 
@@ -365,6 +366,8 @@ class LiarAgent(BW4TBrain):
                     self._navigator.add_waypoints([self.memory[0]["location"]])
                     if len(self.not_dropped) > 0:
                         self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
+                    else:
+                        self.dropped_off_count = -1
                     self.memory.pop(0)
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
@@ -390,16 +393,16 @@ class LiarAgent(BW4TBrain):
                         if len(self._door) == 0:
                             return None, {}
 
-                    if len(self.not_dropped) > 0:
-                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
-                    else:
-                        self.dropped_off_count = -1
-
                     # get the location of the door
                     doorLoc = self._door['location']
 
                     # Location in front of door is south from door
                     doorLoc = doorLoc[0], doorLoc[1] + 1
+
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
+                    else:
+                        self.dropped_off_count = -1
 
                     # Send message of current action
                     possible_action = self.pickAnAction(PossibleActions.MOVING_TO_ROOM)
@@ -460,6 +463,8 @@ class LiarAgent(BW4TBrain):
                             return action, {}
                         else:
                             print("SHOULD BE DONE!")
+                elif len(self.all_desired_objects) <= 0:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:
@@ -519,13 +524,13 @@ class LiarAgent(BW4TBrain):
         return int(round(distance * self.getRandom1()))
 
     def check_for_not_dropped(self):
-        if self.dropped_off_count != 0:
+        if self.dropped_off_count > 0:
             self.dropped_off_count -= 1
         elif self.dropped_off_count == 0:
             if len(self.not_dropped) > 0:
                 if self.capacity > 0:
                     self.capacity -=1
-                print("NOT DROPPED")
+                print("NOT DROPPED_LI")
                 return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
 
 
