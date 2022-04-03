@@ -339,7 +339,7 @@ class LazyAgent(BW4TBrain):
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
                     #exit(-1)
-                    self._phase =Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = Phase.CHECK_ITEMS
 
                 # update capacity
                 else:

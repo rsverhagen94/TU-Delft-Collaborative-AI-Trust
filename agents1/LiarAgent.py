@@ -333,7 +333,8 @@ class LiarAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
-                    self._phase = Phase.Phase.PLAN_PATH_TO_CLOSED_DOOR
+                    self._phase = Phase.CHECK_ITEMS
+
                 # update capacity
                 else:
                     self.capacity -= 1
