@@ -22,7 +22,7 @@ if __name__ == "__main__":
         {'name': 'Strong', 'botclass': StrongAgent, 'settings': {}},
         # {'name': 'Strong1', 'botclass': StrongAgent, 'settings': {}},
         # {'name':'agent4', 'botclass':LazyAgent, 'settings':{}},
-        # {'name':'agent1', 'botclass':ColorblindAgent, 'settings':{}},
+        {'name':'agent1', 'botclass':ColorblindAgent, 'settings':{}},
         # {'name':'agent2', 'botclass':BaseLineAgent, 'settings':{}},
         {'name':'human', 'botclass':Human, 'settings':{}}
         ]

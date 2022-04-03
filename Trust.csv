@@ -1,4 +1,12 @@
+<<<<<<< HEAD
+,lazy,strong,agent1,human
+lazy,0.5,0.5,0.5,0.5
+strong,0.5,0.5,0.5,0.5
+agent1,0.5,0.5,0.5,0.5
+human,0.5,0.5,0.5,0.5
+=======
 ,lazy,strong,human
 lazy,0.5,1.0,0.5
 strong,0.0,0.5,0.5
 human,0.5,0.5,0.5
+>>>>>>> not_dropping_items
