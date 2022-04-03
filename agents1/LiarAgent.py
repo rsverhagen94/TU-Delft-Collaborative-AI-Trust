@@ -185,7 +185,9 @@ class LiarAgent(BW4TBrain):
             if Phase.TRAVERSE_ROOM == self._phase:
                 # Every time update the state for the new location of the agent
                 self._state_tracker.update(state)
-                self.check_for_not_dropped()
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 # If the agent has moved update look for and item
@@ -296,6 +298,7 @@ class LiarAgent(BW4TBrain):
                                 print("YESSSSSSSSSS")
                                 self.not_dropped.append((obj_id, loc))
                                 flag_not_dropped = True
+                                self.object_to_be_dropped = None
 
                         if not flag_not_dropped:
                             self.object_to_be_dropped = obj_id
@@ -333,6 +336,11 @@ class LiarAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
+                    locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                    self._navigator.reset_full()
+                    # Add the navigation
+                    self._navigator.add_waypoints(locations)
+                    self.dropped_off_count = 0
                     self._phase = Phase.CHECK_ITEMS
 
                 # update capacity
@@ -419,6 +427,9 @@ class LiarAgent(BW4TBrain):
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 self._state_tracker.update(state)
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
                 # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
@@ -506,7 +517,7 @@ class LiarAgent(BW4TBrain):
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
     def getRandom1(self):
-        return random.random()
+        return 0.9
 
     def shortestDistance_drop(self, state, go_to):
         current_loc = state[self._state_tracker.agent_id]['location']

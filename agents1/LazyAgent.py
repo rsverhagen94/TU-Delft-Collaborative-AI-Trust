@@ -178,7 +178,9 @@ class LazyAgent(BW4TBrain):
                 # self._messageSearchThrough(room)
 
                 self._state_tracker.update(state)
-                self.check_for_not_dropped()
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
                 action = self._navigator.get_move_action(self._state_tracker)
 
                 if self.stop_when > 0 or self.stop_when == -1:
@@ -308,6 +310,7 @@ class LazyAgent(BW4TBrain):
                             print("YESSS")
                             self.not_dropped.append((self.object_to_be_dropped, self.drop_off_locations[2]))
                             flag_not_dropped = True
+                            self.object_to_be_dropped = None
 
                     if not flag_not_dropped:
                         self.object_to_be_dropped = self.drop_off_locations[1]
@@ -337,6 +340,11 @@ class LazyAgent(BW4TBrain):
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
                     #exit(-1)
+                    locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                    self._navigator.reset_full()
+                    # Add the navigation
+                    self._navigator.add_waypoints(locations)
+                    self.dropped_off_count = 0
                     self._phase = Phase.CHECK_ITEMS
 
                 # update capacity
@@ -460,7 +468,9 @@ class LazyAgent(BW4TBrain):
             # When going using memory randomize
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
-                self.check_for_not_dropped()
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
                 if self.stop_when > 0:
                     self.stop_when -= 1
                     self._state_tracker.update(state)
@@ -604,7 +614,7 @@ class LazyAgent(BW4TBrain):
 
         distance = (x ** 2 + y ** 2) ** 0.5
 
-        return int(round(distance * self.getRandom1()))
+        return int(round(distance * 0.9))
 
     def check_for_not_dropped(self):
         if self.dropped_off_count > 0:
