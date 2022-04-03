@@ -527,7 +527,7 @@ class LiarAgent(BW4TBrain):
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
-    def getRandom1(self):
+    def getLength(self):
         return 0.9
 
     def shortestDistance_drop(self, state, go_to):
@@ -544,7 +544,7 @@ class LiarAgent(BW4TBrain):
 
         distance = (x ** 2 + y ** 2) ** 0.5
 
-        return int(round(distance * self.getRandom1()))
+        return int(round(distance * self.getLength()))
 
     def check_for_not_dropped(self):
         if self.dropped_off_count > 0:

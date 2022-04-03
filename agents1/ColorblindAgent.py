@@ -215,7 +215,7 @@ class ColorblindAgent(BW4TBrain):
                                     self._messagePickUpGoalBlock(str(obj[0]), str(obj[2]))
 
                                     for dict1 in self.memory:
-                                        if obj[0]["shape"] == dict1["visualization"]["shape"] and dict1[2] == loc:
+                                        if obj[0]["shape"] == dict1["visualization"]["shape"] and dict1["location"] == loc:
                                             self.memory.remove(dict1)
 
                                     return GrabObject.__name__, {'object_id': obj[1]}

@@ -316,7 +316,7 @@ class StrongAgent(BW4TBrain):
                     if len(self.not_dropped) > 0:
                         self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
                     else:
-                        self.dropped_off_count
+                        self.dropped_off_count = -1
                     self.memory.pop(0)
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
@@ -463,7 +463,7 @@ class StrongAgent(BW4TBrain):
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
-    def getRandom1(self):
+    def getLength(self):
         return 0.9
 
     def shortestDistance_drop(self, state, go_to):
@@ -480,7 +480,7 @@ class StrongAgent(BW4TBrain):
 
         distance = (x ** 2 + y ** 2) ** 0.5
 
-        return int(round(distance * self.getRandom1()))
+        return int(round(distance * self.getLength()))
 
     def check_for_not_dropped(self):
         if self.dropped_off_count > 0:
