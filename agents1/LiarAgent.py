@@ -297,7 +297,7 @@ class LiarAgent(BW4TBrain):
                                 flag_not_dropped = True
 
                         if not flag_not_dropped:
-                            self.object_to_be_dropped = (obj_id, loc)
+                            self.object_to_be_dropped = obj_id
                             self._messageDroppedGoalBlock(str(obj_viz), str(loc))
                             self._phase = Phase.DROP_OBJECT
 
@@ -332,7 +332,7 @@ class LiarAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
-                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+                    self._phase = Phase.Phase.PLAN_PATH_TO_CLOSED_DOOR
                 # update capacity
                 else:
                     self.capacity -= 1
@@ -340,6 +340,7 @@ class LiarAgent(BW4TBrain):
                     # Drop object
                     self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
+                    print("DROPPED", self.object_to_be_dropped)
 
                     return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
@@ -524,6 +525,7 @@ class LiarAgent(BW4TBrain):
             if len(self.not_dropped) > 0:
                 if self.capacity > 0:
                     self.capacity -=1
+                print("NOT DROPPED")
                 return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
 
 

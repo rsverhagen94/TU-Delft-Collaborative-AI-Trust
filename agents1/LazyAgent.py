@@ -298,10 +298,12 @@ class LazyAgent(BW4TBrain):
 
                     # if it is the correct location drop the object
                     self._phase = Phase.DROP_OBJECT
+                    print("DDDDD", self.desired_objects)
+                    print("OBJ", self.my_object[0], self.my_object[1])
                     if (self.my_object[0], self.my_object[1]) in self.desired_objects:
                         self.desired_objects.remove((self.my_object[0], self.my_object[1]))
 
-                    self._messageDroppedGoalBlock(str(self.drop_off_locations[0]), str(self.drop_off_locations[2]))
+                    print("DESSS", self.desired_objects)
 
                     for obj in state.get_closest_with_property("is_collectable"):
                         if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
@@ -336,8 +338,8 @@ class LazyAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
-                    exit(-1)
-                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+                    #exit(-1)
+                    self._phase =Phase.PLAN_PATH_TO_CLOSED_DOOR
 
                 # update capacity
                 else:
@@ -563,7 +565,7 @@ class LazyAgent(BW4TBrain):
                         if myLoc == loc:
                             if (des, loc) not in self.desired_objects:
                                 print('Increase desired obj')
-                                self.desired_objects.append((des, loc))
+                                #self.desired_objects.append((des, loc))
                 if action is not None:
                     return action, {}
                 else:
