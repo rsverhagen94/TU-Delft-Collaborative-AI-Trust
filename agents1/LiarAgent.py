@@ -686,34 +686,6 @@ class LiarAgent(BW4TBrain):
         for member in self._teamMembers:
             self.trustBeliefs[member] = 0.5
 
-    # def _processMessages(self, teamMembers):
-    #     '''
-    #     Process incoming messages and create a dictionary with received messages from each team member.
-    #     '''
-    #     receivedMessages = {}
-    #     for member in teamMembers:
-    #         receivedMessages[member] = []
-    #     for mssg in self.received_messages:
-    #         for member in teamMembers:
-    #             if mssg.from_id == member:
-    #                 receivedMessages[member].append(mssg.content)
-    #     return receivedMessages
-
-    # def _trustBelief(self, member, received):
-    #     '''
-    #     Baseline implementation of a trust belief. Creates a dictionary with trust belief scores for each team member, for example based on the received messages.
-    #     '''
-    #     # You can change the default value to your preference
-    #     default = 0.5
-    #     trustBeliefs = {}
-    #     for member in received.keys():
-    #         trustBeliefs[member] = default
-    #     for member in received.keys():
-    #         for message in received[member]:
-    #             if 'Found' in message and 'colour' not in message:
-    #                 trustBeliefs[member] -= 0.1
-    #                 break
-    #     return trustBeliefs
 
     def addToMemory(self, vis, loc, drop):
         if len(self.memory) == 0:
