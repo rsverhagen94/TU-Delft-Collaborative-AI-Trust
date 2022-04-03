@@ -36,7 +36,9 @@ class PossibleActions(enum.Enum):
     PICKING_UP_A_BLOCK = 6
     DROPPING_A_BLOCK = 7
 
-
+# What the difference between the trust scores should be when agents are sharing their
+# trust scores with the world in order to influence other agents' scores
+EPSILON = 0.15
 
 class LiarAgent(BW4TBrain):
 
@@ -78,6 +80,9 @@ class LiarAgent(BW4TBrain):
         self.obj_id = None
         self.closed_doors = []
 
+        self.not_dropped = []
+        self.drop_counter = 0
+
     def initialize(self):
         super().initialize()
         self._state_tracker = StateTracker(agent_id=self.agent_id)
@@ -94,6 +99,10 @@ class LiarAgent(BW4TBrain):
         self._processMessages()
 
         self.believeAgent()
+
+        # share trust scored every 25th tick
+        if self.ticks % 25 == 0:
+            self.shareTrustScores()
 
         # Add team members
 
@@ -154,7 +163,6 @@ class LiarAgent(BW4TBrain):
                 # Get the room name for the latest chosen room from the phase PLAN_PATH_TO_CLOSED_DOOR
                 room = self._door['room_name']
 
-                # TODO must change the message structure
                 # self._messageMoveRoom(room)
                 # Find all area tiles locations of the room to traverse
                 area = list(map(
@@ -183,6 +191,9 @@ class LiarAgent(BW4TBrain):
             if Phase.TRAVERSE_ROOM == self._phase:
                 # Every time update the state for the new location of the agent
                 self._state_tracker.update(state)
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
 
                 action = self._navigator.get_move_action(self._state_tracker)
                 # If the agent has moved update look for and item
@@ -275,6 +286,8 @@ class LiarAgent(BW4TBrain):
             # Follow path to the drop off location
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
+                flag_not_dropped = False
+                self.object_to_be_dropped = None
                 # Check if the current location of the agent is the correct drop off location
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
@@ -284,16 +297,29 @@ class LiarAgent(BW4TBrain):
                         self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_viz, obj_id, loc))
                         possible_action = self.pickAnAction(PossibleActions.DROPPING_A_BLOCK)
-                        if possible_action == PossibleActions.DROPPING_A_BLOCK:
-                            # TODO cheating a little bit here, since the visualization is not saved anywhere
-                            # for now the visualization of the dropped block is taken from the self.desired_objects list
-                            # by getting the block that has a drop off location equal to the agent's current location
-                            # update this after the memory of this agent is updated to be like the StrongAgent's memory
-                            # agent_location = state[self._state_tracker.agent_id]['location']
-                            # self._sendMessage("Dropped goal block " + str(list(filter(lambda block: block[1] == agent_location, self.desired_objects))[0]) + " at location " + str(agent_location))
+
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
+                                "location"] == loc:
+                                print("YESSSSSSSSSS")
+                                self.not_dropped.append((obj_id, loc))
+                                flag_not_dropped = True
+                                self.object_to_be_dropped = None
+
+                        if not flag_not_dropped:
+                            self.object_to_be_dropped = obj_id
                             self._messageDroppedGoalBlock(str(obj_viz), str(loc))
-                        else:
-                            self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
+                            self._phase = Phase.DROP_OBJECT
+
+                            if possible_action == PossibleActions.DROPPING_A_BLOCK:
+                                # for now the visualization of the dropped block is taken from the self.desired_objects list
+                                # by getting the block that has a drop off location equal to the agent's current location
+                                # update this after the memory of this agent is updated to be like the StrongAgent's memory
+                                # agent_location = state[self._state_tracker.agent_id]['location']
+                                # self._sendMessage("Dropped goal block " + str(list(filter(lambda block: block[1] == agent_location, self.desired_objects))[0]) + " at location " + str(agent_location))
+                                self._messageDroppedGoalBlock(str(obj_viz), str(loc))
+                            else:
+                                self._sendMessage(self.generateAMessageFromAction(possible_action), self.agent_name)
 
                 # if not already dropped the object move to the next location
                 if not flag:
@@ -316,19 +342,23 @@ class LiarAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
-                    exit(-1)
+                    locations = list(map(lambda des_obj: des_obj[1], self.all_desired_objects))
+                    self._navigator.reset_full()
+                    # Add the navigation
+                    self._navigator.add_waypoints(locations)
+                    self.dropped_off_count = 0
+                    self._phase = Phase.CHECK_ITEMS
+
                 # update capacity
-                self.capacity -= 1
-                # print("dropped object")
-                # Drop object
-                self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+                else:
+                    self.capacity -= 1
+                    # print("dropped object")
+                    # Drop object
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                # if len(self.desired_objects) == 0:
-                #     self._phase = Phase.GO_TO_REORDER_ITEMS
+                    print("DROPPED", self.object_to_be_dropped)
 
-                # self.dropped_off_count += 1
-
-                return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+                    return DropObject.__name__, {'object_id': self.object_to_be_dropped}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -349,7 +379,10 @@ class LiarAgent(BW4TBrain):
                     # print("MEMORY", self.memory)
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
-
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
+                    else:
+                        self.dropped_off_count = -1
                     self.memory.pop(0)
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
@@ -375,33 +408,16 @@ class LiarAgent(BW4TBrain):
                         if len(self._door) == 0:
                             return None, {}
 
-                    # if len(closedDoors) == 0:
-                    #     # If no rooms - stuck
-                    #     if len(self.all_rooms) == 0:
-                    #         return None, {}
-                    #     # get the first room, as they were sorted in the first iteration
-                    #     room_name = self.all_rooms.pop(0)
-                    #     # get the door of the chosen room
-                    #     self._door = [loc for loc in state.values()
-                    #                   if "room_name" in loc and loc['room_name'] is
-                    #                   room_name and 'class_inheritance' in loc and
-                    #                   'Door' in loc['class_inheritance']]
-                    #
-                    #     # in case some broken room without door - stuck
-                    #     if len(self._door) == 0:
-                    #         return None, {}
-                    #     else:
-                    #         self._door = self._door[0]
-                    #
-                    # # randomly pick closed door
-                    # else:
-                    #     self._door = random.choice(closedDoors)
-
                     # get the location of the door
                     doorLoc = self._door['location']
 
                     # Location in front of door is south from door
                     doorLoc = doorLoc[0], doorLoc[1] + 1
+
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
+                    else:
+                        self.dropped_off_count = -1
 
                     # Send message of current action
                     possible_action = self.pickAnAction(PossibleActions.MOVING_TO_ROOM)
@@ -417,6 +433,9 @@ class LiarAgent(BW4TBrain):
 
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 self._state_tracker.update(state)
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
                 # Follow path to door
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
@@ -449,18 +468,21 @@ class LiarAgent(BW4TBrain):
                 self._phase = Phase.REORDER_ITEMS
 
             if Phase.REORDER_ITEMS == self._phase:
-                if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
-                    self.all_desired_objects.pop(0)
-                    self._phase = Phase.GRAB_AND_DROP
+                if len(self.all_desired_objects) != 0:
+                    if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
+                        self.all_desired_objects.pop(0)
+                        self._phase = Phase.GRAB_AND_DROP
 
-                if self._phase != Phase.GRAB_AND_DROP:
-                    self._state_tracker.update(state)
-                    action = self._navigator.get_move_action(self._state_tracker)
-                    # Move to the next location
-                    if action != None:
-                        return action, {}
-                    else:
-                        print("SHOULD BE DONE!")
+                    if self._phase != Phase.GRAB_AND_DROP:
+                        self._state_tracker.update(state)
+                        action = self._navigator.get_move_action(self._state_tracker)
+                        # Move to the next location
+                        if action != None:
+                            return action, {}
+                        else:
+                            print("SHOULD BE DONE!")
+                elif len(self.all_desired_objects) <= 0:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:
@@ -499,6 +521,39 @@ class LiarAgent(BW4TBrain):
                     return action, {}
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
+
+    def getRandom1(self):
+        return 0.9
+
+    def shortestDistance_drop(self, state, go_to):
+        current_loc = state[self._state_tracker.agent_id]['location']
+        if current_loc[0] > go_to[0]:
+            x = current_loc[0] - go_to[0]
+        else:
+            x = go_to[0] - current_loc[0]
+
+        if current_loc[1] > go_to[1]:
+            y = current_loc[1] - go_to[1]
+        else:
+            y = go_to[1] - current_loc[1]
+
+        distance = (x ** 2 + y ** 2) ** 0.5
+
+        return int(round(distance * self.getRandom1()))
+
+    def check_for_not_dropped(self):
+        if self.dropped_off_count > 0:
+            self.dropped_off_count -= 1
+        elif self.dropped_off_count == 0:
+            if len(self.not_dropped) > 0:
+                if self.capacity > 0:
+                    self.capacity -=1
+                item = self.not_dropped.pop(0)[0]
+                print("NOT DROPPED_LI", item)
+
+                return DropObject.__name__, {'object_id': item}
+
+
     # pick an action from the PossibleActions with 20% chance it is the actual current action
     def pickAnAction(self, currentAction):
         if random.randint(1, 10) > 8:
@@ -598,26 +653,34 @@ class LiarAgent(BW4TBrain):
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
                     self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+                    is_sequence_true = self.verify_action_sequence(self.receivedMessages, member, self.closed_doors)
+                    if is_sequence_true is not None:
+                        if is_sequence_true:
+                            self.increaseTrust(member)
+                        else:
+                            self.decreaseTrust(member)
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
-            is_true = self.checkMessageTrue(self.ticks, mssg, from_id) or \
-                      self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
+            is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
             if is_true is not None:
                 if is_true:
+                    print('increasing trust', mssg)
                     self.increaseTrust(from_id)
                 else:
+                    print('decreasing trust', mssg)
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
 
     def believeAgent(self):
         for agent in self.receivedMessages:
             if self.trustBeliefs[agent] >= 0.9:
-                for i in range(len(self.receivedMessages[agent])):
-                    mssg = self.receivedMessages[agent][i]
-                    if not mssg[2]:
-                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                        # mssg[2] = True
-                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+                pass
+                # for i in range(len(self.receivedMessages[agent])):
+                #     mssg = self.receivedMessages[agent][i]
+                #     if not mssg[2]:
+                #         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                #         # mssg[2] = True
+                #         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -680,7 +743,7 @@ class LiarAgent(BW4TBrain):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
             room_to = splitMssg[2]
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 for room, door in self.rooms_to_visit:
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
@@ -694,25 +757,35 @@ class LiarAgent(BW4TBrain):
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 for obj_vis, dropoff_loc in self.all_desired_objects:
                     if self.compareObjects(vis, obj_vis):
                         self.addToMemory(vis, loc, dropoff_loc)
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 # self.dropped_off_count += 1
                 pass
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.4:
+            if self.trustBeliefs[sender] >= 0.6:
                 for dict1 in self.memory:
                     if self.compareObjects(dict1['visualization'], vis):
                         self.memory.remove(dict1)
                 for obj in self.desired_objects:
                     if self.compareObjects(obj[0], vis):
                         self.desired_objects.remove(obj)
+
+        if mssg.startswith("Trust score of "):
+            agent, trust_score = self.getAgentScoreFromMessage(mssg)
+            # sender will not send a trust score about itself, but check this is true just in case
+            if trust_score is not None and self.trustBeliefs[sender] >= 0.6 and agent != self.agent_name and sender != agent: # TODO 0.6
+                if self.trustBeliefs[agent] < trust_score - EPSILON:
+                    self.increaseTrust(agent)
+                elif self.trustBeliefs[agent] > trust_score + EPSILON:
+                    self.decreaseTrust(agent)
+                # else don't do anything
 
     def checkMessageTrue(self, ticks, mssg, sender):
         splitMssg = mssg.split(' ')
@@ -760,6 +833,16 @@ class LiarAgent(BW4TBrain):
             loc = ast.literal_eval(mssg[l.start(): l.end()])
         return vis, loc
 
+    def getAgentScoreFromMessage(self, mssg):
+        mssg_split = mssg.split()
+        trust_score = None
+        try:
+            trust_score = float(mssg_split[5])
+        except ValueError:
+            print("ERROR when parsing message about trust. Incorrect message format: trust is not a float.")
+
+        return mssg_split[3], trust_score
+
     def compareObjects(self, obj1, obj2):
         keys = ('shape', 'colour')
         for key in keys:
@@ -771,6 +854,12 @@ class LiarAgent(BW4TBrain):
     def addToSeenObjects(self, obj):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
+
+    def shareTrustScores(self):
+        for agent in self.trustBeliefs:
+            if agent != self.agent_name:
+                belief = self.trustBeliefs[agent]
+                self._sendMessage("Trust score of " + agent + " is " + str(belief), self.agent_name)
 
     def verify_action_sequence(self, mssgs, sender, closed_doors):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
@@ -805,7 +894,8 @@ class LiarAgent(BW4TBrain):
         mssg = None
         prev_mssg = None
         for mssg in mssgs:
-            if mssg[2] == from_id:
+            # ignore messages about the trust score of an agent
+            if mssg[2] == from_id and not "Trust score of " in mssg[1]:
                 if (counter == 0):
                     mssg = mssg[1]
                     counter = counter + 1

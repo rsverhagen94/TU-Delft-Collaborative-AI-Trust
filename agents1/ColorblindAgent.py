@@ -410,6 +410,8 @@ class ColorblindAgent(BW4TBrain):
                         return action, {}
                     else:
                         print("SHOULD BE DONE!")
+                elif len(self.all_desired_objects) <= 0:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:

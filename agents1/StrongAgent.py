@@ -65,6 +65,8 @@ class StrongAgent(BW4TBrain):
         self.at_drop_location = {}
         self.obj_id = None
         self.closed_doors = []
+        self.not_dropped = []
+        self.drop_counter = 0
 
     def initialize(self):
         super().initialize()
@@ -159,6 +161,10 @@ class StrongAgent(BW4TBrain):
                 # Every time update the state for the new location of the agent
                 self._state_tracker.update(state)
 
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
+
                 action = self._navigator.get_move_action(self._state_tracker)
                 # If the agent has moved update look for and item
                 # We are interested only in collectable items (such that can be picked)
@@ -240,15 +246,24 @@ class StrongAgent(BW4TBrain):
             # Follow path to the drop off location
             if Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION == self._phase:
                 flag = False
-
+                flag_not_dropped = False
+                self.object_to_be_dropped = None
                 for obj_viz, obj_id, loc in self.drop_off_locations:
                     if state[self._state_tracker.agent_id]['location'] == loc:
                         flag = True
-                        self.object_to_be_dropped = obj_id
                         # if it is the correct location drop the object
-                        self._phase = Phase.DROP_OBJECT
                         self.drop_off_locations.remove((obj_viz, obj_id, loc))
-                        self._messageDroppedGoalBlock(str(obj_viz), str(loc))
+
+                        for obj in state.get_closest_with_property("is_collectable"):
+                            if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
+                                self.not_dropped.append((obj_id, loc))
+                                flag_not_dropped = True
+                                self.object_to_be_dropped = None
+                        if not flag_not_dropped:
+                            self.object_to_be_dropped = (obj_id, loc)
+                            self._messageDroppedGoalBlock(str(obj_viz), str(loc))
+                            self._phase = Phase.DROP_OBJECT
+
 
                 # if not already dropped the object move to the next location
                 if not flag:
@@ -273,14 +288,17 @@ class StrongAgent(BW4TBrain):
             if Phase.DROP_OBJECT == self._phase:
                 if self.object_to_be_dropped is None:
                     print("CODE BROKEN VERY BAD")
-                    exit(-1)
+                    # exit(-1)
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+
                 # update capacity
-                self.capacity -= 1
+                else:
+                    self.capacity -= 1
 
-                # Drop object
-                self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
+                    # Drop object
+                    self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
 
-                return DropObject.__name__, {'object_id': self.object_to_be_dropped}
+                    return DropObject.__name__, {'object_id': self.object_to_be_dropped[0]}
 
             if Phase.PLAN_PATH_TO_CLOSED_DOOR == self._phase:
                 self._navigator.reset_full()
@@ -296,8 +314,12 @@ class StrongAgent(BW4TBrain):
                 if len(self.memory) > 0:
                     self._navigator.reset_full()
                     self._navigator.add_waypoints([self.memory[0]["location"]])
-                    self.memory.pop(0)
 
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, self.memory[0]["location"])
+                    else:
+                        self.dropped_off_count
+                    self.memory.pop(0)
                     self._phase = Phase.TRAVERSE_ROOM
                 # Randomly pick a closed door or go to open room
                 # Check if all rooms open
@@ -332,6 +354,11 @@ class StrongAgent(BW4TBrain):
                     # self._sendMessage('Moving to door of ' + self._door['room_name'], self.agent_name)
                     self._messageMoveRoom(self._door['room_name'])
                     self._navigator.add_waypoints([doorLoc])
+
+                    if len(self.not_dropped) > 0:
+                        self.dropped_off_count = self.shortestDistance_drop(state, doorLoc)
+                    else:
+                        self.dropped_off_count = -1
                     # go to the next phase
                     # self._messageMoveRoom(room)
                     self._phase = Phase.FOLLOW_PATH_TO_CLOSED_DOOR
@@ -339,6 +366,10 @@ class StrongAgent(BW4TBrain):
             if Phase.FOLLOW_PATH_TO_CLOSED_DOOR == self._phase:
                 self._state_tracker.update(state)
                 # Follow path to door
+
+                drop = self.check_for_not_dropped()
+                if drop is not None:
+                    return drop
                 action = self._navigator.get_move_action(self._state_tracker)
                 if action != None:
                     return action, {}
@@ -349,7 +380,10 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.ENTER_ROOM
                 # Open door
                 # If already opened, no change
-                self._messageOpenDoor(self._door['room_name'])
+                print(self._door, self.closed_doors)
+                if self._door['room_name'] in self.closed_doors:
+                    print('sending open door msg')
+                    self._messageOpenDoor(self._door['room_name'])
                 return OpenDoorAction.__name__, {'object_id': self._door['obj_id']}
 
             if Phase.GO_TO_REORDER_ITEMS == self._phase:
@@ -364,27 +398,32 @@ class StrongAgent(BW4TBrain):
                 self._phase = Phase.REORDER_ITEMS
 
             if Phase.REORDER_ITEMS == self._phase:
-                print(self.all_desired_objects)
-                if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
-                    self.all_desired_objects.pop(0)
-                    self._phase = Phase.GRAB_AND_DROP
+                print("ALL DESIRED OBJECTS", self.all_desired_objects)
+                if len(self.all_desired_objects) != 0:
+                    if state[self._state_tracker.agent_id]['location'] == self.all_desired_objects[0][1]:
+                        self.all_desired_objects.pop(0)
+                        self._phase = Phase.GRAB_AND_DROP
 
-                if self._phase != Phase.GRAB_AND_DROP:
-                    self._state_tracker.update(state)
-                    action = self._navigator.get_move_action(self._state_tracker)
-                    # Move to the next location
-                    if action != None:
-                        return action, {}
-                    else:
-                        print("SHOULD BE DONE!")
+                    if self._phase != Phase.GRAB_AND_DROP:
+                        self._state_tracker.update(state)
+                        action = self._navigator.get_move_action(self._state_tracker)
+                        # Move to the next location
+                        if action != None:
+                            return action, {}
+                        else:
+                            print("SHOULD BE DONE!")
+                elif len(self.all_desired_objects) <= 0:
+                    self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
             if Phase.GRAB_AND_DROP == self._phase:
                 if not self.grab:
                     self.obj_id = self.getObjectIdFromLocation(state, state[self._state_tracker.agent_id]['location'])
                     self.grab = True
+                    print('grabbed', self.obj_id)
                     return GrabObject.__name__, {'object_id': self.obj_id}
                 if not self.drop:
                     self.drop = True
+                    print('dropped', self.obj_id)
                     return DropObject.__name__, {'object_id': self.obj_id}
 
                 self.grab = False
@@ -425,10 +464,43 @@ class StrongAgent(BW4TBrain):
                 else:
                     self._phase = Phase.PLAN_PATH_TO_CLOSED_DOOR
 
+    def getRandom1(self):
+        return 0.9
+
+    def shortestDistance_drop(self, state, go_to):
+        current_loc = state[self._state_tracker.agent_id]['location']
+        if current_loc[0] > go_to[0]:
+            x = current_loc[0] - go_to[0]
+        else:
+            x = go_to[0] - current_loc[0]
+
+        if current_loc[1] > go_to[1]:
+            y = current_loc[1] - go_to[1]
+        else:
+            y = go_to[1] - current_loc[1]
+
+        distance = (x ** 2 + y ** 2) ** 0.5
+
+        return int(round(distance * self.getRandom1()))
+
+    def check_for_not_dropped(self):
+        if self.dropped_off_count > 0:
+            self.dropped_off_count -= 1
+        elif self.dropped_off_count == 0:
+            if len(self.not_dropped) > 0:
+                if self.capacity > 0:
+                    self.capacity -=1
+
+                item = self.not_dropped.pop(0)[0]
+                print("NOT DROPPED_S", item)
+
+                return DropObject.__name__, {'object_id': item}
+
     def getObjectIdFromLocation(self, state, loc):
         for obj in state.get_closest_with_property("is_collectable"):
             if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj["location"] == loc:
                 return obj["obj_id"]
+        return
 
     def _sendMessage(self, mssg, sender):
         '''
@@ -495,12 +567,19 @@ class StrongAgent(BW4TBrain):
                 if mssg.from_id == member:
                     self.receivedMessages[member].append((self.ticks, mssg.content, False))
                     self.totalMessagesReceived = self.totalMessagesReceived + 1
-                    self.tbv.append((self.ticks, mssg.content, mssg.from_id))
+                    if (self.ticks, mssg.content, mssg.from_id) not in self.tbv:
+                        self.tbv.append((self.ticks, mssg.content, mssg.from_id))
                     self.acceptMessageIfSenderTrustworthy(mssg.content, mssg.from_id)
+                    is_sequence_true = self.verify_action_sequence(self.receivedMessages, member)
+                    if is_sequence_true is not None:
+                        if is_sequence_true:
+                            self.increaseTrust(member)
+                        else:
+                            self.decreaseTrust(member)
+        self.already_said()
         tbv_copy = self.tbv
         for (ticks, mssg, from_id) in tbv_copy:
             is_true = self.checkMessageTrue(self.ticks, mssg, from_id)
-            is_sequence_true = self.verify_action_sequence(self.receivedMessages, from_id, self.closed_doors)
             if is_true is not None:
                 if is_true:
                     print('increasing trust', mssg)
@@ -509,20 +588,16 @@ class StrongAgent(BW4TBrain):
                     print('decreasing trust', mssg)
                     self.decreaseTrust(from_id)
                 self.tbv.remove((ticks, mssg, from_id))
-            if is_sequence_true is not None:
-                if is_sequence_true:
-                    self.increaseTrust(from_id)
-                else:
-                    self.decreaseTrust(from_id)
 
     def believeAgent(self):
         for agent in self.receivedMessages:
             if self.trustBeliefs[agent] >= 0.8:
-                for i in range(len(self.receivedMessages[agent])):
-                    mssg = self.receivedMessages[agent][i]
-                    if not mssg[2]:
-                        self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
-                        self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
+                pass
+                # for i in range(len(self.receivedMessages[agent])):
+                #     mssg = self.receivedMessages[agent][i]
+                #     if not mssg[2]:
+                #         self.acceptMessageIfSenderTrustworthy(mssg[1], agent)
+                #         self.receivedMessages[agent][i] = (mssg[0], mssg[1], True)
 
     def initTrustBeliefs(self):
         for member in self._teamMembers:
@@ -550,7 +625,7 @@ class StrongAgent(BW4TBrain):
         splitMssg = mssg.split(' ')
         if splitMssg[0] == 'Moving' and splitMssg[1] == 'to':
             room_to = splitMssg[2]
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 for room, door in self.rooms_to_visit:
                     if room_to == room:
                         self.rooms_to_visit.remove((room, door))
@@ -568,7 +643,8 @@ class StrongAgent(BW4TBrain):
             # print(self.closed_doors)
             # if self.verify_action_sequence(self.receivedMessages, sender, self.closed_doors):
             #     print("OPAAAAAAAAa")
-            #     self.closed_doors.remove(splitMssg[3])
+                # self.closed_doors.remove(splitMssg[3])
+            # pass
             pass
 
         if splitMssg[0] == 'Searching' and splitMssg[1] == 'through':
@@ -576,19 +652,19 @@ class StrongAgent(BW4TBrain):
 
         if splitMssg[0] == 'Found' and splitMssg[1] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 for obj_vis, dropoff_loc in self.all_desired_objects:
                     if self.compareObjects(vis, obj_vis):
                         self.addToMemory(vis, loc, dropoff_loc)
 
         if splitMssg[0] == 'Dropped' and splitMssg[1] == 'goal':
-            if self.trustBeliefs[sender] >= 0.5:
+            if self.trustBeliefs[sender] >= 0.6:
                 # self.dropped_off_count += 1
                 pass
 
         if splitMssg[0] == 'Picking' and splitMssg[2] == 'goal':
             vis, loc = self.getVisLocFromMessage(mssg)
-            if self.trustBeliefs[sender] >= 0.4:
+            if self.trustBeliefs[sender] >= 0.6:
                 for dict1 in self.memory:
                     if self.compareObjects(dict1['visualization'], vis):
                         self.memory.remove(dict1)
@@ -654,7 +730,7 @@ class StrongAgent(BW4TBrain):
         if obj not in self.seenObjects:
             self.seenObjects.append(obj)
 
-    def verify_action_sequence(self, mssgs, sender, closed_doors):
+    def verify_action_sequence(self, mssgs, sender):
         mssg, prev_mssg = self.find_mssg(mssgs, sender)
 
         if prev_mssg is not None:
@@ -664,19 +740,19 @@ class StrongAgent(BW4TBrain):
             # closed_doors = [door for door in state.values()
             #                 if 'class_inheritance' in door and 'Door' in door['class_inheritance'] and not door[
             #         'is_open']]
-            if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(closed_doors) == 0:
+            if (prev[0] == 'Opening' or curr[0] == 'Opening') and len(self.closed_doors) == 0:
                 print('Door is already open, dummy')
                 return False
 
-            if (prev[0] == 'Opening' and prev[3] not in closed_doors) or (curr[0] == 'Opening' and curr[3] not in closed_doors):
+            if (prev[0] == 'Opening' and prev[3] not in self.closed_doors) or (curr[0] == 'Opening' and curr[3] not in self.closed_doors):
                 print("TUKAAAAAAAAAAAAaa")
                 return False
 
             # check moving to room, opening door sequence
             if prev[0] == 'Moving':
                 # decrease trust score by little is action after moving to a room is not opening a door -> Lazy agent
-                if curr[0] != 'Opening' and curr[3] not in closed_doors:
-                    print('Door is already open, dummy, top kek')
+                if curr[0] != 'Opening':
+                    print('Invalid action sequence')
                     return False
 
                 # decrease trust score if an agent says that he is going to one room, but opening the door of another
@@ -697,8 +773,6 @@ class StrongAgent(BW4TBrain):
                     pass
                 else:
                     return False
-            return
-
         return
 
     def find_mssg(self, mssgs, from_id):
@@ -712,5 +786,38 @@ class StrongAgent(BW4TBrain):
             else:
                 prev_mssg = mssg_i[1]
                 break
-        # print(mssg, prev_mssg)
         return mssg, prev_mssg
+
+
+    # TODO check if messages are after a certain tick so that we don't check messages that are already checked
+    def already_said(self):
+        for name in self.receivedMessages.keys():
+            if name != self.agent_id:
+                for mssg in self.receivedMessages[name]:
+                    vis, loc = self.getVisLocFromMessage(mssg[1])
+                    # TODO
+                    # Fix it so that there is no duplication -> trust score will be  inscreased twice
+                    # Make it so that the second for loop starts at the index after the current index of the
+                    # above for loop
+                    for name_2 in self.receivedMessages.keys():
+                        if name_2 != self.agent_id and name_2 != name:
+                            for mssg_2 in self.receivedMessages[name_2]:
+                                vis_2, loc_2 = self.getVisLocFromMessage(mssg_2[1])
+                                if mssg[1].split(' ')[0] == 'Found':
+                                    if mssg_2[1].split(' ')[0] == 'Found':
+                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
+                                            print("OPALANKAAAAAAAAAAAa")
+                                            print(mssg[1].split(' ')[2])
+                                            print(mssg_2[1].split(' ')[2])
+                                            self.increaseTrust(name)
+                                            self.increaseTrust(name_2)
+                                    elif mssg_2[1].split(' ')[0] == 'Picking':
+                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
+                                            print("OPALANKAAAAAAAAAAAa")
+                                            self.increaseTrust(name)
+                                            self.increaseTrust(name_2)
+                                    elif mssg_2[1].split(' ')[0] == 'Dropped':
+                                        if self.compareObjects(vis, vis_2) and loc == loc_2:
+                                            print("OPALANKAAAAAAAAAAAa")
+                                            self.increaseTrust(name)
+                                            self.increaseTrust(name_2)
