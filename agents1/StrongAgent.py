@@ -279,7 +279,7 @@ class StrongAgent(BW4TBrain):
 
                 # Drop object
                 self._phase = Phase.FOLLOW_PATH_TO_DROP_OFF_LOCATION
-                if self.getObjectIdFromLocation(state, self.object_to_be_dropped[1]['location']) is not None:
+                if self.getObjectIdFromLocation(state, self.object_to_be_dropped[1]) is not None:
                     print('ok\nok\nok\nok\nok')
                 return DropObject.__name__, {'object_id': self.object_to_be_dropped[0]}
 
