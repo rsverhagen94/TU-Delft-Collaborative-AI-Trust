@@ -534,7 +534,7 @@ class LiarAgent(BW4TBrain):
                 item = self.not_dropped.pop(0)[0]
                 print("NOT DROPPED_LI", item)
 
-                return DropObject.__name__, {'object_id': self.not_dropped.pop(0)[0]}
+                return DropObject.__name__, {'object_id': item}
 
 
     # pick an action from the PossibleActions with 20% chance it is the actual current action

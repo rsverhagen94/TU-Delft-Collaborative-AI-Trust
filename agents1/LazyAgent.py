@@ -298,16 +298,14 @@ class LazyAgent(BW4TBrain):
 
                     # if it is the correct location drop the object
                     self._phase = Phase.DROP_OBJECT
-                    print("DDDDD", self.desired_objects)
-                    print("OBJ", self.my_object[0], self.my_object[1])
                     if (self.my_object[0], self.my_object[1]) in self.desired_objects:
                         self.desired_objects.remove((self.my_object[0], self.my_object[1]))
 
-                    print("DESSS", self.desired_objects)
 
                     for obj in state.get_closest_with_property("is_collectable"):
                         if obj["is_collectable"] is True and not 'GhostBlock' in obj['class_inheritance'] and obj[
                             "location"] == self.drop_off_locations[2]:
+                            print("YESSS")
                             self.not_dropped.append((self.object_to_be_dropped, self.drop_off_locations[2]))
                             flag_not_dropped = True
 
@@ -615,6 +613,7 @@ class LazyAgent(BW4TBrain):
             if len(self.not_dropped) > 0:
                 if self.capacity > 0:
                     self.capacity -=1
+                print("JFFJF", self.not_dropped)
                 item = self.not_dropped.pop(0)[0]
                 print("NOT DROPPED_LA", item)
                 return DropObject.__name__, {'object_id': item}
